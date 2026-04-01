@@ -38,7 +38,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 30px; margin-bottom: 30px;",
               "Distribution of AMR phenotypes"
             ),
-            plotly::plotlyOutput("resistance_vs_susceptible_plot", height = "400px")
+            plotly::plotlyOutput("resistance_vs_susceptible_plot", height = "300px")
           )
         ),
         column(
@@ -50,7 +50,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 30px; margin-bottom: 30px;",
               "Global distribution of resistant phenotypes"
             ),
-            plotly::plotlyOutput("geo_isolate_plot", height = "400px")
+            plotly::plotlyOutput("geo_isolate_plot", height = "300px")
           )
         )
       ),
@@ -67,30 +67,24 @@ metadataUI <- function() {
               ),
               "Distribution of AMR phenotypes by year"
             ),
-            plotly::plotlyOutput("r_s_across_time_plot", height = "400px")
+            plotly::plotlyOutput("r_s_across_time_plot", height = "300px")
           )
         ),
         column(
           width = 6,
           div(
             class = "plot-container",
-            div(
-              class = "plot-header",
-              style = paste0(
-                "text-align: center; font-family: 'Arial', sans-serif;",
-                " font-size: 14px; margin-top: 10px; margin-bottom: 30px;"
-              ),
-              "Distribution of genomes across isolation sources"
-            ),
+            uiOutput("isolation_source_header"),
             tabBox(
+              id = "isolation_source_tabset",
               width = 12,
               tabPanel(
                 "Isolation sources",
-                plotly::plotlyOutput("isolation_source_plot", height = "400px")
+                plotly::plotlyOutput("isolation_source_plot", height = "300px")
               ),
               tabPanel(
                 "Hosts",
-                plotly::plotlyOutput("host_isolate_plot", height = "400px")
+                plotly::plotlyOutput("host_isolate_plot", height = "300px")
               )
             )
           )

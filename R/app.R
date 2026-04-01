@@ -158,6 +158,32 @@ launchAMRDashboard <- function(results_root = NULL) {
                         border-radius: 5px;
                         text-align: center;
                       }
+
+                      /* ── Page section titles ── */
+                      .tab-content h3 { font-size: 16px !important; }
+
+                      /* ── Global size reduction ── */
+                      body { font-size: 13px; }
+                      .form-group label,
+                      .control-label { font-size: 13px !important; }
+                      .form-control {
+                        font-size: 13px;
+                        height: 32px;
+                        padding: 4px 10px;
+                      }
+                      .selectize-input {
+                        min-height: 32px !important;
+                        padding: 4px 8px !important;
+                        font-size: 13px !important;
+                        line-height: 1.4 !important;
+                      }
+                      .selectize-dropdown {
+                        font-size: 13px !important;
+                      }
+                      .form-group { margin-bottom: 8px; }
+                      .irs--shiny .irs-bar,
+                      .irs-bar { height: 4px !important; }
+                      .irs--shiny { font-size: 12px !important; }
                     "))
     ),
     # ── App header: title row (separate from nav tabs) ──
@@ -577,6 +603,10 @@ launchAMRDashboard <- function(results_root = NULL) {
         unique() %>%
         sort()
 
+      # Preserve the current drug selection if it remains valid for the new class,
+      # to avoid resetting when this observer is triggered by the drug → class sync.
+      prev_drug <- isolate(input$drug_ml_perf_id)
+
       if (input$drug_class_ml_perf_id != "all") {
         # Use metadata to map class abbreviation -> drug abbreviations
         sp_codes <- normalize_species(input$bug_ml_perf_id)
@@ -591,21 +621,39 @@ launchAMRDashboard <- function(results_root = NULL) {
             unique()
           drug_vec <- intersect(drug_vec, drugs_in_class)
         }
-        updateSelectInput(
-          session,
-          inputId = "drug_ml_perf_id",
-          choices = drug_vec,
-          selected = if (length(drug_vec)) drug_vec[1] else NULL
-        )
+        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) prev_drug
+               else if (length(drug_vec)) drug_vec[1] else NULL
+        updateSelectInput(session, inputId = "drug_ml_perf_id",
+          choices = drug_vec, selected = sel)
       } else {
-        updateSelectInput(
-          session,
-          inputId = "drug_ml_perf_id",
-          choices = drug_vec,
-          selected = if ("GEN" %in% drug_vec) "GEN" else if (length(drug_vec)) drug_vec[1] else NULL
-        )
+        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) prev_drug
+               else if ("GEN" %in% drug_vec) "GEN"
+               else if (length(drug_vec)) drug_vec[1] else NULL
+        updateSelectInput(session, inputId = "drug_ml_perf_id",
+          choices = drug_vec, selected = sel)
       }
     })
+
+    # When a specific drug is selected, sync the Drug Class dropdown to its class.
+    observeEvent(input$drug_ml_perf_id, {
+      req(input$drug_ml_perf_id)
+      sp_codes <- normalize_species(input$bug_ml_perf_id)
+      meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
+        fp <- get_metadata_path(sp, results_root)
+        if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
+      }))
+      if (!nrow(meta) || !all(c("class_abbr", "drug_abbr") %in% names(meta))) return()
+      drug_class <- meta %>%
+        dplyr::filter(.data$drug_abbr == input$drug_ml_perf_id) %>%
+        dplyr::pull(.data$class_abbr) %>%
+        unique()
+      if (!length(drug_class)) return()
+      # Only update if the class has actually changed, to avoid triggering a loop.
+      current_class <- isolate(input$drug_class_ml_perf_id)
+      if (!identical(current_class, drug_class[1])) {
+        updateSelectInput(session, "drug_class_ml_perf_id", selected = drug_class[1])
+      }
+    }, ignoreInit = TRUE)
 
 
     ## get a quick summary plot;
@@ -723,6 +771,23 @@ launchAMRDashboard <- function(results_root = NULL) {
         dplyr::collect()
       # print(data)
       makeTimeSeriesAMRPlot(data, input$amr_drug_search)
+    })
+
+    output$isolation_source_header <- renderUI({
+      title <- if (!is.null(input$isolation_source_tabset) &&
+                   input$isolation_source_tabset == "Hosts") {
+        "Distribution of genomes across hosts"
+      } else {
+        "Distribution of genomes across isolation sources"
+      }
+      div(
+        class = "plot-header",
+        style = paste0(
+          "text-align: center; font-family: 'Arial', sans-serif;",
+          " font-size: 14px; margin-top: 10px; margin-bottom: 30px;"
+        ),
+        title
+      )
     })
 
     output$host_isolate_plot <- plotly::renderPlotly({
@@ -970,10 +1035,14 @@ launchAMRDashboard <- function(results_root = NULL) {
 
       # nMCC Overview tab
       output$nmcc_strip_plot <- plotly::renderPlotly({
-        makeNmccStripPlot(queryData())
+        makeNmccStripPlot(
+          queryData(),
+          selected_drug_class = input$drug_class_ml_perf_id,
+          selected_drug       = input$drug_ml_perf_id
+        )
       })
       output$nmcc_heatmap <- plotly::renderPlotly({
-        makeNmccHeatmap(queryData())
+        makeNmccHeatmap(queryData(), selected_drug_class = input$drug_class_ml_perf_id)
       })
 
       # # Load performance metrics data

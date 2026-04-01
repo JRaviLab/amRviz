@@ -7,7 +7,7 @@ queryDataUI <- function() {
     icon = icon("table", lib = "font-awesome"),
     value = "query_datatable",
     fluidPage(
-      h2("Query Data"),
+      h3("Query Data", style = "font-weight: bold; margin-top: 15px; margin-bottom: 15px;"),
       p("The data table provides the ability to download the raw data for model performance metrics and top features. The table can be customized by adding/removing specific columns."),
       uiOutput("results_species_selector_ui"),
       tabsetPanel(

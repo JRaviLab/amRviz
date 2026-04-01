@@ -10,7 +10,7 @@ featureImportanceUI <- function() {
       style = "padding: 10px;",
       column(
         width = 4,
-        style = "height: 80px; display: flex; align-items: center;",
+        style = "height: 60px; display: flex; align-items: center;",
         selectInput(
           "bug_drug_comp_model_scale",
           label = tags$label("Model scale", style = "font-size: 15px;"),
@@ -22,7 +22,7 @@ featureImportanceUI <- function() {
       ),
       column(
         width = 4,
-        style = "height: 80px; display: flex; align-items: center;",
+        style = "height: 60px; display: flex; align-items: center;",
         selectInput(
           "data_type",
           label = tags$label("Data type", style = "font-size: 15px;"),
@@ -34,7 +34,7 @@ featureImportanceUI <- function() {
       ),
       column(
         width = 4,
-        style = "height: 80px; display: flex; align-items: center;",
+        style = "height: 60px; display: flex; align-items: center;",
         div(
           sliderInput(inputId = "top_n_features", label = "Top features (per model)", min = 0, max = 100, value = 10)
         )
@@ -55,18 +55,17 @@ featureImportanceUI <- function() {
               fluidRow(
                 column(
                   width = 6,
-                  style = "height: 50px; display: flex; align-items: center;",
-                  h4("Toggle the button to select drug or drug class")
-                ),
-                column(
-                  width = 4,
-                  style = "height: 50px; display: flex; align-items: center;",
+                  style = "height: 40px; display: flex; align-items: center;",
                   radioButtons(
                     inputId = "across_bug_id",
                     label = "",
                     choices = c("Drug class" = "drug_class", "Drug" = "drug"),
                     selected = "drug",
                     inline = TRUE
+                  ),
+                  tags$span(
+                    "Toggle to select drug or drug class",
+                    style = "font-size: 11px; color: #666; margin-left: 10px; white-space: nowrap;"
                   )
                 )
               ),
@@ -96,12 +95,12 @@ featureImportanceUI <- function() {
               ),
               column(
                 width = 6,
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                style = "padding: 0; height: 460px; border: 1px solid lightgray;",
                 plotly::plotlyOutput("across_bug_feature_importance_plot", height = "100%", width = "100%")
               ),
               column(
                 width = 6,
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                style = "padding: 0; height: 460px; border: 1px solid lightgray;",
                 DT::dataTableOutput("across_bug_feature_importance_table", height = "100%")
               )
             )
@@ -113,18 +112,17 @@ featureImportanceUI <- function() {
               fluidRow(
                 column(
                   width = 6,
-                  style = "height: 50px; display: flex; align-items: center;",
-                  h4("Toggle the button to select drug or drug class")
-                ),
-                column(
-                  width = 4,
-                  style = "height: 50px; display: flex; align-items: center;",
+                  style = "height: 40px; display: flex; align-items: center;",
                   radioButtons(
                     inputId = "across_drug_id",
                     label = "",
                     choices = c("Drug class" = "drug_class", "Drug" = "drug"),
                     selected = "drug",
                     inline = TRUE
+                  ),
+                  tags$span(
+                    "Toggle to select drug or drug class",
+                    style = "font-size: 11px; color: #666; margin-left: 10px; white-space: nowrap;"
                   )
                 )
               ),
@@ -154,12 +152,12 @@ featureImportanceUI <- function() {
               ),
               column(
                 width = 6,
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                style = "padding: 0; height: 460px; border: 1px solid lightgray;",
                 plotly::plotlyOutput("across_drug_feature_importance_plot", height = "100%")
               ),
               column(
                 width = 6,
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                style = "padding: 0; height: 460px; border: 1px solid lightgray;",
                 DT::dataTableOutput("across_drug_feature_importance_table", height = "100%")
               )
             )

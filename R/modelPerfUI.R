@@ -82,7 +82,7 @@ modelPerfUI <- function() {
               column(
                 width = 12,
                 div(
-                  style = "height: 600px;",
+                  style = "height: 460px;",
                   plotly::plotlyOutput("model_perfomance_plot", height = "100%")
                 )
               )
@@ -98,8 +98,8 @@ modelPerfUI <- function() {
                 "Right: median nMCC by drug class across species, molecular scale, and data encoding."
               ),
               fluidRow(
-                column(4, plotly::plotlyOutput("nmcc_strip_plot", height = "560px")),
-                column(8, plotly::plotlyOutput("nmcc_heatmap", height = "560px"))
+                column(4, plotly::plotlyOutput("nmcc_strip_plot", height = "420px")),
+                column(8, plotly::plotlyOutput("nmcc_heatmap",    height = "420px"))
               )
             )
           )

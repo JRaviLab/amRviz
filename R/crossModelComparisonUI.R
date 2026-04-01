@@ -11,7 +11,7 @@ crossModelComparisonUI <- function() {
       tagList(
         column(
           width = 4,
-          style = "height: 80px; display: flex; align-items: center;",
+          style = "height: 60px; display: flex; align-items: center;",
           selectInput(
             inputId = "bug_cross_model_comparison_id",
             label = tags$label("Bug", style = "font-size: 15px;"),
@@ -23,7 +23,7 @@ crossModelComparisonUI <- function() {
         ),
         column(
           width = 4,
-          style = "height: 80px; display: flex; align-items: center;",
+          style = "height: 60px; display: flex; align-items: center;",
           selectInput(
             inputId = "drug_cross_model_comparison_id",
             label = tags$label("Drug/Drug class", style = "font-size: 15px;"),
@@ -35,7 +35,7 @@ crossModelComparisonUI <- function() {
         ),
         column(
           width = 4,
-          style = "height: 80px; display: flex; align-items: center;",
+          style = "height: 60px; display: flex; align-items: center;",
           radioButtons(
             inputId = "cross_model_comparison",
             label = tags$label("Cross-train models across", style = "font-size: 15px;"),
@@ -60,7 +60,7 @@ crossModelComparisonUI <- function() {
               column(
                 width = 12,
                 plotOutput("cross_model_perf_plot", height = "100%"),
-                style = "padding: 0; border: 1px solid lightgray; height: 700px;"
+                style = "padding: 0; border: 1px solid lightgray; height: 520px;"
               )
             )
           ),
@@ -80,12 +80,12 @@ crossModelComparisonUI <- function() {
                 column(
                   width = 6,
                   plotOutput("cross_model_feature_importance_plot", height = "100%"),
-                  style = "padding: 0; height: 600px; border: 1px solid lightgray;"
+                  style = "padding: 0; height: 460px; border: 1px solid lightgray;"
                 ),
                 column(
                   width = 6,
                   DT::dataTableOutput("cross_model_feature_importance_table"),
-                  style = "padding: 0; height: 600px; border: 1px solid lightgray;"
+                  style = "padding: 0; height: 460px; border: 1px solid lightgray;"
                 )
               )
             )

@@ -423,49 +423,49 @@ makeQuickStats <- function(data) {
   spp_label <- unique(df$species)
   tagList(
     tags$p(
-      style = "font-weight: bold; padding: 10px 4px 4px; font-family: sans-serif; font-size: 18px;",
+      style = "font-weight: bold; padding: 10px 4px 4px; font-family: sans-serif; font-size: 14px;",
       paste("Data summary for", stringr::str_to_sentence(spp_label[1]))
     ),
     fluidRow(
-      column(4, quickStatBox("Isolate-drug records", total_records, "database", "#2C3E50")),
-      column(4, quickStatBox("Unique genomes", total_genomes, "dna", "#2980B9")),
-      column(4, quickStatBox("Drugs tested", n_drugs, "pills", "#8E44AD"))
+      column(4, quickStatBox("Isolate-drug records",  total_records,   "database",    "#3c5a6f")),
+      column(4, quickStatBox("Unique genomes",         total_genomes,   "dna",         "#7aab6e")),
+      column(4, quickStatBox("Drugs tested",           n_drugs,         "pills",       "#9b7fba"))
     ),
     fluidRow(
-      column(4, quickStatBox("Resistant isolates", n_resistant, "virus", "#C0392B")),
-      column(4, quickStatBox("Susceptible isolates", n_susceptible, "shield-halved", "#27AE60")),
-      column(4, quickStatBox("Drug classes", n_drug_classes, "layer-group", "#D35400"))
+      column(4, quickStatBox("Resistant isolates",    n_resistant,     "virus",       "#d4872a")),
+      column(4, quickStatBox("Susceptible isolates",  n_susceptible,   "shield-halved", "#5b8db8")),
+      column(4, quickStatBox("Drug classes",          n_drug_classes,  "layer-group", "#8b6b7a"))
     ),
     fluidRow(
       column(4, quickStatBox(
         "Top 5 drugs",
-        tags$span(
-          style = "font-size:11px; line-height:1.5;",
-          HTML(paste(top_drugs, collapse = "<br/>"))
-        ),
-        "star", "#16A085"
+        tags$span(style = "font-size:11px; line-height:1.5;",
+          HTML(paste(top_drugs, collapse = "<br/>"))),
+        "star", "#4e9a9a"
       )),
       column(4, quickStatBox(
         "Top 5 drug classes",
-        tags$span(
-          style = "font-size:11px; line-height:1.5;",
-          HTML(paste(top_classes, collapse = "<br/>"))
-        ),
-        "list", "#7F8C8D"
+        tags$span(style = "font-size:11px; line-height:1.5;",
+          HTML(paste(top_classes, collapse = "<br/>"))),
+        "list", "#b5b5b5"
       )),
       column(4, quickStatBox(
         "Top 5 countries",
-        tags$span(
-          style = "font-size:11px; line-height:1.5;",
-          HTML(paste(top_countries, collapse = "<br/>"))
-        ),
-        "globe", "#F39C12"
+        tags$span(style = "font-size:11px; line-height:1.5;",
+          HTML(paste(top_countries, collapse = "<br/>"))),
+        "globe", "#d4735e"
       ))
     )
   )
 }
 
 makeDatAvailabilityPlot <- function(data) {
+  # Palette: resistant=warm amber, susceptible=muted slate blue, intermediate=peach
+  phenotype_pal <- c(
+    R = "#d4872a", Resistant = "#d4872a", resistant = "#d4872a",
+    S = "#5b8db8", Susceptible = "#5b8db8", susceptible = "#5b8db8",
+    I = "#e6ab80", Intermediate = "#e6ab80", intermediate = "#e6ab80"
+  )
   data <- data %>%
     dplyr::group_by(.data$genome_drug.antibiotic, .data$genome_drug.resistant_phenotype) %>%
     dplyr::count() %>%
@@ -484,6 +484,7 @@ makeDatAvailabilityPlot <- function(data) {
     )
   ) +
     ggplot2::geom_col() +
+    ggplot2::scale_fill_manual(values = phenotype_pal, na.value = "gray70") +
     ggplot2::theme_bw() +
     ggplot2::theme(
       axis.text.x  = ggplot2::element_text(angle = 90, hjust = 1, size = 10),
@@ -508,7 +509,7 @@ makeGeoChloroPlot <- function(data) {
     z = ~count,
     text = ~ paste(iso3, "<br>Genomes:", count),
     hoverinfo = "text",
-    colorscale = "Viridis",
+    colorscale = list(c(0, "#fdf3e3"), c(0.5, "#d4a050"), c(1, "#d4872a")),
     marker = list(line = list(width = 0.5, color = "white"))
   ) %>%
     colorbar(title = list(text = "No. of isolates", font = list(size = 14))) %>%
@@ -539,6 +540,11 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
     title_amr_drug
   )
 
+  phenotype_pal <- c(
+    R = "#d4872a", Resistant = "#d4872a", resistant = "#d4872a",
+    S = "#5b8db8", Susceptible = "#5b8db8", susceptible = "#5b8db8",
+    I = "#e6ab80", Intermediate = "#e6ab80", intermediate = "#e6ab80"
+  )
   g <- ggplot2::ggplot(
     data,
     ggplot2::aes(
@@ -555,6 +561,7 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
   ) +
     ggplot2::geom_line() +
     ggplot2::geom_point() +
+    ggplot2::scale_color_manual(values = phenotype_pal, na.value = "gray70") +
     ggplot2::labs(
       title  = title_amr_drug,
       x      = "Year",
@@ -583,6 +590,11 @@ makeHostIsolatePlot <- function(data) {
     dplyr::summarize(n = n()) %>%
     dplyr::ungroup()
 
+  meta_pal <- c(
+    "#4a6b8a", "#87ceeb", "#e6ab80", "#8b6b7a",
+    "#4e9a9a", "#c4a35a", "#9b7fba", "#5b8db8",
+    "#d4735e", "#d4872a", "#b5b5b5"
+  )
   g <- ggplot2::ggplot(
     host_df,
     ggplot2::aes(
@@ -597,6 +609,7 @@ makeHostIsolatePlot <- function(data) {
     )
   ) +
     ggplot2::geom_col(position = "stack") +
+    ggplot2::scale_fill_manual(values = meta_pal, na.value = "gray70") +
     ggplot2::theme_bw() +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 10),
@@ -634,6 +647,11 @@ makeIsolationSourcesPlot <- function(data) {
   isolation_source <- isolation_source %>%
     mutate(genome.isolation_source_ = stringr::str_trunc(genome.isolation_source_, width = 20))
 
+  meta_pal <- c(
+    "#4a6b8a", "#87ceeb", "#e6ab80", "#8b6b7a",
+    "#4e9a9a", "#c4a35a", "#9b7fba", "#5b8db8",
+    "#d4735e", "#d4872a", "#b5b5b5"
+  )
   isolation_source_plot <- ggplot(
     isolation_source,
     aes(
@@ -648,6 +666,7 @@ makeIsolationSourcesPlot <- function(data) {
     )
   ) +
     geom_col(position = "stack") +
+    ggplot2::scale_fill_manual(values = meta_pal, na.value = "gray70") +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
@@ -761,10 +780,11 @@ makeModelPerformancePlot <- function(
 
   p %>% plotly::layout(
     boxmode = "group",
-    title   = list(text = "Performance metrics", x = 0),
+    title   = list(text = "Performance metrics", x = 0, font = list(size = 13, color = "#333333", family = "Arial, sans-serif")),
     xaxis   = list(title = "Species"),
-    yaxis   = list(title = metrics, range = c(0, 1)),
-    legend  = list(title = list(text = "Scale"))
+    yaxis   = list(title = metrics, range = c(0, 1.05)),
+    legend  = list(title = list(text = "Scale")),
+    margin  = list(t = 50)
   )
 }
 
@@ -986,12 +1006,12 @@ makeFeatureImportancePlot <- function(
 
   # Build plotly heatmap (features = rows, groups = columns)
   plotly::plot_ly(
-    x = colnames(vi_mat),
-    y = rownames(vi_mat),
-    z = vi_mat,
-    type = "heatmap",
-    colorscale = list(c(0, "lightgreen"), c(1, "darkgreen")),
-    colorbar = list(title = "Importance"),
+    x         = colnames(vi_mat),
+    y         = rownames(vi_mat),
+    z         = vi_mat,
+    type      = "heatmap",
+    colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
+    colorbar  = list(title = "Importance"),
     hovertemplate = paste0(
       "<b>Feature:</b> %{y}<br>",
       "<b>Group:</b> %{x}<br>",
@@ -1077,7 +1097,7 @@ makeCrossModelFeatureImportancePlot <- function(
   ComplexHeatmap::Heatmap(
     vi_mat,
     name = "Importance score",
-    col = circlize::colorRamp2(c(min_val, max_val), c("lightgreen", "darkgreen")),
+    col = circlize::colorRamp2(c(min_val, max_val), c("#c8e8e8", "#4e9a9a")),
     row_title_side = "left",
     column_title_side = "top",
     row_names_side = "left",
@@ -1156,8 +1176,8 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     column_title = col_title,
     row_title_side = "left",
     column_title_side = "top",
-    row_title_gp = grid::gpar(fontsize = 14, fontface = "bold"),
-    column_title_gp = grid::gpar(fontsize = 14, fontface = "bold"),
+    row_title_gp = grid::gpar(fontsize = 13, fontface = "bold", col = "#333333"),
+    column_title_gp = grid::gpar(fontsize = 13, fontface = "bold", col = "#333333"),
     cluster_rows = FALSE,
     cluster_columns = FALSE,
     show_row_names = TRUE,
@@ -1413,7 +1433,7 @@ get_metadata_path <- function(species_code, results_root = NULL) {
 # makeNmccStripPlot: Panel A — nMCC distribution by species, faceted by
 # molecular scale.  Uses ggplot2 box + jitter converted to plotly.
 # data: performance tibble from queryData() / loadMLResults()
-makeNmccStripPlot <- function(data) {
+makeNmccStripPlot <- function(data, selected_drug_class = NULL, selected_drug = NULL) {
   df <- .prep_nmcc_data(data)
   if (is.null(df)) {
     return(plotly::plot_ly() %>% plotly::layout(title = "No data available"))
@@ -1441,45 +1461,83 @@ makeNmccStripPlot <- function(data) {
     return(plotly::plot_ly() %>% plotly::layout(title = "No data for selected filters"))
   }
 
+  # ── Highlight selected drug or drug class ──
+  # Priority: specific drug > drug class. Points matching the selection get
+  # full alpha/larger size; all others are dimmed when a selection is active.
+  # When drug_class == "all", suppress both highlights — no specific class
+  # is selected so the accompanying drug selection is not meaningful.
+  class_active <- !is.null(selected_drug_class) &&
+    nzchar(selected_drug_class) &&
+    selected_drug_class != "all"
+  use_drug  <- class_active && !is.null(selected_drug) && nzchar(selected_drug)
+  use_class <- class_active && !use_drug
+
+  df <- df %>%
+    dplyr::mutate(
+      highlighted = dplyr::case_when(
+        use_drug  ~ .data$drug_or_class == selected_drug  & .data$drug_label == "drug",
+        use_class ~ .data$drug_or_class == selected_drug_class & .data$drug_label == "drug_class",
+        TRUE      ~ FALSE
+      )
+    )
+
+  any_highlighted <- use_drug || use_class
+
+  df <- df %>%
+    dplyr::mutate(
+      pt_alpha = dplyr::if_else(.data$highlighted & any_highlighted, 0.9,
+        dplyr::if_else(any_highlighted, 0.15, 0.7)),
+      pt_size  = dplyr::if_else(.data$highlighted & any_highlighted, 3.5,
+        dplyr::if_else(any_highlighted, 1.5, 2.5))
+    )
+
   g <- ggplot2::ggplot(
     df,
     ggplot2::aes(
       x = .data$species_display,
       y = .data$nmcc,
       color = .data$scale_label,
-      fill = .data$scale_label,
-      text = paste0(
+      fill  = .data$scale_label,
+      alpha = .data$pt_alpha,
+      size  = .data$pt_size,
+      text  = paste0(
         "Drug/class: ", .data$drug_or_class,
         "\nnMCC: ", round(.data$nmcc, 3),
         "\nEncoding: ", .data$feature_subtype
       )
     )
   ) +
-    ggplot2::geom_boxplot(alpha = 0.3, outlier.shape = NA, width = 0.5) +
-    ggplot2::geom_jitter(width = 0.15, alpha = 0.7, size = 2.5) +
+    ggplot2::geom_boxplot(alpha = 0.3, outlier.shape = NA, width = 0.5, linewidth = 0.4) +
+    ggplot2::geom_jitter(width = 0.15) +
     ggplot2::geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50", linewidth = 0.4) +
     ggplot2::facet_grid(scale_label ~ ., switch = "y") +
     ggplot2::scale_color_manual(values = scale_colors) +
     ggplot2::scale_fill_manual(values = scale_colors) +
+    ggplot2::scale_alpha_identity() +
+    ggplot2::scale_size_identity() +
     ggplot2::coord_cartesian(ylim = c(0.35, 1.05)) +
     ggplot2::labs(x = NULL, y = "nMCC") +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
-      legend.position = "none",
-      strip.placement = "outside",
+      legend.position   = "none",
+      strip.placement   = "outside",
       strip.text.y.left = ggplot2::element_text(angle = 0, hjust = 1),
-      panel.spacing = ggplot2::unit(0.3, "lines")
+      panel.spacing     = ggplot2::unit(0.3, "lines")
     )
 
   plotly::ggplotly(g, tooltip = "text") %>%
-    plotly::layout(title = list(text = "A. nMCC per species and molecular scale", x = 0))
+    plotly::layout(
+      title  = list(text = "nMCC per species and molecular scale", x = 0,
+                    font = list(size = 13, color = "#333333", family = "Arial, sans-serif")),
+      margin = list(t = 50)
+    )
 }
 
 # makeNmccHeatmap: Panel B — compound heatmap showing median nMCC by drug class
 # across three groupings: species (grayscale), molecular scale (categorical
 # colors), and data encoding (categorical colors).
 # Only drug_class rows are used (drug_label == "drug_class").
-makeNmccHeatmap <- function(data) {
+makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
   df <- .prep_nmcc_data(data)
   if (is.null(df)) {
     return(plotly::plot_ly() %>% plotly::layout(title = "No data available"))
@@ -1520,43 +1578,63 @@ makeNmccHeatmap <- function(data) {
   ) +
     ggplot2::geom_tile(color = "white") +
     ggplot2::scale_fill_gradient(
-      low = "white", high = "black",
+      low  = "#f7fbff", high = "#08306b",
       limits = c(0.5, 1.0), name = "nMCC", na.value = "white"
     ) +
     ggplot2::labs(x = NULL, y = "Drug class", title = "Species") +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
-      plot.title = ggplot2::element_text(hjust = 0.5, size = 12),
-      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1),
+      plot.title   = ggplot2::element_text(hjust = 0.5, size = 12, color = "#333333", family = "sans"),
+      axis.text.x  = ggplot2::element_text(angle = 40, hjust = 1),
       legend.position = "bottom"
     )
 
-  # ── Section 2: molecular scale × drug_class (colored by scale) ──
+  # ── Section 2: molecular scale × drug_class (nMCC gradient per scale color) ──
   scale_colors <- c(
     Domain  = "#66a61e",
     Gene    = "#e6ab80",
     Protein = "#87ceeb",
     Struct  = "#a52a2a"
   )
-  scale_order <- c("domains", "genes", "proteins", "struct")
+  scale_order  <- c("domains", "genes", "proteins", "struct")
   scale_labels <- c(domains = "Domain", genes = "Gene", proteins = "Protein", struct = "Struct")
 
-  sc_summ <- df %>%
+  sc_all <- df %>%
     dplyr::filter(.data$feature_type %in% scale_order) %>%
     dplyr::group_by(.data$drug_or_class, .data$feature_type) %>%
-    dplyr::summarise(med_nmcc = median(.data$nmcc, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::summarise(med_nmcc = median(.data$nmcc, na.rm = TRUE), .groups = "drop")
+
+  # ## Top-ranked only (commented out — revert by uncommenting and swapping sc_summ below)
+  # sc_max <- sc_all %>%
+  #   dplyr::group_by(.data$drug_or_class) %>%
+  #   dplyr::summarise(max_nmcc = max(.data$med_nmcc, na.rm = TRUE), .groups = "drop")
+  # sc_summ_top <- sc_all %>%
+  #   dplyr::left_join(sc_max, by = "drug_or_class") %>%
+  #   dplyr::mutate(
+  #     scale_label   = factor(scale_labels[.data$feature_type], levels = unname(scale_labels)),
+  #     drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
+  #     fill_label    = dplyr::if_else(
+  #       .data$med_nmcc >= .data$max_nmcc - 1e-9,
+  #       as.character(.data$scale_label), NA_character_
+  #     )
+  #   )
+
+  # All tiles, alpha encodes nMCC intensity (0.5 → light, 1.0 → full color)
+  sc_summ <- sc_all %>%
     dplyr::mutate(
+      scale_label   = factor(scale_labels[.data$feature_type], levels = unname(scale_labels)),
       drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
-      scale_label   = factor(scale_labels[.data$feature_type], levels = unname(scale_labels))
+      alpha_val     = (.data$med_nmcc - 0.5) / 0.5  # normalize 0.5–1.0 → 0–1
     )
 
   g2 <- ggplot2::ggplot(
     sc_summ,
     ggplot2::aes(
-      x = .data$scale_label,
-      y = .data$drug_or_class,
-      fill = .data$scale_label,
-      text = paste0(
+      x     = .data$scale_label,
+      y     = .data$drug_or_class,
+      fill  = .data$scale_label,
+      alpha = .data$alpha_val,
+      text  = paste0(
         "Scale: ", .data$scale_label,
         "\nDrug class: ", .data$drug_or_class,
         "\nMedian nMCC: ", round(.data$med_nmcc, 3)
@@ -1564,23 +1642,23 @@ makeNmccHeatmap <- function(data) {
     )
   ) +
     ggplot2::geom_tile(color = "white") +
-    ggplot2::scale_fill_manual(values = scale_colors, na.value = "white", guide = "none") +
+    ggplot2::scale_fill_manual(values = scale_colors, guide = "none") +
+    ggplot2::scale_alpha_continuous(range = c(0.15, 1.0), guide = "none") +
     ggplot2::labs(x = NULL, y = NULL, title = "Molecular scale") +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
-      plot.title  = ggplot2::element_text(hjust = 0.5, size = 12),
+      plot.title  = ggplot2::element_text(hjust = 0.5, size = 12, color = "#333333", family = "sans"),
       axis.text.x = ggplot2::element_text(angle = 40, hjust = 1),
       axis.text.y = ggplot2::element_blank()
     )
 
-  # ── Section 3: data encoding × drug_class (colored by type) ──
+  # ── Section 3: data encoding × drug_class (nMCC gradient per encoding color) ──
   subtype_colors <- c(Binary = "#6495ED", Counts = "#BA55D3")
 
-  st_summ <- df %>%
+  st_all <- df %>%
     dplyr::group_by(.data$drug_or_class, .data$feature_subtype) %>%
     dplyr::summarise(med_nmcc = median(.data$nmcc, na.rm = TRUE), .groups = "drop") %>%
     dplyr::mutate(
-      drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
       subtype_label = dplyr::case_when(
         .data$feature_subtype == "binary" ~ "Binary",
         .data$feature_subtype == "counts" ~ "Counts",
@@ -1588,13 +1666,35 @@ makeNmccHeatmap <- function(data) {
       )
     )
 
+  # ## Top-ranked only (commented out — revert by uncommenting and swapping st_summ below)
+  # st_max <- st_all %>%
+  #   dplyr::group_by(.data$drug_or_class) %>%
+  #   dplyr::summarise(max_nmcc = max(.data$med_nmcc, na.rm = TRUE), .groups = "drop")
+  # st_summ_top <- st_all %>%
+  #   dplyr::left_join(st_max, by = "drug_or_class") %>%
+  #   dplyr::mutate(
+  #     drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
+  #     fill_label    = dplyr::if_else(
+  #       .data$med_nmcc >= .data$max_nmcc - 1e-9,
+  #       .data$subtype_label, NA_character_
+  #     )
+  #   )
+
+  # All tiles, alpha encodes nMCC intensity
+  st_summ <- st_all %>%
+    dplyr::mutate(
+      drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
+      alpha_val     = (.data$med_nmcc - 0.5) / 0.5
+    )
+
   g3 <- ggplot2::ggplot(
     st_summ,
     ggplot2::aes(
-      x = .data$subtype_label,
-      y = .data$drug_or_class,
-      fill = .data$subtype_label,
-      text = paste0(
+      x     = .data$subtype_label,
+      y     = .data$drug_or_class,
+      fill  = .data$subtype_label,
+      alpha = .data$alpha_val,
+      text  = paste0(
         "Encoding: ", .data$subtype_label,
         "\nDrug class: ", .data$drug_or_class,
         "\nMedian nMCC: ", round(.data$med_nmcc, 3)
@@ -1602,14 +1702,40 @@ makeNmccHeatmap <- function(data) {
     )
   ) +
     ggplot2::geom_tile(color = "white") +
-    ggplot2::scale_fill_manual(values = subtype_colors, na.value = "white", guide = "none") +
+    ggplot2::scale_fill_manual(values = subtype_colors, guide = "none") +
+    ggplot2::scale_alpha_continuous(range = c(0.15, 1.0), guide = "none") +
     ggplot2::labs(x = NULL, y = NULL, title = "Data type") +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
-      plot.title  = ggplot2::element_text(hjust = 0.5, size = 12),
+      plot.title  = ggplot2::element_text(hjust = 0.5, size = 12, color = "#333333", family = "sans"),
       axis.text.x = ggplot2::element_text(angle = 40, hjust = 1),
       axis.text.y = ggplot2::element_blank()
     )
+
+  # ── Highlight selected drug class row ──
+  # Compute the 1-indexed factor level position of the selected drug class.
+  # drug_order_rev[1] = bottom row (factor level 1 in ggplot2 y-axis).
+  highlight_y <- if (
+    !is.null(selected_drug_class) &&
+    nzchar(selected_drug_class) &&
+    selected_drug_class != "all" &&
+    selected_drug_class %in% drug_order_rev
+  ) {
+    which(drug_order_rev == selected_drug_class)
+  } else {
+    NULL
+  }
+  if (!is.null(highlight_y)) {
+    highlight_rect <- ggplot2::annotate(
+      "rect",
+      xmin = -Inf, xmax = Inf,
+      ymin = highlight_y - 0.5, ymax = highlight_y + 0.5,
+      fill = NA, color = "#FFD700", linewidth = 1.5
+    )
+    g1 <- g1 + highlight_rect
+    g2 <- g2 + highlight_rect
+    g3 <- g3 + highlight_rect
+  }
 
   p1 <- plotly::ggplotly(g1, tooltip = "text")
   p2 <- plotly::ggplotly(g2, tooltip = "text")
@@ -1622,7 +1748,8 @@ makeNmccHeatmap <- function(data) {
     margin = 0.03
   ) %>%
     plotly::layout(
-      title  = list(text = "B. nMCC by drug class, species, molecular scale, and data type", x = 0),
+      title  = list(text = "nMCC by drug class, species, molecular scale, and data type", x = 0,
+                    font = list(size = 13, color = "#333333", family = "Arial, sans-serif")),
       legend = list(orientation = "h", y = -0.15)
     )
 }
