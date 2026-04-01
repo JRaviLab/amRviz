@@ -423,7 +423,7 @@ makeQuickStats <- function(data) {
   spp_label <- unique(df$species)
   tagList(
     tags$p(
-      style = "font-weight: bold; padding: 10px 4px 4px; font-family: sans-serif; font-size: 14px;",
+      style = "font-weight: bold; padding: 4px 4px 4px; font-family: sans-serif; font-size: 14px;",
       paste("Data summary for", stringr::str_to_sentence(spp_label[1]))
     ),
     fluidRow(

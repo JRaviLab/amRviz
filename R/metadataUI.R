@@ -35,10 +35,10 @@ metadataUI <- function() {
             class = "plot-container",
             div(
               class = "plot-header",
-              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 30px; margin-bottom: 30px;",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 4px; margin-bottom: 4px;",
               "Distribution of AMR phenotypes"
             ),
-            plotly::plotlyOutput("resistance_vs_susceptible_plot", height = "300px")
+            plotly::plotlyOutput("resistance_vs_susceptible_plot", height = "400px")
           )
         ),
         column(
@@ -47,7 +47,7 @@ metadataUI <- function() {
             class = "plot-container",
             div(
               class = "plot-header",
-              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 30px; margin-bottom: 30px;",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 4px; margin-bottom: 4px;",
               "Global distribution of resistant phenotypes"
             ),
             plotly::plotlyOutput("geo_isolate_plot", height = "300px")
@@ -80,11 +80,11 @@ metadataUI <- function() {
               width = 12,
               tabPanel(
                 "Isolation sources",
-                plotly::plotlyOutput("isolation_source_plot", height = "300px")
+                plotly::plotlyOutput("isolation_source_plot", height = "400px")
               ),
               tabPanel(
                 "Hosts",
-                plotly::plotlyOutput("host_isolate_plot", height = "300px")
+                plotly::plotlyOutput("host_isolate_plot", height = "400px")
               )
             )
           )
