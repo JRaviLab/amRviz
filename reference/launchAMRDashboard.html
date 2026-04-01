@@ -65,9 +65,19 @@ resistance data and machine learning model results.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">launchAMRDashboard</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">launchAMRDashboard</span><span class="op">(</span>results_root <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
+    <div id="arguments">
+    <h2>Arguments</h2>
+
+
+<dl><dt id="arg-results-root">results_root<a class="anchor" aria-label="anchor" href="#arg-results-root"></a></dt>
+<dd><p>File path to the root directory containing amRml model
+output results. If <code>NULL</code> (default), the application will attempt to
+use example data bundled with the package, where available.</p></dd>
+
+</dl></div>
     <div id="value">
     <h2>Value</h2>
     <p>A Shiny application object</p>
