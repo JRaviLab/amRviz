@@ -15,7 +15,7 @@ crossModelComparisonUI <- function() {
           selectInput(
             inputId = "bug_cross_model_comparison_id",
             label = tags$label("Bug", style = "font-size: 15px;"),
-            choices = bug_choices,
+            choices = character(0),
             multiple = FALSE,
             selectize = TRUE,
             width = "100%"

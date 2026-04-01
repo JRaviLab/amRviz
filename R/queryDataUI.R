@@ -9,6 +9,7 @@ queryDataUI <- function() {
     fluidPage(
       h2("Query Data"),
       p("The data table provides the ability to download the raw data for model performance metrics and top features. The table can be customized by adding/removing specific columns."),
+      uiOutput("results_species_selector_ui"),
       tabsetPanel(
         id = "query_tabset",
 

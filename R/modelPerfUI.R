@@ -13,9 +13,9 @@ modelPerfUI <- function() {
           h3("Model Performance", style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"),
           amr_select(
             "bug_ml_perf_id", "Bug",
-            bug_choices,
-            multiple = T,
-            selected = c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp.")
+            character(0),
+            multiple = TRUE,
+            selected = NULL
           )
         )
       ),

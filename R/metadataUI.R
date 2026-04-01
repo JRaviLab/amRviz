@@ -12,16 +12,9 @@ metadataUI <- function() {
         amr_select(
           "bug_metadata_id",
           "Bug",
-          choices = c(
-            "Enterococcus faecium" = "Efa",
-            "Staphylococcus aureus" = "Sau",
-            "Klebsiella pneumoniae" = "Kpn",
-            "Acinetobacter baumannii" = "Aba",
-            "Pseudomonas aeruginosa" = "Pae",
-            "Enterobacter spp." = "Esp."
-          ),
-          multiple = F,
-          selected = "Sau"
+          choices = character(0),
+          multiple = FALSE,
+          selected = NULL
         )
       ),
       fluidRow(

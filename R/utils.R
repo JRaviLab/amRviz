@@ -40,77 +40,35 @@ normalize_species <- function(x) {
   stringr::str_replace_all(x_chr, "\\.$", "")
 }
 
-getHoldoutsDrugChoices <- function(bug = NULL) {
-  files <- c(
-    here::here("shinyapp", "data", "country_models", "performance_metrics.parquet"),
-    here::here("shinyapp", "data", "cross_models", "performance_metrics.parquet"),
-    here::here("shinyapp", "data", "year_models", "performance_metrics.parquet"),
-    here::here("shinyapp", "data", "cross_year", "performance_metrics.parquet")
-  )
-
-  # ---- helper to safely read parquet ----
-  read_one <- function(fp) {
-    if (!file.exists(fp)) {
-      return(NULL)
-    }
-    tryCatch(
-      {
-        df <- arrow::read_parquet(fp)
-        keep <- intersect(names(df), c("species", "drug_or_class_name"))
-        if (!"drug_or_class_name" %in% keep) {
-          return(NULL)
-        }
-        df <- df[, keep, drop = FALSE]
-        # ensure character types
-        df$species <- as.character(df$species)
-        df$drug_or_class_name <- as.character(df$drug_or_class_name)
-        df
-      },
-      error = function(e) NULL
-    )
-  }
-
-  # ---- helper to collapse suffixes like "_Ghana" safely ----
-  collapse_country_suffix <- function(v) {
-    v <- unique(as.character(v))
-    base <- sub("_[^_]+$", "", v) # remove only the final "_token"
-    has_base <- base %in% v # only collapse if the base exists
-    sort(unique(ifelse(has_base, base, v)))
-  }
-
-  dfs <- lapply(files, read_one)
-  dfs <- Filter(Negate(is.null), dfs)
-  if (!length(dfs)) {
-    return(character(0))
-  }
-  df <- dplyr::bind_rows(dfs)
-  if (!nrow(df)) {
+# getHoldoutsDrugChoices: derive drug/class choices for the holdouts tab
+# perf_data: combined performance tibble from loadMLResults()
+# bug: optional 3-letter species code to filter to
+getHoldoutsDrugChoices <- function(perf_data, bug = NULL) {
+  if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(character(0))
   }
 
-  # --- Normalise species tokens in the dataframe to a canonical form ---
-  # e.g. "Esp." -> "Esp" so comparisons match UI values regardless of trailing dot
+  # Filter to stratified models only (country or year, not baseline)
+  df <- perf_data %>%
+    dplyr::filter(!is.na(.data$strat_label) & nzchar(.data$strat_label))
+
   if ("species" %in% names(df)) {
-    df <- df %>% dplyr::mutate(species = normalize_species(species))
+    df <- df %>% dplyr::mutate(species = normalize_species(.data$species))
   }
 
-  # ---- filter by 3-letter species code (also normalize the incoming bug arg) ----
   if (!is.null(bug) && "species" %in% names(df)) {
     bug_norm <- normalize_species(bug)
     df <- dplyr::filter(df, .data$species %in% bug_norm)
   }
+
   if (!nrow(df)) {
     return(character(0))
   }
 
-  # ---- clean up and return drug/class names ----
-  x <- df$drug_or_class_name
-  keep_idx <- !is.na(x) &
-    nzchar(trimws(x)) &
-    !grepl("^(19|20)\\d{2}$", x) & # drop 4-digit years
-    !grepl("^_", x) # drop leading-underscore labels
-  drugs <- x[keep_idx]
-  collapse_country_suffix(drugs)
+  x <- as.character(df$drug_or_class)
+  x[!is.na(x) & nzchar(trimws(x))] |>
+    unique() |>
+    sort()
 }
 
 
@@ -366,23 +324,8 @@ loadDrugClassMap <- function() {
   return(drug_class_map_df)
 }
 
-loadMLResults <- function() {
-  cwd <- getwd()
-  ml_results_fp <- system.file("extdata", "All_Performances.tsv", package = "amRshiny")
-  # ml_results_fp <- here::here("shinyapp", "data", "performance_metrics", "performance_metrics.parquet")
-  message(stringr::str_glue("loadMLResults(): Looking for DB at: {ml_results_fp}"))
-  return(readr::read_tsv(ml_results_fp, show_col_types = FALSE))
-}
-
-loadTopFeat <- function() {
-  # Define the correct file path
-  cwd <- getwd()
-  tf_results_fp <- here::here("shinyapp", "data", "top_features", "top_features.parquet")
-  message(stringr::str_glue("loadTopFeat(): Looking for file at: {tf_results_fp}"))
-
-  # Use arrow::read_parquet to load Parquet files
-  return(arrow::read_parquet(tf_results_fp))
-}
+## NOTE: loadMLResults() and loadTopFeat() with results_root/species_dirs args
+## are defined below (lines ~1391+). These single-arg stubs are superseded.
 
 getAmrDrugs <- function(amr_drug, amr_drug_class) {
   # Load the drug class mapping data
@@ -434,7 +377,7 @@ makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
   total_genomes <- nrow(data_with_drug_class)
   total_uniques_genomes <- length(unique(data_with_drug_class$genome_drug.genome_id))
   n_amr_drugs <- length(unique(data_with_drug_class$genome_drug.antibiotic))
-  n_amr_drug_class <- length(unique(data_with_drug_class$drug_classes[!is.na(data_with_drug_class$drug_classes)]))
+  n_amr_drug_class <- length(unique(data_with_drug_class$drug_class[!is.na(data_with_drug_class$drug_class)]))
   total_strains <- data_with_drug_class[
     data_with_drug_class$genome_drug.resistant_phenotype %in% c("Resistant", "Susceptible"),
   ][["genome_drug.resistant_phenotype"]] |>
@@ -451,12 +394,12 @@ makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
     dplyr::pull(genome_drug.antibiotic)
 
   top_n_drugs_class <- data_with_drug_class %>%
-    dplyr::filter(!is.na(drug_classes)) %>%
-    dplyr::group_by(drug_classes) %>%
+    dplyr::filter(!is.na(drug_class)) %>%
+    dplyr::group_by(drug_class) %>%
     dplyr::summarize(n = n()) %>%
     dplyr::arrange(desc(n)) %>%
     dplyr::slice_head(n = 5) %>%
-    dplyr::pull(drug_classes)
+    dplyr::pull(drug_class)
 
   top_n_countries <- data_with_drug_class %>%
     dplyr::filter(!grepl(pattern = "NA", x = genome.isolation_country)) %>%
@@ -690,361 +633,312 @@ makeIsolationSourcesPlot <- function(data) {
   return(isolation_source_plot)
 }
 
-# makeModelPerformancePlot(data, input$bug_search_amr, input$model_scale, input$model_metrics, input$data_type)
-makeModelPerformancePlot <- function(bug, model_scale, data_type, metrics, amr_drug_class, amr_drug) {
-  plotMetrics <- function(
-    bug,
-    metrics_df,
-    title = "Performance metrics",
-    metric_col = "nmcc",
-    fill_col = "model_colors",
-    facet_col = "model_colors",
-    selected_drug = ""
-  ) {
-    # Ensure the metrics_df is a data frame
-    if (!is.data.frame(metrics_df)) {
-      stop("metrics_df must be a data frame")
-    }
-
-    # ESKAPE order (species codes)
-    eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-    metrics_df <- metrics_df %>%
-      dplyr::mutate(!!rlang::sym(bug) := normalize_species(.data[[bug]]))
-
-    # set factor levels to the intersection of the canonical order and the species present,
-    # preserving the canonical order for any species present in the data
-    present <- unique(metrics_df[[bug]])
-    levels_order <- intersect(eskape_order, present)
-
-    # apply factor with safe levels (if none present, leave as character)
-    if (length(levels_order) > 0) {
-      metrics_df <- metrics_df %>%
-        dplyr::mutate(!!rlang::sym(bug) := factor(.data[[bug]], levels = levels_order))
-    } else {
-      # fallback: keep as character if no matching tokens found
-      metrics_df <- metrics_df %>% dplyr::mutate(!!rlang::sym(bug) := as.character(.data[[bug]]))
-    }
-
-    # Plot nMCC across species, data types, and molecular scales
-    g <- ggplot(
-      metrics_df,
-      aes(x = get(bug), y = get(metric_col), fill = get(fill_col), color = get(fill_col))
-    ) +
-      geom_boxplot(outliers = F, alpha = 0.4) +
-      labs(
-        title = title,
-        x = "Species",
-        y = metric_col
-      ) +
-      scale_fill_brewer(palette = "Set2") +
-      scale_color_brewer(palette = "Dark2") +
-      theme_bw() +
-      theme(
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none"
-      ) +
-      coord_cartesian(ylim = c(0, 1))
-
-    if (!is.null(amr_drug) && amr_drug != "") {
-      g <- g +
-        geom_point(
-          data = metrics_df %>% dplyr::filter(drug_or_drug_class == amr_drug),
-          position = position_jitterdodge(jitter.width = 0.1),
-          size = 4
-        )
-    } else {
-      g <- g + ggtitle(title)
-    }
-    return(g)
+# makeModelPerformancePlot: plot baseline ML model performance metrics.
+# data: pre-loaded performance tibble from loadMLResults() / queryData()
+# Columns used from amRml parquet schema:
+#   species, feature_type (scale), feature_subtype (data type),
+#   drug_or_class (drug/class abbrev), drug_label ("drug"/"drug_class"), nmcc/bal_acc/f1
+makeModelPerformancePlot <- function(
+  data, bug, model_scale, data_type, metrics,
+  amr_drug_class, amr_drug
+) {
+  if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
+    return(ggplot() +
+      labs(title = "No data available") +
+      theme_bw())
   }
-  # subset the data based on the selected bug and model scale
-  data <- readr::read_tsv(here::here("shinyapp", "data", "performance_metrics", "all_metrics.tsv")) %>%
-    dplyr::filter(species %in% bug) %>%
-    dplyr::filter(scale %in% model_scale) %>%
-    dplyr::filter(data %in% data_type)
 
-  # inner join the drug class mapping
-  if (amr_drug_class != "all") {
-    drug_within_class_vec <- readr::read_csv(here::here("shinyapp", "data", "drug_cleanup.csv")) %>%
-      dplyr::mutate(drug_classes = stringr::str_replace_all(drug_classes, pattern = " |-", "_")) %>%
-      dplyr::filter(drug_classes %in% amr_drug_class) %>%
-      dplyr::select(predicted_drug, drug_classes) %>%
-      dplyr::pull(predicted_drug) %>%
-      unique()
-    drug_within_class_vec <- c(
-      drug_within_class_vec[!is.na(drug_within_class_vec)],
-      amr_drug_class
+  # Filter to baseline models (strat_label is NA = no country/year stratification)
+  df <- data %>%
+    dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) %>%
+    dplyr::filter(.data$feature_type %in% model_scale) %>%
+    dplyr::filter(.data$feature_subtype %in% data_type) %>%
+    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+
+  # Filter by drug class or drug if not "all"
+  if (!is.null(amr_drug_class) && length(amr_drug_class) > 0 &&
+    !identical(amr_drug_class, "all")) {
+    df <- df %>%
+      dplyr::filter(
+        (.data$drug_label == "drug_class" & .data$drug_or_class %in% amr_drug_class) |
+          (.data$drug_label == "drug" & .data$drug_or_class %in% amr_drug)
+      )
+  }
+
+  if (!nrow(df)) {
+    return(ggplot() +
+      labs(title = "No data for current selection") +
+      theme_bw())
+  }
+
+  # Normalize species and set ESKAPE factor order
+  eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
+  df <- df %>%
+    dplyr::mutate(species = normalize_species(.data$species))
+  present <- unique(df$species)
+  lvls <- intersect(eskape_order, present)
+  if (length(lvls) > 0) {
+    df <- df %>% dplyr::mutate(species = factor(.data$species, levels = lvls))
+  }
+
+  metric_sym <- rlang::sym(metrics)
+  g <- ggplot(
+    df,
+    aes(
+      x = .data$species,
+      y = !!metric_sym,
+      fill = .data$feature_type,
+      color = .data$feature_type
     )
-    data <- data %>%
-      dplyr::filter(drug_or_drug_class %in% drug_within_class_vec)
+  ) +
+    geom_boxplot(alpha = 0.4) +
+    labs(
+      title = "Performance metrics",
+      x = "Species",
+      y = metrics,
+      fill = "Scale",
+      color = "Scale"
+    ) +
+    scale_fill_brewer(palette = "Set2") +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    coord_cartesian(ylim = c(0, 1))
+
+  if (!is.null(amr_drug) && length(amr_drug) > 0 && nzchar(amr_drug[1])) {
+    g <- g +
+      geom_point(
+        data = df %>% dplyr::filter(.data$drug_or_class %in% amr_drug),
+        position = position_jitterdodge(jitter.width = 0.1),
+        size = 4
+      )
   }
-
-
-  # plot the models stats
-  plotMetrics(
-    "species",
-    data,
-    title = "Performance metrics",
-    metric_col = metrics,
-    fill_col = "model_colors",
-    selected_drug = amr_drug
-  )
+  g
 }
 
-# make the important feature plots
-# [1] "domain_acc_binary"       "domain_acc_binary_class" "domain_all_binary"       "domain_all_binary_class" "domain_all_count"        "domain_all_count_class"
-# [7] "gene_acc_binary"         "gene_acc_binary_class"   "gene_all_binary"         "gene_all_binary_class"   "gene_all_count"          "gene_all_count_class"
-# [13] "gene_all_struct"         "gene_all_struct_class"
-makeFeatureImportancePlot <- function(bug, amr_drug, model_scale, data_type_, top_n_features, feature_importance_tabset) {
-  # fix: replace ~ with . (as used in the ML models)
-  # Define the scale to match annotated files.
+# makeFeatureImportancePlot: heatmap of top features across bugs or drugs.
+# data: pre-loaded top-features tibble from loadTopFeat() / topFeatures()
+# amRml column mapping (new → expected here):
+#   drug_or_class  → drug/class abbreviation identifier
+#   feature_subtype → data encoding (binary/counts)
+#   feature_type    → molecular scale for baseline (genes/domains/proteins/struct)
+#   strat_label     → NA for baseline models
+# Annotation join is attempted from results_root/Annotated/ or extdata/Annotated/;
+# if no annotated files found, Variable name is used directly as feature label.
+makeFeatureImportancePlot <- function(
+  data, bug, amr_drug, model_scale, data_type_,
+  top_n_features, feature_importance_tabset,
+  annotated_dir = NULL
+) {
+  if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
+    return(NULL)
+  }
+
+  # Map UI scale label to singular for annotated file matching
   scale <- dplyr::case_when(
     model_scale == "proteins" ~ "protein",
     model_scale == "domains" ~ "domain",
-    model_scale == "genes" ~ "gene"
+    model_scale == "genes" ~ "gene",
+    TRUE ~ model_scale
   )
 
   top_n_features <- ifelse(
-    top_n_features == "all", "all",
+    identical(top_n_features, "all"), "all",
     as.numeric(top_n_features)
   )
 
-  # normalize selected bug to remove any trailing dot (so "Esp."-> "Esp")
   bug_norm <- normalize_species(bug)
 
-  top_features_df <- arrow::read_parquet("data/top_features/top_features.parquet") %>%
-    dplyr::mutate(species = normalize_species(species)) %>%
-    dplyr::filter(species %in% bug_norm) |>
-    dplyr::filter(drug_or_class_name %in% amr_drug) %>%
-    dplyr::filter(feature_type == model_scale) %>%
-    dplyr::filter(data_type == data_type_) %>%
-    dplyr::filter(configurations == "full")
+  # Filter top features using new amRml column names:
+  #   feature_type  = molecular scale (genes/domains/proteins/struct) for baseline
+  #   feature_subtype = encoding (binary/counts)
+  #   drug_or_class = drug/class abbreviation
+  #   strat_label   = NA for baseline (no country/year stratification)
+  top_features_df <- data %>%
+    dplyr::mutate(species = normalize_species(.data$species)) %>%
+    dplyr::filter(.data$species %in% bug_norm) %>%
+    dplyr::filter(.data$drug_or_class %in% amr_drug) %>%
+    dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) %>%
+    dplyr::filter(.data$feature_subtype %in% data_type_) %>%
+    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
-  # load annotated table
-  annotated_files <- list.files(
-    path = here::here("shinyapp", "data", "Annotated"),
-    pattern = stringr::str_glue(stringr::str_flatten(bug_norm, collapse = "|")),
-    full.names = TRUE
-  )
-  annotated_files <- Filter(
-    function(x) grepl(pattern = stringr::str_glue("{scale}"), x = x),
-    annotated_files
-  )
-  # inner join each annotated table per species
-  annotated_table <- purrr::map_dfr(
-    .x = annotated_files,
-    .f = function(x) {
-      sp <- stringr::str_extract(basename(x), pattern = SPECIES_PATTERN)
-      sp_norm <- normalize_species(sp)
-      arrow::read_parquet(x) |> dplyr::mutate(species = sp_norm)
-    }
-  )
-
-  # make the current selection of the top feature empty;
-  # readr::write_tsv(tibble::tibble(), here::here("shinyapp","data", "top_features", "current_top_features.tsv"))
-
-  # group column
-  group_column <- dplyr::case_when(
-    feature_importance_tabset == "across_drug" ~ "drug_or_class_name",
-    feature_importance_tabset == "across_bug" ~ "species"
-  )
-  join_by_expr <- switch(paste(group_column, scale, sep = "_"),
-    "species_protein" = join_by(Variable == "proteinID", "species" == "species"),
-    "species_domain" = join_by(Variable == "PfamID", "species" == "species"),
-    "species_gene" = join_by(Variable == "Gene", "species" == "species"),
-    "drug_or_class_name_protein" = join_by(Variable == "proteinID"),
-    "drug_or_class_name_domain" = join_by(Variable == "PfamID"),
-    "drug_or_class_name_gene" = join_by(Variable == "Gene"),
-    stop("Invalid combination of group_column and scale")
-  )
-
-  # join the top_features with annotated tables;
-  if (scale == "protein") {
-    annotated_table <- annotated_table |> dplyr::mutate(proteinID = stringr::str_replace(proteinID, "\\|", "."))
-    top_features_df <- top_features_df %>%
-      dplyr::inner_join(
-        annotated_table,
-        by = join_by_expr
-      ) %>%
-      dplyr::filter(!is.na(COG_name))
-  }
-  if (scale == "domain") {
-    top_features_df <- top_features_df |> dplyr::mutate(Variable = stringr::str_split_i(Variable, "_", 1))
-    top_features_df <- top_features_df %>%
-      dplyr::inner_join(
-        annotated_table,
-        by = join_by_expr
-      ) %>%
-      dplyr::select(-Variable) %>%
-      dplyr::filter(!is.na(COG_name))
-  }
-  # gene
-  if (scale == "gene") {
-    top_features_df <- top_features_df %>%
-      dplyr::inner_join(
-        annotated_table,
-        by = join_by_expr
-      ) %>%
-      dplyr::filter(!is.na(COG_name))
-  }
-
-  ## group by the group columns + cog name and take max;
-  top_features_df <- top_features_df %>%
-    dplyr::group_by(!!rlang::sym(group_column), COG_name) %>%
-    dplyr::summarize(Importance = max(Importance, na.rm = TRUE), .groups = "drop")
-
-  # Min-max standardization for each species
-  top_features_df <- top_features_df |>
-    dplyr::group_by(!!rlang::sym(group_column)) |>
-    dplyr::mutate(
-      Importance = (Importance - min(Importance, na.rm = TRUE)) / (max(Importance, na.rm = TRUE) - min(Importance, na.rm = TRUE))
-    )
-
-  # Get the top N features based on the selected top N features options
-  if (top_n_features != "all") {
-    message(stringr::str_glue("Top {top_n_features} features per species and COG"))
-    top_features_df <- top_features_df %>%
-      dplyr::select(
-        !!rlang::sym(group_column),
-        COG_name,
-        Importance
-      ) %>%
-      dplyr::distinct_all() %>%
-      dplyr::group_by(!!rlang::sym(group_column)) %>%
-      dplyr::slice_max(order_by = Importance, n = top_n_features) %>%
-      dplyr::ungroup()
-    print(top_features_df |> dplyr::group_by(!!rlang::sym(group_column)) |> summarise(n = n()) |> dplyr::arrange(desc(n)))
-  }
-
-  # across bug
-  if (feature_importance_tabset == "across_bug") {
-    # inner join to get the annotations + everything else
-    top_features_df <- top_features_df %>%
-      dplyr::inner_join(
-        annotated_table,
-        by = join_by("COG_name" == "COG_name", "species" == "species"),
-        keep = F
-      )
-    readr::write_tsv(top_features_df, here::here("shinyapp", "data", "top_features", "current_top_features.tsv"))
-
-    # build wide table (COG x species)
-    vi_importance_tbl_wider <- top_features_df %>%
-      dplyr::select(COG_name, Importance, species) %>%
-      dplyr::distinct() %>%
-      tidyr::pivot_wider(names_from = species, values_from = Importance)
-
-    # determine species columns (everything except COG_name)
-    species_cols <- setdiff(colnames(vi_importance_tbl_wider), "COG_name")
-
-    # nothing to plot if no species columns present
-    if (length(species_cols) == 0) {
-      return(NULL)
-    }
-
-    # compute per-COG metrics: how many species present, and secondary key (max importance)
-    vi_importance_tbl_wider <- vi_importance_tbl_wider %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(
-        species_count = sum(!is.na(c_across(all_of(species_cols)))),
-        max_imp = if (all(is.na(c_across(all_of(species_cols))))) NA_real_ else max(c_across(all_of(species_cols)), na.rm = TRUE)
-      ) %>%
-      dplyr::ungroup()
-
-    # sort COGs in heatmap based on # of species found in & importance score
-    # order rows: primary = species_count desc, secondary = max_imp desc
-    vi_importance_tbl_wider <- vi_importance_tbl_wider %>%
-      dplyr::arrange(dplyr::desc(species_count), dplyr::desc(max_imp))
-
-    # drop helper columns and create matrix in this row order
-    vi_importance_tbl_mat <- vi_importance_tbl_wider %>%
-      dplyr::select(-species_count, -max_imp) %>%
-      tibble::column_to_rownames("COG_name") %>%
-      as.matrix()
-
-    # enforce column order
-    eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-    col_order <- intersect(eskape_order, colnames(vi_importance_tbl_mat))
-    if (length(col_order) > 0) {
-      vi_importance_tbl_mat <- vi_importance_tbl_mat[, col_order, drop = FALSE]
-    }
-
-    if (feature_importance_tabset == "across_bug") {
-      vi_importance_tbl_mat <- vi_importance_tbl_wider %>%
-        tibble::column_to_rownames("COG_name") %>%
-        as.matrix()
-
-      # Enforce ESKAPE x-axis (column) order
-      eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-      col_order <- intersect(eskape_order, colnames(vi_importance_tbl_mat))
-      if (length(col_order) > 0) {
-        vi_importance_tbl_mat <- vi_importance_tbl_mat[, col_order, drop = FALSE]
-      }
-    }
-  }
-  # across drugs
-  if (feature_importance_tabset == "across_drug") {
-    # inner join to get the annotations + everything else
-    top_features_df <- top_features_df %>%
-      dplyr::inner_join(
-        annotated_table,
-        by = join_by("COG_name" == "COG_name"),
-        keep = F
-      )
-    readr::write_tsv(top_features_df, here::here("shinyapp", "data", "top_features", "current_top_features.tsv"))
-
-    # ensure drug_or_class_name is a clean character column
-    top_features_df <- top_features_df %>%
-      dplyr::mutate(drug_or_class_name = stringr::str_trim(as.character(drug_or_class_name)))
-
-    # build wide table (COG x drug) ensuring a single value per COG x drug (take max Importance)
-    vi_importance_tbl_wider <- top_features_df %>%
-      dplyr::select(COG_name, Importance, drug_or_class_name) %>%
-      dplyr::group_by(COG_name, drug_or_class_name) %>%
-      dplyr::summarise(Importance = max(Importance, na.rm = TRUE), .groups = "drop") %>%
-      tidyr::pivot_wider(names_from = drug_or_class_name, values_from = Importance)
-
-    # determine drug columns (everything except COG_name)
-    drug_cols <- setdiff(colnames(vi_importance_tbl_wider), "COG_name")
-
-    # nothing to plot if no drug columns present
-    if (length(drug_cols) == 0) {
-      return(NULL)
-    }
-
-    # compute per-COG metrics: how many drugs present, and max importance score
-    vi_importance_tbl_wider <- vi_importance_tbl_wider %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(
-        drug_count = sum(!is.na(c_across(all_of(drug_cols)))),
-        max_imp = if (all(is.na(c_across(all_of(drug_cols))))) NA_real_ else max(c_across(all_of(drug_cols)), na.rm = TRUE)
-      ) %>%
-      dplyr::ungroup()
-
-    # order rows: primary = drug_count desc, secondary = max_imp desc
-    vi_importance_tbl_wider <- vi_importance_tbl_wider %>%
-      dplyr::arrange(dplyr::desc(drug_count), dplyr::desc(max_imp))
-
-    # drop helper columns and create matrix in this row order
-    vi_importance_tbl_mat <- vi_importance_tbl_wider %>%
-      dplyr::select(-drug_count, -max_imp) %>%
-      tibble::column_to_rownames("COG_name") %>%
-      as.matrix()
-  }
-
-  # ARG vs Non-ARG coloring
-  max_val <- max(vi_importance_tbl_mat, na.rm = TRUE)
-  min_val <- min(vi_importance_tbl_mat, na.rm = TRUE)
-  if (min_val == max_val) {
-    min_val <- min_val - 0.00001
-  }
-  if (!exists("vi_importance_tbl_mat")) {
-    print("vi_importance_tbl_mat does not exist, returning NULL.")
+  if (!nrow(top_features_df)) {
     return(NULL)
   }
-  heatmap_vi_comparison <- ComplexHeatmap::Heatmap(
-    vi_importance_tbl_mat,
+
+  # group column: across_bug groups by species; across_drug by drug_or_class
+  group_column <- dplyr::case_when(
+    feature_importance_tabset == "across_drug" ~ "drug_or_class",
+    feature_importance_tabset == "across_bug" ~ "species"
+  )
+
+  # Attempt to load annotated files for COG name lookup
+  ann_dirs <- c(
+    annotated_dir,
+    system.file("extdata", "Annotated", package = "amRshiny")
+  )
+  ann_dirs <- ann_dirs[!is.null(ann_dirs) & nzchar(ann_dirs) & dir.exists(ann_dirs)]
+
+  annotated_files <- character(0)
+  if (length(ann_dirs) > 0) {
+    annotated_files <- unlist(lapply(ann_dirs, function(d) {
+      fls <- list.files(
+        d,
+        pattern = stringr::str_flatten(bug_norm, collapse = "|"),
+        full.names = TRUE
+      )
+      Filter(function(x) grepl(scale, x, fixed = TRUE), fls)
+    }))
+  }
+
+  has_annotation <- length(annotated_files) > 0
+
+  if (has_annotation) {
+    annotated_table <- purrr::map_dfr(annotated_files, function(x) {
+      sp <- stringr::str_extract(basename(x), SPECIES_PATTERN)
+      arrow::read_parquet(x) |>
+        dplyr::mutate(species = normalize_species(sp))
+    })
+
+    join_by_expr <- switch(paste(group_column, scale, sep = "_"),
+      "species_protein" = join_by(Variable == "proteinID", "species" == "species"),
+      "species_domain" = join_by(Variable == "PfamID", "species" == "species"),
+      "species_gene" = join_by(Variable == "Gene", "species" == "species"),
+      "drug_or_class_protein" = join_by(Variable == "proteinID"),
+      "drug_or_class_domain" = join_by(Variable == "PfamID"),
+      "drug_or_class_gene" = join_by(Variable == "Gene"),
+      NULL
+    )
+
+    if (scale == "protein") {
+      annotated_table <- annotated_table |>
+        dplyr::mutate(proteinID = stringr::str_replace(.data$proteinID, "\\|", "."))
+    }
+    if (scale == "domain") {
+      top_features_df <- top_features_df |>
+        dplyr::mutate(Variable = stringr::str_split_i(.data$Variable, "_", 1))
+    }
+
+    if (!is.null(join_by_expr)) {
+      top_features_df <- tryCatch(
+        top_features_df %>%
+          dplyr::inner_join(annotated_table, by = join_by_expr) %>%
+          dplyr::filter(!is.na(.data$COG_name)),
+        error = function(e) {
+          message("Annotation join failed: ", conditionMessage(e))
+          top_features_df
+        }
+      )
+    }
+  }
+
+  # If no annotation join produced COG_name, fall back to Variable
+  if (!"COG_name" %in% names(top_features_df)) {
+    top_features_df <- top_features_df %>%
+      dplyr::mutate(COG_name = .data$Variable)
+  }
+  if (!nrow(top_features_df)) {
+    return(NULL)
+  }
+
+  # Aggregate: max importance per group x COG
+  top_features_df <- top_features_df %>%
+    dplyr::group_by(!!rlang::sym(group_column), .data$COG_name) %>%
+    dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
+
+  # Min-max normalise within each group
+  top_features_df <- top_features_df %>%
+    dplyr::group_by(!!rlang::sym(group_column)) %>%
+    dplyr::mutate(
+      Importance = (.data$Importance - min(.data$Importance, na.rm = TRUE)) /
+        (max(.data$Importance, na.rm = TRUE) - min(.data$Importance, na.rm = TRUE))
+    ) %>%
+    dplyr::ungroup()
+
+  # Slice top N features per group
+  if (!identical(top_n_features, "all")) {
+    top_features_df <- top_features_df %>%
+      dplyr::group_by(!!rlang::sym(group_column)) %>%
+      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) %>%
+      dplyr::ungroup()
+  }
+
+  if (!nrow(top_features_df)) {
+    return(NULL)
+  }
+
+  # Build wide matrix
+  if (feature_importance_tabset == "across_bug") {
+    vi_wider <- top_features_df %>%
+      dplyr::select(.data$COG_name, .data$Importance, .data$species) %>%
+      dplyr::distinct() %>%
+      tidyr::pivot_wider(names_from = "species", values_from = "Importance")
+
+    group_cols <- setdiff(colnames(vi_wider), "COG_name")
+    if (!length(group_cols)) {
+      return(NULL)
+    }
+
+    vi_wider <- vi_wider %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(
+        .n = sum(!is.na(c_across(all_of(group_cols)))),
+        .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) %>%
+      dplyr::select(-.data$.n, -.data$.mx)
+
+    vi_mat <- vi_wider %>%
+      tibble::column_to_rownames("COG_name") %>%
+      as.matrix()
+
+    eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
+    col_ord <- intersect(eskape_order, colnames(vi_mat))
+    if (length(col_ord)) vi_mat <- vi_mat[, col_ord, drop = FALSE]
+  }
+
+  if (feature_importance_tabset == "across_drug") {
+    top_features_df <- top_features_df %>%
+      dplyr::mutate(drug_or_class = stringr::str_trim(as.character(.data$drug_or_class)))
+
+    vi_wider <- top_features_df %>%
+      dplyr::select(.data$COG_name, .data$Importance, .data$drug_or_class) %>%
+      dplyr::group_by(.data$COG_name, .data$drug_or_class) %>%
+      dplyr::summarise(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop") %>%
+      tidyr::pivot_wider(names_from = "drug_or_class", values_from = "Importance")
+
+    group_cols <- setdiff(colnames(vi_wider), "COG_name")
+    if (!length(group_cols)) {
+      return(NULL)
+    }
+
+    vi_wider <- vi_wider %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(
+        .n = sum(!is.na(c_across(all_of(group_cols)))),
+        .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) %>%
+      dplyr::select(-.data$.n, -.data$.mx)
+
+    vi_mat <- vi_wider %>%
+      tibble::column_to_rownames("COG_name") %>%
+      as.matrix()
+  }
+
+  if (!exists("vi_mat") || !length(vi_mat)) {
+    return(NULL)
+  }
+
+  max_val <- max(vi_mat, na.rm = TRUE)
+  min_val <- min(vi_mat, na.rm = TRUE)
+  if (min_val == max_val) min_val <- min_val - 0.00001
+
+  ComplexHeatmap::Heatmap(
+    vi_mat,
     name = "Importance score",
-    # column_title = column_title,
     col = circlize::colorRamp2(c(min_val, max_val), c("lightgreen", "darkgreen")),
     row_title_side = "left",
     column_title_side = "top",
@@ -1059,122 +953,80 @@ makeFeatureImportancePlot <- function(bug, amr_drug, model_scale, data_type_, to
     row_names_max_width = unit(12, "cm"),
     column_names_rot = 65
   )
-  # makeFeatureImportancePlot(c("Sau", "Aba", "Kpn", "Pae", "Efa"), c("gentamicin"), "gene", "all_count")
-  return(heatmap_vi_comparison)
 }
 
 
-makeCrossModelFeatureImportancePlot <- function(bug, drug, cross_model, top_n_features) {
-  # load country models;
-  country_top_features_df <- arrow::read_parquet("data/country_models/top_features.parquet", as_data_frame = F)
-  year_top_features_df <- arrow::read_parquet("data/year_models/top_features.parquet", as_data_frame = F)
+# makeCrossModelFeatureImportancePlot: heatmap of top features for holdout models.
+# top_data: pre-loaded top-features tibble (country or year stratified rows).
+# amRml column mapping:
+#   drug_or_class → drug/class abbreviation
+#   strat_label   → "country" or "year"
+#   strat_value   → trained-on country/year
+makeCrossModelFeatureImportancePlot <- function(
+  top_data, bug, drug, cross_model, top_n_features,
+  annotated_dir = NULL
+) {
+  if (is.null(top_data) || !is.data.frame(top_data) || !nrow(top_data)) {
+    return(NULL)
+  }
 
   top_n_features <- ifelse(
-    top_n_features == "all", "all",
+    identical(top_n_features, "all"), "all",
     as.numeric(top_n_features)
   )
 
-  # get annotation table
-  annotated_files <- list.files(
-    path = here::here("shinyapp", "data", "Annotated"),
-    pattern = stringr::str_glue(stringr::str_flatten(bug, collapse = "|")),
-    full.names = TRUE
-  )
-  # for cross model gene is the only scale
-  annotated_files <- Filter(
-    function(x) grepl(pattern = stringr::str_glue("gene"), x = x),
-    annotated_files
-  )
-  # inner join the each annotated table per species
-  annotated_table <- purrr::map_dfr(
-    .x = annotated_files,
-    .f = function(x) {
-      sp <- stringr::str_extract(basename(x), pattern = SPECIES_PATTERN)
-      sp <- normalize_species(sp)
-      arrow::read_parquet(x) |> dplyr::mutate(species = sp)
-    }
-  )
-  # replace ~ with .
-  annotated_table <- annotated_table %>%
-    dplyr::mutate(Gene = stringr::str_replace_all(Gene, "~", "."))
-  features_table <- NULL
-  if (cross_model == "country") {
-    country_top_features_df <- country_top_features_df %>%
-      dplyr::filter(species %in% bug) %>%
-      dplyr::filter(drug_or_class_name %in% drug) %>%
-      dplyr::collect()
-    features_table <- country_top_features_df
+  strat <- if (cross_model == "country") "country" else "year"
+  strat_col <- "strat_value" # trained-on value in new schema
 
-    if (top_n_features != "all" & cross_model == "country") {
-      country_top_features_df <- country_top_features_df %>%
-        dplyr::group_by(trained_country) %>%
-        dplyr::slice_max(order_by = Importance, n = top_n_features) %>%
-        dplyr::ungroup()
-    }
+  features_df <- top_data %>%
+    dplyr::filter(.data$species %in% bug) %>%
+    dplyr::filter(.data$drug_or_class %in% drug) %>%
+    dplyr::filter(.data$strat_label == strat) %>%
+    dplyr::filter(!.data$cross_test)
 
-    vi_importance_tbl_wider <- country_top_features_df %>%
-      dplyr::select(
-        Variable,
-        Importance,
-        trained_country
-      ) %>%
-      tidyr::pivot_wider(
-        names_from = c("trained_country"),
-        values_from = "Importance"
-      )
-  }
-  if (cross_model == "time") {
-    year_top_features_df <- year_top_features_df %>%
-      dplyr::filter(species %in% bug) %>%
-      dplyr::filter(drug_or_class_name %in% drug) %>%
-      dplyr::collect()
-    features_table <- year_top_features_df
-    # save the data to
-    if (top_n_features != "all") {
-      year_top_features_df <- year_top_features_df %>%
-        dplyr::group_by(trained_year) %>%
-        dplyr::slice_max(order_by = Importance, n = top_n_features) %>%
-        dplyr::ungroup()
-    }
-
-    vi_importance_tbl_wider <- year_top_features_df %>%
-      dplyr::select(
-        Variable,
-        Importance,
-        trained_year
-      ) %>%
-      tidyr::pivot_wider(
-        names_from = c("trained_year"),
-        values_from = "Importance"
-      )
+  if (!nrow(features_df)) {
+    return(NULL)
   }
 
-  # inner join before storing
-  joined_features_table <- dplyr::inner_join(
-    features_table,
-    annotated_table,
-    by = join_by("Variable" == "Gene")
-  )
-  # save the mapped data in-order to visualize
-  readr::write_tsv(joined_features_table, here::here("shinyapp", "data", "top_features", "cross_model_top_features.tsv"))
+  if (!identical(top_n_features, "all")) {
+    features_df <- features_df %>%
+      dplyr::group_by(!!rlang::sym(strat_col)) %>%
+      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) %>%
+      dplyr::ungroup()
+  }
 
-  # make the matrix
-  vi_importance_tbl_mat <- vi_importance_tbl_wider %>%
+  vi_wider <- features_df %>%
+    dplyr::select(.data$Variable, .data$Importance, !!rlang::sym(strat_col)) %>%
+    tidyr::pivot_wider(
+      names_from = strat_col,
+      values_from = "Importance",
+      values_fn = mean
+    )
+
+  if (!nrow(vi_wider)) {
+    return(NULL)
+  }
+
+  vi_mat <- vi_wider %>%
     tibble::column_to_rownames("Variable") %>%
     as.matrix()
 
-  # column wise standardization
-  vi_importance_tbl_mat <- vi_importance_tbl_mat |>
-    apply(2, function(x) (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+  # column-wise min-max normalisation
+  vi_mat <- apply(vi_mat, 2, function(x) {
+    rng <- range(x, na.rm = TRUE)
+    if (diff(rng) == 0) {
+      return(x)
+    }
+    (x - rng[1]) / diff(rng)
+  })
 
-  max_val <- max(vi_importance_tbl_mat, na.rm = TRUE)
-  min_val <- min(vi_importance_tbl_mat, na.rm = TRUE)
+  max_val <- max(vi_mat, na.rm = TRUE)
+  min_val <- min(vi_mat, na.rm = TRUE)
+  if (min_val == max_val) min_val <- min_val - 0.00001
 
-  # make heatmap
-  heatmap_vi_comparison <- ComplexHeatmap::Heatmap(
-    vi_importance_tbl_mat,
+  ComplexHeatmap::Heatmap(
+    vi_mat,
     name = "Importance score",
-    # column_title = column_title,
     col = circlize::colorRamp2(c(min_val, max_val), c("lightgreen", "darkgreen")),
     row_title_side = "left",
     column_title_side = "top",
@@ -1189,107 +1041,87 @@ makeCrossModelFeatureImportancePlot <- function(bug, drug, cross_model, top_n_fe
     row_names_max_width = unit(12, "cm"),
     column_names_rot = 65
   )
-  return(heatmap_vi_comparison)
 }
 
-makeCrossModelPerformancePlot <- function(bug, drug, cross_model) {
-  # country models
-  country_models_df <- arrow::read_parquet("data/country_models/performance_metrics.parquet", as_data_frame = F)
-  cross_country_models_df <- arrow::read_parquet("data/cross_models/performance_metrics.parquet", as_data_frame = F)
-
-  # time models
-  year_models_df <- arrow::read_parquet("data/year_models/performance_metrics.parquet", as_data_frame = F)
-  cross_year_models_df <- arrow::read_parquet("data/cross_year/performance_metrics.parquet", as_data_frame = F)
-
-  # Filter the data based on the selected bug and drug
-  if (cross_model == "country") {
-    country_models_df <- country_models_df %>%
-      dplyr::filter(species %in% bug) %>%
-      dplyr::filter(drug_or_class_name %in% drug) %>%
-      dplyr::select(trained_country, tested_country, bal_acc) %>%
-      dplyr::collect()
-
-    # cross models
-    cross_country_models_df <- cross_country_models_df |>
-      dplyr::filter(species %in% bug) %>%
-      dplyr::filter(drug_or_class_name %in% drug) %>%
-      dplyr::select(trained_country, tested_country, bal_acc) %>%
-      dplyr::collect()
-
-    # bind the data
-    models_performance <- bind_rows(country_models_df, cross_country_models_df) |>
-      tidyr::pivot_wider(
-        names_from = trained_country,
-        values_from = bal_acc
-      )
-    models_performance <- models_performance %>%
-      tibble::column_to_rownames("tested_country") %>%
-      as.matrix()
-    row_label <- "Tested country"
-    column_label <- "Trained country"
-  }
-  if (cross_model == "time") {
-    year_models_df <- year_models_df %>%
-      dplyr::filter(species %in% bug) %>%
-      dplyr::filter(drug_or_class_name %in% drug) %>%
-      dplyr::select(trained_year, tested_year, bal_acc) %>%
-      dplyr::collect()
-
-    # cross models
-    cross_year_models_df <- cross_year_models_df |>
-      dplyr::filter(species %in% bug) %>%
-      dplyr::filter(drug_or_class_name %in% drug) %>%
-      dplyr::select(trained_year, tested_year, nmcc) %>%
-      dplyr::collect()
-
-    # bind the data
-    models_performance <- bind_rows(year_models_df, cross_year_models_df) |>
-      tidyr::pivot_wider(
-        names_from = trained_year,
-        values_from = bal_acc
-      )
-    models_performance <- models_performance %>%
-      tibble::column_to_rownames("tested_year") %>%
-      as.matrix()
-
-    row_label <- "Tested years"
-    column_label <- "Trained years"
+# makeCrossModelPerformancePlot: heatmap of balanced accuracy for holdout models.
+# perf_data: pre-loaded performance tibble (country or year stratified rows).
+# amRml column mapping:
+#   drug_or_class   → drug/class abbreviation
+#   strat_label     → "country" or "year"
+#   strat_value     → trained-on country/year
+#   strat_value_test → tested-on country/year (NA for self-evaluation)
+makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
+  if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
+    return(NULL)
   }
 
-  # join the slides;
+  strat <- if (cross_model == "country") "country" else "year"
+
+  df <- perf_data %>%
+    dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) %>%
+    dplyr::filter(.data$drug_or_class %in% drug) %>%
+    dplyr::filter(.data$strat_label == strat)
+
+  if (!nrow(df)) {
+    return(NULL)
+  }
+
+  # For self-evaluation rows (strat_value_test is NA), set tested = trained
+  df <- df %>%
+    dplyr::mutate(
+      strat_value_test = dplyr::if_else(
+        is.na(.data$strat_value_test),
+        .data$strat_value,
+        .data$strat_value_test
+      )
+    )
+
+  # Aggregate bal_acc (mean across scales/encodings for same train/test pair)
+  models_performance <- df %>%
+    dplyr::group_by(.data$strat_value, .data$strat_value_test) %>%
+    dplyr::summarise(bal_acc = mean(.data$bal_acc, na.rm = TRUE), .groups = "drop") %>%
+    tidyr::pivot_wider(
+      names_from = "strat_value",
+      values_from = "bal_acc"
+    ) %>%
+    tibble::column_to_rownames("strat_value_test") %>%
+    as.matrix()
+
+  if (!length(models_performance)) {
+    return(NULL)
+  }
+
   min_val <- min(models_performance, na.rm = TRUE)
   max_val <- max(models_performance, na.rm = TRUE)
+  if (min_val == max_val) min_val <- min_val - 0.00001
 
-  if (min_val == max_val) {
-    min_val <- min_val - 0.00001
-  }
+  row_title <- if (cross_model == "country") "Tested Country" else "Tested Year"
+  col_title <- if (cross_model == "country") "Trained Country" else "Trained Year"
 
-  # heatmap
-  heatmap_model_performance <- ComplexHeatmap::Heatmap(
+  ComplexHeatmap::Heatmap(
     models_performance,
-    name = "Balanced Accuracy (bal_acc)",
+    name = "Balanced Accuracy",
     col = circlize::colorRamp2(c(min_val, max_val), c("lightblue", "darkblue")),
-    row_title = "Tested Country", # Row title
-    column_title = "Trained Country", # Column title
-    row_title_side = "left", # Position Tested Country left of the row names
-    column_title_side = "top", # Position Trained Country above the column names
-    row_title_gp = grid::gpar(fontsize = 14, fontface = "bold"), # Adjust font size and style for row title
-    column_title_gp = grid::gpar(fontsize = 14, fontface = "bold"), # Adjust font size and style for column title
+    row_title = row_title,
+    column_title = col_title,
+    row_title_side = "left",
+    column_title_side = "top",
+    row_title_gp = grid::gpar(fontsize = 14, fontface = "bold"),
+    column_title_gp = grid::gpar(fontsize = 14, fontface = "bold"),
     cluster_rows = FALSE,
     cluster_columns = FALSE,
     show_row_names = TRUE,
     show_column_names = TRUE,
-    row_names_gp = grid::gpar(fontsize = 12), # Font size for individual row names (country labels)
-    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"), # Font size for individual column names (country labels)
-    row_names_max_width = unit(12, "cm"), # Adjust row name width
-    column_names_rot = 0, # Ensure column names are horizontal for better alignment with Trained Country
+    row_names_gp = grid::gpar(fontsize = 12),
+    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"),
+    row_names_max_width = unit(12, "cm"),
+    column_names_rot = 0,
     heatmap_legend_param = list(
-      title = "Balanced Accuracy", # Title of the legend
-      at = round(seq(min_val, max_val, length.out = 5), 2), # Tick positions rounded to two decimals
-      labels = round(seq(min_val, max_val, length.out = 5), 2) # Labels rounded to two decimals
+      title = "Balanced Accuracy",
+      at = round(seq(min_val, max_val, length.out = 5), 2),
+      labels = round(seq(min_val, max_val, length.out = 5), 2)
     )
   )
-  return(heatmap_model_performance)
 }
 
 makeFeatureImportTable <- function(feature_import_table) {
@@ -1300,10 +1132,10 @@ makeFeatureImportTable <- function(feature_import_table) {
 
   # Preferred display order (only those that exist will be used)
   cols_priority <- c(
-    "species", "drug_or_class_name",
+    "species", "drug_or_class",
     "COG_name", "COG_description", "ARG_name", "ARG_description",
     "Gene", "Annotation", "accession",
-    "feature_type", "data_type", "Importance"
+    "feature_type", "feature_subtype", "Importance"
   )
   existing <- intersect(cols_priority, names(feature_import_table))
 
@@ -1311,26 +1143,195 @@ makeFeatureImportTable <- function(feature_import_table) {
     dplyr::mutate(
       dplyr::across(where(is.numeric), ~ formatC(.x, format = "e", digits = 3))
     ) |>
-    dplyr::mutate(ARG_name = stringr::str_replace_all(string = ARG_name, pattern = "non-ARG", "-")) |>
+    dplyr::mutate(dplyr::across(
+      dplyr::any_of("ARG_name"),
+      ~ stringr::str_replace_all(.x, "non-ARG", "-")
+    )) |>
     # Reorder for display: preferred columns first, then everything else
     dplyr::select(dplyr::all_of(existing), dplyr::everything())
 
+  tbl <- feature_import_table
+  if ("accession" %in% names(tbl)) {
+    tbl <- tbl |>
+      dplyr::mutate(accession = stringr::str_split_i(.data$accession, "\\.", 1)) |>
+      dplyr::mutate(accession = dplyr::case_when(
+        !is.na(.data$accession) ~ stringr::str_glue(
+          "<a href='https://www.ncbi.nlm.nih.gov/genome/annotation_prok/evidence/{accession}'",
+          " target='_blank' style='color:#1a73e8; text-decoration: underline;'>{accession}</a>"
+        ),
+        TRUE ~ .data$accession
+      ))
+  }
+  if ("COG_name" %in% names(tbl)) {
+    tbl <- tbl |>
+      dplyr::mutate(COG_name = stringr::str_glue(
+        "<a href='https://www.ncbi.nlm.nih.gov/research/cog/cog/{COG_name}'",
+        " target='_blank' style='color:#1a73e8; text-decoration: underline;'>{COG_name}</a>"
+      ))
+  }
+
   DT::datatable(
-    feature_import_table |>
-      dplyr::mutate(accession = stringr::str_split_i(accession, "\\.", 1)) |>
-      dplyr::mutate(
-        COG_name = stringr::str_glue("<a href='https://www.ncbi.nlm.nih.gov/research/cog/cog/{COG_name}' target='_blank' style='color:#1a73e8; text-decoration: underline;'>{COG_name}</a>")
-      ) |>
-      dplyr::mutate(
-        accession = dplyr::case_when(
-          !is.na(accession) ~ stringr::str_glue("<a href='https://www.ncbi.nlm.nih.gov/genome/annotation_prok/evidence/{accession}' target='_blank'style='color:#1a73e8; text-decoration: underline;'>{accession}</a>"),
-          TRUE ~ accession
-        )
-      ),
+    tbl,
     options = list(scrollX = TRUE, autoWidth = FALSE, orderClasses = TRUE),
     class = "display nowrap stripe",
     rownames = FALSE,
     width = "100%",
     escape = FALSE
   )
+}
+
+# helpers to discover species folders and load to combine results generated from amRml
+.normalize_results_root <- function(results_root) {
+  if (is.null(results_root) || length(results_root) != 1 || is.na(results_root) || !nzchar(results_root)) {
+    return(NULL)
+  }
+  normalizePath(results_root, winslash = "/", mustWork = FALSE)
+}
+
+.read_parquet_safe <- function(fp, verbose = TRUE) {
+  if (is.null(fp) || !file.exists(fp)) {
+    if (isTRUE(verbose)) message("File not found: ", fp)
+    return(tibble::tibble())
+  }
+  tryCatch(
+    arrow::read_parquet(fp),
+    error = function(e) {
+      if (isTRUE(verbose)) message("Failed to read parquet: ", fp, " (", conditionMessage(e), ")")
+      tibble::tibble()
+    }
+  )
+}
+
+# Discover species subdirectories under results_root that contain amRml output.
+# Files live inside per-species subdirectories: {root}/{SpeciesDir}/{code}_ML_perf.parquet
+# Returns a named character vector: names = directory basename (display label),
+# values = full path to the species subdirectory.
+listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
+  rr <- .normalize_results_root(results_root)
+  if (is.null(rr) || !dir.exists(rr)) {
+    return(character(0))
+  }
+
+  subdirs <- list.dirs(rr, full.names = TRUE, recursive = FALSE)
+  if (!length(subdirs)) {
+    return(character(0))
+  }
+
+  # Keep subdirs that contain at least one baseline *_ML_perf.parquet file
+  has_perf <- vapply(subdirs, function(d) {
+    fps <- list.files(d, pattern = "_ML_perf\\.parquet$", full.names = FALSE)
+    any(!grepl("_(country|year|MDR|cross)_ML_perf\\.parquet$", fps))
+  }, logical(1))
+
+  ok <- subdirs[has_perf]
+  if (!length(ok)) {
+    return(character(0))
+  }
+  setNames(ok, basename(ok))
+}
+
+# Load all performance parquets (baseline + country + year + cross) from a species directory.
+# species_dir: full path to the species subdirectory (e.g. "/results/Shigella_flexneri")
+# Attaches species_label = basename(species_dir) so the full name is available for display.
+.load_one_species_perf <- function(species_dir, verbose = TRUE) {
+  fps <- list.files(species_dir, pattern = "_ML_perf\\.parquet$", full.names = TRUE)
+  fps <- fps[!grepl("_MDR_ML_perf\\.parquet$", fps)]
+  if (!length(fps)) {
+    return(tibble::tibble())
+  }
+  df <- dplyr::bind_rows(lapply(fps, .read_parquet_safe, verbose = verbose))
+  if (nrow(df)) df$species_label <- basename(species_dir)
+  df
+}
+
+# Load all top-feature parquets (baseline + country + year) from a species directory.
+.load_one_species_top <- function(species_dir, verbose = TRUE) {
+  fps <- list.files(species_dir, pattern = "_ML_top_features\\.parquet$", full.names = TRUE)
+  fps <- fps[!grepl("_MDR_ML_top_features\\.parquet$", fps)]
+  if (!length(fps)) {
+    return(tibble::tibble())
+  }
+  df <- dplyr::bind_rows(lapply(fps, .read_parquet_safe, verbose = verbose))
+  if (nrow(df)) df$species_label <- basename(species_dir)
+  df
+}
+
+# Public loaders used by app.R (multi-species aware).
+# species_dirs: character vector of full paths to species subdirectories selected by the user.
+loadMLResults <- function(results_root = NULL, species_dirs = NULL, verbose = TRUE) {
+  rr <- .normalize_results_root(results_root)
+
+  # User mode: results_root + species selected → load from selected subdirectories
+  if (!is.null(rr) && !is.null(species_dirs) && length(species_dirs) > 0) {
+    dfs <- lapply(species_dirs, .load_one_species_perf, verbose = verbose)
+    return(dplyr::bind_rows(dfs))
+  }
+
+  # User mode: results_root provided but nothing selected yet
+  if (!is.null(rr) && is.null(species_dirs)) {
+    return(tibble::tibble())
+  }
+
+  # Demo fallback: scan extdata subdirectories recursively for *_ML_perf.parquet
+  extdata <- system.file("extdata", package = "amRshiny")
+  if (!nzchar(extdata)) {
+    return(tibble::tibble())
+  }
+  subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
+  if (isTRUE(verbose)) message("loadMLResults(): using packaged demo parquets")
+  dplyr::bind_rows(lapply(subdirs, .load_one_species_perf, verbose = verbose))
+}
+
+loadTopFeat <- function(results_root = NULL, species_dirs = NULL, verbose = TRUE) {
+  rr <- .normalize_results_root(results_root)
+
+  if (!is.null(rr) && !is.null(species_dirs) && length(species_dirs) > 0) {
+    dfs <- lapply(species_dirs, .load_one_species_top, verbose = verbose)
+    return(dplyr::bind_rows(dfs))
+  }
+
+  if (!is.null(rr) && is.null(species_dirs)) {
+    return(tibble::tibble())
+  }
+
+  # Demo fallback: scan extdata subdirectories for *_ML_top_features.parquet
+  extdata <- system.file("extdata", package = "amRshiny")
+  if (!nzchar(extdata)) {
+    return(tibble::tibble())
+  }
+  subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
+  if (isTRUE(verbose)) message("loadTopFeat(): using packaged demo parquets")
+  dplyr::bind_rows(lapply(subdirs, .load_one_species_top, verbose = verbose))
+}
+
+# Return path to a species metadata parquet.
+# Searches inside the species subdirectory under results_root (user mode) or
+# extdata (demo mode). The metadata file follows the pattern {code}_metadata.parquet
+# and lives alongside the other parquets for that species.
+get_metadata_path <- function(species_code, results_root = NULL) {
+  fname <- paste0(species_code, "_metadata.parquet")
+
+  # User mode: search species subdirectories under results_root
+  if (!is.null(results_root) && nzchar(results_root)) {
+    subdirs <- list.dirs(results_root, full.names = TRUE, recursive = FALSE)
+    for (d in subdirs) {
+      fp <- file.path(d, fname)
+      if (file.exists(fp)) {
+        return(fp)
+      }
+    }
+  }
+
+  # Demo mode: search species subdirectories under extdata
+  extdata <- system.file("extdata", package = "amRshiny")
+  if (nzchar(extdata)) {
+    subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
+    for (d in subdirs) {
+      fp <- file.path(d, fname)
+      if (file.exists(fp)) {
+        return(fp)
+      }
+    }
+  }
+  NULL
 }

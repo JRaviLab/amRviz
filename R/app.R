@@ -3,6 +3,10 @@
 #' Creates and returns a Shiny application for exploring antimicrobial
 #' resistance data and machine learning model results.
 #'
+#' @param results_root File path to the root directory containing amRml model
+#'        output results. If `NULL` (default), the application will attempt to
+#'        use example data bundled with the package, where available.
+#'
 #' @return A Shiny application object
 #' @export
 #' @import shiny
@@ -14,7 +18,7 @@
 #'   app <- launchAMRDashboard()
 #'   shiny::runApp(app)
 #' }
-launchAMRDashboard <- function() {
+launchAMRDashboard <- function(results_root = NULL) {
   # Bug choices
   bug_choices <- c(
     "Enterococcus faecium" = "Efa",
@@ -104,11 +108,7 @@ launchAMRDashboard <- function() {
     navbarPage(
       id = "tabselected",
       selected = "home",
-      title = "",
-      tabPanel(
-        title = div(class = "zoom", "AMR"),
-        value = "dashboard",
-      ),
+      title = div("AMR"), # not clickable
       # 2. Home icon tab (right of AMR dashboard)
       tabPanel(
         title = icon("home", class = "home-tab-icon"),
@@ -166,20 +166,136 @@ launchAMRDashboard <- function() {
     ml_metrics_results <- reactiveVal(NULL)
     ml_ui_trigger <- reactiveVal(0)
 
-    # reactive reader
-    feature_import_table_reactive <- reactiveFileReader(
-      intervalMillis = 1000, # check every 1 second
-      session = session,
-      filePath = here::here("shinyapp", "data", "top_features", "current_top_features.tsv"),
-      readFunc = readr::read_tsv
+    ## Render species selector ui
+    output$results_species_selector_ui <- renderUI({
+      if (is.null(results_root) || !nzchar(results_root)) {
+        return(NULL)
+      }
+
+      choices <- listAmRmlSpeciesFolders(results_root)
+      if (!length(choices)) {
+        return(div(
+          class = "note-box",
+          paste("No amRml species folders found under:", results_root)
+        ))
+      }
+
+      selectizeInput(
+        inputId = "results_species_dirs",
+        label = "Select species result folders",
+        choices = choices, # label=foldername, value=full path
+        selected = unname(choices), # default select all
+        multiple = TRUE,
+        options = list(plugins = list("remove_button"), placeholder = "Select species...")
+      )
+    })
+
+    ## Query Data Sources
+    # Load performance metrics + top features based on selected species folders
+    queryData <- reactiveVal(tibble::tibble())
+    topFeatures <- reactiveVal(tibble::tibble())
+
+    observeEvent(
+      list(results_root, input$results_species_dirs),
+      {
+        # If using real results_root, wait until the user has a selection
+        if (!is.null(results_root) && nzchar(results_root)) {
+          req(input$results_species_dirs)
+        }
+
+        perf <- loadMLResults(
+          results_root = results_root,
+          species_dirs = input$results_species_dirs
+        )
+        top <- loadTopFeat(
+          results_root = results_root,
+          species_dirs = input$results_species_dirs
+        )
+
+        queryData(perf)
+        topFeatures(top)
+      },
+      ignoreInit = FALSE
     )
 
-    cross_model_import_feature_table_reactive <- reactiveFileReader(
-      intervalMillis = 1000, # check every 1 second
-      session = session,
-      filePath = here::here("shinyapp", "data", "top_features", "cross_model_top_features.tsv"),
-      readFunc = readr::read_tsv
-    )
+    # Derive species choices from loaded ML perf data (excludes pseudo-species like "cross").
+    # names = human-readable label (underscores → spaces, e.g. "Shigella flexneri")
+    # values = 3-letter species code (e.g. "Sfl")
+    available_species <- reactive({
+      df <- queryData()
+      if (is.null(df) || !nrow(df)) {
+        return(character(0))
+      }
+      if (!all(c("species", "species_label") %in% names(df))) {
+        return(character(0))
+      }
+      pairs <- df %>%
+        dplyr::filter(!(.data$species %in% c("cross", "MDR"))) %>%
+        dplyr::distinct(.data$species, .data$species_label)
+      choices <- pairs$species
+      names(choices) <- gsub("_", " ", pairs$species_label)
+      sort(choices)
+    })
+
+    # Derive species choices from available metadata parquets (independent of ML perf data).
+    # Scans for *_metadata.parquet files; species code = filename prefix, label = directory name.
+    available_metadata_species <- reactive({
+      rr <- results_root
+      scan_dirs <- if (!is.null(rr) && nzchar(rr)) {
+        list.dirs(rr, full.names = TRUE, recursive = FALSE)
+      } else {
+        extdata <- system.file("extdata", package = "amRshiny")
+        if (nzchar(extdata)) list.dirs(extdata, full.names = TRUE, recursive = FALSE) else character(0)
+      }
+      choices <- character(0)
+      for (d in scan_dirs) {
+        fps <- list.files(d, pattern = "_metadata\\.parquet$", full.names = FALSE)
+        if (!length(fps)) next
+        for (f in fps) {
+          code <- sub("_metadata\\.parquet$", "", f)
+          label <- gsub("_", " ", basename(d))
+          choices <- c(choices, setNames(code, label))
+        }
+      }
+      sort(choices)
+    })
+
+    # Update every bug selector whenever the available species change
+    observe({
+      choices <- available_species()
+      sel <- if (length(choices)) choices[[1]] else NULL
+
+      updateSelectizeInput(session, "bug_ml_perf_id",
+        choices = choices, selected = choices
+      ) # multi-select: all by default
+      updateSelectizeInput(session, "bug_search_amr_across_bug",
+        choices = choices, selected = choices
+      )
+      updateSelectizeInput(session, "bug_search_amr_across_drug",
+        choices = choices, selected = sel
+      )
+    })
+
+    # Update metadata bug selector from metadata parquets (not ML perf data)
+    observe({
+      choices <- available_metadata_species()
+      sel <- if (length(choices)) choices[[1]] else NULL
+      updateSelectizeInput(session, "bug_metadata_id",
+        choices = choices, selected = sel
+      )
+    })
+
+    # Reactive: filtered top features for the feature importance plots/tables
+    # (replaces the reactiveFileReader anti-pattern that wrote/read temp TSVs)
+    filtered_top_features <- reactive({
+      tf <- topFeatures()
+      if (is.null(tf) || !nrow(tf)) {
+        return(tibble::tibble())
+      }
+      tf %>%
+        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) %>%
+        dplyr::filter(!isTRUE(.data$cross_test))
+    })
 
     loadDrugClassMapRec <- reactive({
       loadDrugClassMap() %>%
@@ -230,87 +346,96 @@ launchAMRDashboard <- function() {
       req(input$bug_search_amr_across_bug)
       message("Across bug feature comparison: ")
 
-      # use reactive normalized selection
       bn <- bug_norm_input()
 
-      drug_or_class_name_vec <- arrow::read_parquet("data/top_features/top_features.parquet") |>
-        dplyr::filter(normalize_species(species) %in% bn) |>
-        dplyr::filter(feature_type %in% input$bug_drug_comp_model_scale) |>
-        dplyr::filter(data_type %in% input$data_type) |>
-        dplyr::pull(drug_or_class_name) |>
-        unique()
+      base_tf <- topFeatures() |>
+        dplyr::filter(normalize_species(.data$species) %in% bn) |>
+        dplyr::filter(.data$feature_type %in% input$bug_drug_comp_model_scale) |>
+        dplyr::filter(.data$feature_subtype %in% input$data_type) |>
+        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
       if (identical(input$across_bug_id, "drug")) {
-        drugs_vec <- unique(drug_class_map() |> dplyr::pull(drug.antibiotic_name))
-        drugs_vec <- sort(intersect(drugs_vec, drug_or_class_name_vec))
-        sel <- intersect("gentamicin", drugs_vec)
-        if (length(sel) == 0) sel <- head(drugs_vec, 1)
+        drugs_vec <- base_tf |>
+          dplyr::filter(.data$drug_label == "drug") |>
+          dplyr::pull(.data$drug_or_class) |>
+          unique() |>
+          sort()
+        sel <- intersect("GEN", drugs_vec)
+        if (!length(sel)) sel <- head(drugs_vec, 1)
         updateSelectInput(session, "amr_drug_ml_across_bug", choices = drugs_vec, selected = sel)
       } else {
-        drugs_class_vec <- unique(drug_class_map() |> dplyr::pull(drug_class))
-        drugs_class_vec <- sort(intersect(drugs_class_vec, drug_or_class_name_vec))
+        drugs_class_vec <- base_tf |>
+          dplyr::filter(.data$drug_label == "drug_class") |>
+          dplyr::pull(.data$drug_or_class) |>
+          unique() |>
+          sort()
         sel <- head(drugs_class_vec, 1)
         updateSelectInput(session, "amr_drug_class_ml_across_bug", choices = drugs_class_vec, selected = sel)
       }
     })
 
 
-    # For drug/drug class (across drug) | FIX bug input and filter by scale/data type
+    # For drug/drug class (across drug) | filter by scale/data type
     observeEvent(c(input$bug_search_amr_across_drug, input$across_drug_id, input$bug_drug_comp_model_scale, input$data_type), {
       req(input$bug_search_amr_across_drug)
       message("Across drug feature comparison: ")
 
-      # normalize selection for the across-drug observer
       bn <- normalize_species(input$bug_search_amr_across_drug)
 
-      drug_or_class_name_vec <- arrow::read_parquet("data/top_features/top_features.parquet") |>
-        dplyr::filter(normalize_species(species) %in% bn) |> # <-- was _across_bug
-        dplyr::filter(feature_type %in% input$bug_drug_comp_model_scale) |>
-        dplyr::filter(data_type %in% input$data_type) |>
-        dplyr::pull(drug_or_class_name) |>
-        unique()
+      base_tf <- topFeatures() |>
+        dplyr::filter(normalize_species(.data$species) %in% bn) |>
+        dplyr::filter(.data$feature_type %in% input$bug_drug_comp_model_scale) |>
+        dplyr::filter(.data$feature_subtype %in% input$data_type) |>
+        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
       if (identical(input$across_drug_id, "drug")) {
-        drugs_vec <- unique(drug_class_map() |> dplyr::pull(drug.antibiotic_name))
-        drugs_vec <- sort(intersect(drugs_vec, drug_or_class_name_vec))
-        # keep previous selection if valid; else use preferred defaults or first few
+        drugs_vec <- base_tf |>
+          dplyr::filter(.data$drug_label == "drug") |>
+          dplyr::pull(.data$drug_or_class) |>
+          unique() |>
+          sort()
         prev <- isolate(input$amr_drug_ml_across_drug)
         sel <- prev[prev %in% drugs_vec]
-        if (length(sel) == 0) {
-          pref <- c("oxacillin", "penicillin", "methicillin")
+        if (!length(sel)) {
+          pref <- c("OXA", "PEN", "MET")
           sel <- intersect(pref, drugs_vec)
-          if (length(sel) == 0) sel <- head(drugs_vec, min(3, length(drugs_vec)))
+          if (!length(sel)) sel <- head(drugs_vec, min(3, length(drugs_vec)))
         }
         updateSelectInput(session, "amr_drug_ml_across_drug", choices = drugs_vec, selected = sel)
       } else {
-        drugs_class_vec <- unique(drug_class_map() |> dplyr::pull(drug_class))
-        drugs_class_vec <- sort(intersect(drugs_class_vec, drug_or_class_name_vec))
+        drugs_class_vec <- base_tf |>
+          dplyr::filter(.data$drug_label == "drug_class") |>
+          dplyr::pull(.data$drug_or_class) |>
+          unique() |>
+          sort()
         prev <- isolate(input$amr_drug_class_ml_across_drug)
         sel <- prev[prev %in% drugs_class_vec]
-        if (length(sel) == 0) {
-          pref <- c("cephalosporins", "lincosamides", "macrolides", "penicillins")
+        if (!length(sel)) {
+          pref <- c("CEP", "LIN", "MAC", "PEN")
           sel <- intersect(pref, drugs_class_vec)
-          if (length(sel) == 0) sel <- head(drugs_class_vec, min(4, length(drugs_class_vec)))
+          if (!length(sel)) sel <- head(drugs_class_vec, min(4, length(drugs_class_vec)))
         }
         updateSelectInput(session, "amr_drug_class_ml_across_drug", choices = drugs_class_vec, selected = sel)
       }
     })
 
-    # Update the model performance tables
+    # Update the model performance drug class dropdown when bug selection changes
     observeEvent(input$bug_ml_perf_id, {
-      data <- readr::read_tsv(here::here("shinyapp", "data", "performance_metrics", "all_metrics.tsv")) %>%
-        dplyr::filter(species %in% input$bug_ml_perf_id)
-      # get drug classes;
-      drug_class_vec <- pull(dplyr::filter(data, drug_level == "drug_class"), drug_or_drug_class) %>%
+      data <- queryData() %>%
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) %>%
+        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+      drug_class_vec <- data %>%
+        dplyr::filter(.data$drug_label == "drug_class") %>%
+        dplyr::pull(.data$drug_or_class) %>%
         unique() %>%
         sort()
 
-      # update the drug and drug class inputs
+      sel <- if ("AMG" %in% drug_class_vec) "AMG" else if (length(drug_class_vec)) drug_class_vec[1] else "all"
       updateSelectInput(
         session,
         inputId = "drug_class_ml_perf_id",
         choices = c("all", drug_class_vec),
-        selected = "aminoglycosides" # ifelse(length(drug_class_vec) > 0, "all", NULL)
+        selected = sel
       )
     })
     # model holdouts filtering
@@ -320,7 +445,7 @@ launchAMRDashboard <- function() {
         req(input$bug_holdouts_id)
 
         # Build choices filtered to the selected 3-letter species code
-        choices <- getHoldoutsDrugChoices(bug = input$bug_holdouts_id)
+        choices <- getHoldoutsDrugChoices(perf_data = queryData(), bug = input$bug_holdouts_id)
 
         # Keep the user's current selection if still valid; otherwise pick first
         prev <- isolate(input$holdouts_drug)
@@ -341,36 +466,41 @@ launchAMRDashboard <- function() {
 
     observeEvent(input$drug_class_ml_perf_id, {
       req(input$drug_class_ml_perf_id)
-      data <- readr::read_tsv(here::here("shinyapp", "data", "performance_metrics", "all_metrics.tsv")) %>%
-        dplyr::filter(species %in% input$bug_ml_perf_id)
-      drug_vec <- pull(dplyr::filter(data, drug_level == "drug"), drug_or_drug_class) %>%
+      base_data <- queryData() %>%
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) %>%
+        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+      drug_vec <- base_data %>%
+        dplyr::filter(.data$drug_label == "drug") %>%
+        dplyr::pull(.data$drug_or_class) %>%
         unique() %>%
         sort()
-      if (input$drug_class_ml_perf_id != "all") {
-        # load drug maps
-        drug_within_class_vec <- readr::read_csv(here::here("shinyapp", "data", "drug_cleanup.csv")) %>%
-          dplyr::select(predicted_drug, drug_classes) %>%
-          dplyr::mutate(drug_classes = stringr::str_replace_all(drug_classes, pattern = " |-", "_")) %>%
-          dplyr::filter(drug_classes %in% input$drug_class_ml_perf_id) %>%
-          dplyr::filter(predicted_drug %in% drug_vec) %>%
-          dplyr::pull(predicted_drug)
-        drug_within_class_vec <- drug_within_class_vec[!is.na(drug_within_class_vec)]
 
-        # get the drug class for the selected drug
-        updateSelectInput(
-          session,
-          inputId = "drug_ml_perf_id",
-          choices = drug_within_class_vec,
-          selected = ifelse(length(drug_within_class_vec) > 0, drug_within_class_vec[1], NULL)
-        )
-      } else {
-        # if all drug classes are selected, then update the drug input with all drugs
+      if (input$drug_class_ml_perf_id != "all") {
+        # Use metadata to map class abbreviation -> drug abbreviations
+        sp_codes <- normalize_species(input$bug_ml_perf_id)
+        meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
+          fp <- get_metadata_path(sp, results_root)
+          if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
+        }))
+        if (nrow(meta) && all(c("class_abbr", "drug_abbr") %in% names(meta))) {
+          drugs_in_class <- meta %>%
+            dplyr::filter(.data$class_abbr %in% input$drug_class_ml_perf_id) %>%
+            dplyr::pull(.data$drug_abbr) %>%
+            unique()
+          drug_vec <- intersect(drug_vec, drugs_in_class)
+        }
         updateSelectInput(
           session,
           inputId = "drug_ml_perf_id",
           choices = drug_vec,
-          selected = "gentamicin"
-          # ifelse(length(drug_vec) > 0, drug_vec[1], NULL)
+          selected = if (length(drug_vec)) drug_vec[1] else NULL
+        )
+      } else {
+        updateSelectInput(
+          session,
+          inputId = "drug_ml_perf_id",
+          choices = drug_vec,
+          selected = if ("GEN" %in% drug_vec) "GEN" else if (length(drug_vec)) drug_vec[1] else NULL
         )
       }
     })
@@ -435,8 +565,8 @@ launchAMRDashboard <- function() {
         metadata <- purrr::map_dfr(
           .x = input$bug_metadata_id,
           .f = function(x) {
-            fp <- here::here("shinyapp", "data", "Metadata", stringr::str_glue("{x}_metadata.parquet"))
-            if (file.exists(fp)) {
+            fp <- get_metadata_path(x, results_root)
+            if (!is.null(fp) && file.exists(fp)) {
               arrow::read_parquet(fp) |> dplyr::mutate(species = input$bug_metadata_id)
             } else {
               return(tibble())
@@ -455,8 +585,8 @@ launchAMRDashboard <- function() {
         metadata <- purrr::map_dfr(
           .x = input$bug_metadata_id,
           .f = function(x) {
-            fp <- here::here("shinyapp", "data", "Metadata", stringr::str_glue("{x}_metadata.parquet"))
-            if (file.exists(fp)) {
+            fp <- get_metadata_path(x, results_root)
+            if (!is.null(fp) && file.exists(fp)) {
               arrow::read_parquet(fp) |> dplyr::mutate(species = input$bug_metadata_id)
             } else {
               return(tibble())
@@ -471,9 +601,8 @@ launchAMRDashboard <- function() {
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
-          fp <- here::here("shinyapp", "data", "Metadata", stringr::str_glue("{x}_metadata.parquet"))
-          print(fp)
-          if (file.exists(fp)) {
+          fp <- get_metadata_path(x, results_root)
+          if (!is.null(fp) && file.exists(fp)) {
             arrow::read_parquet(fp) |> dplyr::mutate(species = input$bug_metadata_id)
           } else {
             return(tibble())
@@ -510,8 +639,8 @@ launchAMRDashboard <- function() {
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
-          fp <- here::here("shinyapp", "data", "Metadata", stringr::str_glue("{x}_metadata.parquet"))
-          if (file.exists(fp)) {
+          fp <- get_metadata_path(x, results_root)
+          if (!is.null(fp) && file.exists(fp)) {
             arrow::read_parquet(fp) |> dplyr::mutate(species = input$bug_metadata_id)
           } else {
             return(tibble())
@@ -551,8 +680,8 @@ launchAMRDashboard <- function() {
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
-          fp <- here::here("shinyapp", "data", "Metadata", stringr::str_glue("{x}_metadata.parquet"))
-          if (file.exists(fp)) {
+          fp <- get_metadata_path(x, results_root)
+          if (!is.null(fp) && file.exists(fp)) {
             arrow::read_parquet(fp) |> dplyr::mutate(species = input$bug_metadata_id)
           } else {
             return(tibble())
@@ -585,8 +714,8 @@ launchAMRDashboard <- function() {
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
-          fp <- here::here("shinyapp", "data", "Metadata", stringr::str_glue("{x}_metadata.parquet"))
-          if (file.exists(fp)) {
+          fp <- get_metadata_path(x, results_root)
+          if (!is.null(fp) && file.exists(fp)) {
             arrow::read_parquet(fp) |> dplyr::mutate(species = input$bug_metadata_id)
           } else {
             return(tibble())
@@ -619,6 +748,7 @@ launchAMRDashboard <- function() {
     # plotly::renderPlotly
     output$model_perfomance_plot <- renderPlot({
       makeModelPerformancePlot(
+        queryData(),
         input$bug_ml_perf_id,
         input$model_scale,
         input$data_type,
@@ -630,43 +760,24 @@ launchAMRDashboard <- function() {
 
     observe({
       output$across_bug_feature_importance_plot <- renderPlot({
-        # print("Feature importance across bug: drugs")
         if (is.null(input$across_bug_id)) {
           return(NULL)
         }
-        if (input$across_bug_id == "drug") {
-          ht <- makeFeatureImportancePlot(
-            input$bug_search_amr_across_bug,
-            input$amr_drug_ml_across_bug,
-            input$bug_drug_comp_model_scale,
-            input$data_type,
-            input$top_n_features,
-            input$feature_importance_tabset
-          )
-          return(
-            draw(
-              ht,
-              heatmap_legend_side = "right"
-            )
-          )
+        amr_drug <- if (input$across_bug_id == "drug") {
+          input$amr_drug_ml_across_bug
+        } else {
+          input$amr_drug_class_ml_across_bug
         }
-
-        if (input$across_bug_id == "drug_class") {
-          ht <- makeFeatureImportancePlot(
-            input$bug_search_amr_across_bug,
-            input$amr_drug_class_ml_across_bug,
-            input$bug_drug_comp_model_scale,
-            input$data_type,
-            input$top_n_features,
-            input$feature_importance_tabset
-          )
-          return(
-            draw(
-              ht,
-              heatmap_legend_side = "right"
-            )
-          )
-        }
+        ht <- makeFeatureImportancePlot(
+          topFeatures(),
+          input$bug_search_amr_across_bug,
+          amr_drug,
+          input$bug_drug_comp_model_scale,
+          input$data_type,
+          input$top_n_features,
+          input$feature_importance_tabset
+        )
+        draw(ht, heatmap_legend_side = "right")
       })
     })
 
@@ -675,53 +786,28 @@ launchAMRDashboard <- function() {
         if (is.null(input$across_drug_id)) {
           return(NULL)
         }
-        if (input$across_drug_id == "drug") {
-          ht <- makeFeatureImportancePlot(
-            input$bug_search_amr_across_drug,
-            input$amr_drug_ml_across_drug,
-            input$bug_drug_comp_model_scale,
-            input$data_type,
-            input$top_n_features,
-            input$feature_importance_tabset
-          )
-          return(
-            draw(
-              ht,
-              heatmap_legend_side = "right"
-            )
-          )
+        amr_drug <- if (input$across_drug_id == "drug") {
+          input$amr_drug_ml_across_drug
+        } else {
+          input$amr_drug_class_ml_across_drug
         }
-
-        if (input$across_drug_id == "drug_class") {
-          ht <- makeFeatureImportancePlot(
-            input$bug_search_amr_across_drug,
-            input$amr_drug_class_ml_across_drug,
-            input$bug_drug_comp_model_scale,
-            input$data_type,
-            input$top_n_features,
-            input$feature_importance_tabset
-          )
-          return(
-            draw(
-              ht,
-              heatmap_legend_side = "right"
-            )
-          )
-        }
+        ht <- makeFeatureImportancePlot(
+          topFeatures(),
+          input$bug_search_amr_across_drug,
+          amr_drug,
+          input$bug_drug_comp_model_scale,
+          input$data_type,
+          input$top_n_features,
+          input$feature_importance_tabset
+        )
+        draw(ht, heatmap_legend_side = "right")
       })
     })
 
-    # observe({
-    #   cat("Current input values:\n")
-    #   for (id in names(input)) {
-    #     cat(id, ":", input[[id]], "\n")
-    #   }
-    #   cat("------\n")
-    # })
     observe({
       output$feature_importance_plot <- renderPlot({
-        # req(input$bug_search_amr, input$amr_drug_ml_across_bug)
         ht <- makeFeatureImportancePlot(
+          topFeatures(),
           input$bug_ml_perf_id,
           input$amr_drug_ml_across_bug,
           input$model_scale,
@@ -729,64 +815,71 @@ launchAMRDashboard <- function() {
           input$top_n_features,
           input$feature_importance_tabset
         )
-        return(
-          draw(
-            ht,
-            heatmap_legend_side = "right"
-          )
-        )
+        draw(ht, heatmap_legend_side = "right")
       })
       output$feature_importance_table <- DT::renderDataTable({
-        # req(input$bug_search_amr, input$amr_drug_ml_across_bug)
-        feature_import_table <- feature_import_table_reactive()
-        if (is.null(feature_import_table)) {
+        tf <- filtered_top_features() %>%
+          dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) %>%
+          dplyr::filter(.data$drug_or_class %in% input$amr_drug_ml_across_bug)
+        if (!nrow(tf)) {
           return(NULL)
         }
-        makeFeatureImportTable(feature_import_table)
+        makeFeatureImportTable(tf)
       })
     })
-    # Feature importance tables;
-    # Across bug and across drug.
+
+    # Feature importance tables: across bug and across drug
     output$across_bug_feature_importance_table <- DT::renderDataTable({
-      req(feature_import_table_reactive())
-      feature_import_table <- feature_import_table_reactive()
-      if (is.null(feature_import_table)) {
+      amr_drug <- if (!is.null(input$across_bug_id) && input$across_bug_id == "drug_class") {
+        input$amr_drug_class_ml_across_bug
+      } else {
+        input$amr_drug_ml_across_bug
+      }
+      tf <- filtered_top_features() %>%
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_search_amr_across_bug)) %>%
+        dplyr::filter(.data$drug_or_class %in% amr_drug)
+      if (!nrow(tf)) {
         return(NULL)
       }
-      makeFeatureImportTable(feature_import_table)
+      makeFeatureImportTable(tf)
     })
 
     output$across_drug_feature_importance_table <- DT::renderDataTable({
-      req(feature_import_table_reactive())
-      feature_import_table <- feature_import_table_reactive()
-      if (is.null(feature_import_table)) {
+      amr_drug <- if (!is.null(input$across_drug_id) && input$across_drug_id == "drug_class") {
+        input$amr_drug_class_ml_across_drug
+      } else {
+        input$amr_drug_ml_across_drug
+      }
+      tf <- filtered_top_features() %>%
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_search_amr_across_drug)) %>%
+        dplyr::filter(.data$drug_or_class %in% amr_drug)
+      if (!nrow(tf)) {
         return(NULL)
       }
-      makeFeatureImportTable(feature_import_table)
+      makeFeatureImportTable(tf)
     })
 
-    # show cross model feature importance table;
+    # Cross model feature importance table
     output$cross_model_feature_importance_table <- DT::renderDataTable({
-      req(cross_model_import_feature_table_reactive())
-      feature_import_table <- cross_model_import_feature_table_reactive()
-      # delete the file;
-      if (is.null(feature_import_table)) {
+      strat <- if (isTRUE(input$cross_model_comparison == "country")) "country" else "year"
+      tf <- topFeatures() %>%
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_cross_model_comparison_id)) %>%
+        dplyr::filter(.data$drug_or_class %in% input$drug_cross_model_comparison_id) %>%
+        dplyr::filter(.data$strat_label == strat) %>%
+        dplyr::filter(!isTRUE(.data$cross_test))
+      if (!nrow(tf)) {
         return(NULL)
       }
-      makeFeatureImportTable(feature_import_table)
+      makeFeatureImportTable(tf)
     })
 
     # model comparisons;
     observeEvent(input$bug_cross_model_comparison_id,
       {
-        bug <- input$bug_cross_model_comparison_id
+        # Gather Drug/Drug class options for stratified holdout models for this bug
+        drugs_vec <- getHoldoutsDrugChoices(perf_data = queryData(), bug = input$bug_cross_model_comparison_id)
 
-        # Gather all Drug/Drug class options across holdout sources for this bug
-        drugs_vec <- getHoldoutsDrugChoices(bug)
-
-        # Initial default = "lincosamides" if present, else first option (users can still change it)
-        sel <- if ("lincosamides" %in% drugs_vec) "lincosamides" else if (length(drugs_vec)) drugs_vec[1] else NULL
-
+        sel <- if (length(drugs_vec)) drugs_vec[1] else NULL
         updateSelectInput(
           session,
           inputId = "drug_cross_model_comparison_id",
@@ -799,52 +892,43 @@ launchAMRDashboard <- function() {
 
     observe({
       output$cross_model_perf_plot <- renderPlot({
-        # req(input$bug_cross_model_comparision_id, input$drug_cross_model_comparision_id)
         ht <- makeCrossModelPerformancePlot(
+          queryData(),
           input$bug_cross_model_comparison_id,
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison
         )
-        return(
-          draw(
-            ht,
-            heatmap_legend_side = "left"
-          )
-        )
+        draw(ht, heatmap_legend_side = "left")
       })
       output$cross_model_feature_importance_plot <- renderPlot({
         ht <- makeCrossModelFeatureImportancePlot(
+          topFeatures(),
           input$bug_cross_model_comparison_id,
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison,
           input$cross_model_top_n_features
         )
-        return(
-          draw(
-            ht,
-            heatmap_legend_side = "left"
-          )
-        )
+        draw(ht, heatmap_legend_side = "left")
       })
 
-      ## Query Data Tab logic
-      # Load performance metrics data
-      queryData <- reactiveVal(loadMLResults())
 
-      observe({
-        data <- queryData() # Get data
-
-        # Exclude columns
-        valid_columns <- setdiff(names(data), c("model_shapes", "model_colors"))
-
-        # Update dropdown options
-        updateSelectizeInput(
-          session,
-          "query_data_columns",
-          choices = valid_columns, # Get column names
-          selected = valid_columns # Default selection: all columns
-        )
-      })
+      # # Load performance metrics data
+      # queryData <- reactiveVal(loadMLResults(results_root = results_root))
+      #
+      # observe({
+      #   data <- queryData() # Get data
+      #
+      #   # Exclude columns
+      #   valid_columns <- setdiff(names(data), c("model_shapes", "model_colors"))
+      #
+      #   # Update dropdown options
+      #   updateSelectizeInput(
+      #     session,
+      #     "query_data_columns",
+      #     choices = valid_columns, # Get column names
+      #     selected = valid_columns # Default selection: all columns
+      #   )
+      # })
 
       # Render the data table
       output$queryDataTable <- DT::renderDataTable({
@@ -882,19 +966,19 @@ launchAMRDashboard <- function() {
         }
       )
       # Top Features Table Logic
-      topFeatures <- reactiveVal(loadTopFeat()) # Use the loadTopFeat() function to load data
-
-      observe({
-        data <- topFeatures() # Fetch data
-
-        # Dynamically update dropdown with column names
-        updateSelectizeInput(
-          session,
-          "top_features_columns",
-          choices = names(data), # Populate dropdown with column names
-          selected = names(data) # Default: all columns selected
-        )
-      })
+      # topFeatures <- reactiveVal(loadTopFeat(results_root = results_root)) # Use the loadTopFeat() function to load data
+      #
+      # observe({
+      #   data <- topFeatures() # Fetch data
+      #
+      #   # Dynamically update dropdown with column names
+      #   updateSelectizeInput(
+      #     session,
+      #     "top_features_columns",
+      #     choices = names(data), # Populate dropdown with column names
+      #     selected = names(data) # Default: all columns selected
+      #   )
+      # })
 
       output$topFeaturesTable <- DT::renderDataTable({
         data <- topFeatures() # Get the data

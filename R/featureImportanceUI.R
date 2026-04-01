@@ -75,7 +75,7 @@ featureImportanceUI <- function() {
                   condition = "input.across_bug_id == 'drug'",
                   column(
                     width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_bug", "Bug (multi-select)", bug_choices, selected = "Sau")
+                    amr_select("bug_search_amr_across_bug", "Bug (multi-select)", character(0), selected = NULL)
                   ),
                   column(
                     width = 6, style = "padding: 0;",
@@ -86,7 +86,7 @@ featureImportanceUI <- function() {
                   condition = "input.across_bug_id == 'drug_class'",
                   column(
                     width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_bug", "Bug (multi-select)", bug_choices, selected = "Sau")
+                    amr_select("bug_search_amr_across_bug", "Bug (multi-select)", character(0), selected = NULL)
                   ),
                   column(
                     width = 6, style = "padding: 0;",
@@ -133,7 +133,7 @@ featureImportanceUI <- function() {
                   condition = "input.across_drug_id == 'drug'",
                   column(
                     width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_drug", "Bug", bug_choices, selected = "Sau", multiple = F)
+                    amr_select("bug_search_amr_across_drug", "Bug", character(0), selected = NULL, multiple = FALSE)
                   ),
                   column(
                     width = 6, style = "padding: 0;",
@@ -144,7 +144,7 @@ featureImportanceUI <- function() {
                   condition = "input.across_drug_id == 'drug_class'",
                   column(
                     width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_drug", "Bug", bug_choices, selected = "Sau", multiple = F)
+                    amr_select("bug_search_amr_across_drug", "Bug", character(0), selected = NULL, multiple = FALSE)
                   ),
                   column(
                     width = 6, style = "padding: 0;",
