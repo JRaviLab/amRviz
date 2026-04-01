@@ -621,39 +621,53 @@ launchAMRDashboard <- function(results_root = NULL) {
             unique()
           drug_vec <- intersect(drug_vec, drugs_in_class)
         }
-        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) prev_drug
-               else if (length(drug_vec)) drug_vec[1] else NULL
-        updateSelectInput(session, inputId = "drug_ml_perf_id",
-          choices = drug_vec, selected = sel)
+        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) {
+          prev_drug
+        } else if (length(drug_vec)) drug_vec[1] else NULL
+        updateSelectInput(session,
+          inputId = "drug_ml_perf_id",
+          choices = drug_vec, selected = sel
+        )
       } else {
-        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) prev_drug
-               else if ("GEN" %in% drug_vec) "GEN"
-               else if (length(drug_vec)) drug_vec[1] else NULL
-        updateSelectInput(session, inputId = "drug_ml_perf_id",
-          choices = drug_vec, selected = sel)
+        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) {
+          prev_drug
+        } else if ("GEN" %in% drug_vec) {
+          "GEN"
+        } else if (length(drug_vec)) drug_vec[1] else NULL
+        updateSelectInput(session,
+          inputId = "drug_ml_perf_id",
+          choices = drug_vec, selected = sel
+        )
       }
     })
 
     # When a specific drug is selected, sync the Drug Class dropdown to its class.
-    observeEvent(input$drug_ml_perf_id, {
-      req(input$drug_ml_perf_id)
-      sp_codes <- normalize_species(input$bug_ml_perf_id)
-      meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
-        fp <- get_metadata_path(sp, results_root)
-        if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
-      }))
-      if (!nrow(meta) || !all(c("class_abbr", "drug_abbr") %in% names(meta))) return()
-      drug_class <- meta %>%
-        dplyr::filter(.data$drug_abbr == input$drug_ml_perf_id) %>%
-        dplyr::pull(.data$class_abbr) %>%
-        unique()
-      if (!length(drug_class)) return()
-      # Only update if the class has actually changed, to avoid triggering a loop.
-      current_class <- isolate(input$drug_class_ml_perf_id)
-      if (!identical(current_class, drug_class[1])) {
-        updateSelectInput(session, "drug_class_ml_perf_id", selected = drug_class[1])
-      }
-    }, ignoreInit = TRUE)
+    observeEvent(input$drug_ml_perf_id,
+      {
+        req(input$drug_ml_perf_id)
+        sp_codes <- normalize_species(input$bug_ml_perf_id)
+        meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
+          fp <- get_metadata_path(sp, results_root)
+          if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
+        }))
+        if (!nrow(meta) || !all(c("class_abbr", "drug_abbr") %in% names(meta))) {
+          return()
+        }
+        drug_class <- meta %>%
+          dplyr::filter(.data$drug_abbr == input$drug_ml_perf_id) %>%
+          dplyr::pull(.data$class_abbr) %>%
+          unique()
+        if (!length(drug_class)) {
+          return()
+        }
+        # Only update if the class has actually changed, to avoid triggering a loop.
+        current_class <- isolate(input$drug_class_ml_perf_id)
+        if (!identical(current_class, drug_class[1])) {
+          updateSelectInput(session, "drug_class_ml_perf_id", selected = drug_class[1])
+        }
+      },
+      ignoreInit = TRUE
+    )
 
 
     ## get a quick summary plot;
@@ -775,7 +789,7 @@ launchAMRDashboard <- function(results_root = NULL) {
 
     output$isolation_source_header <- renderUI({
       title <- if (!is.null(input$isolation_source_tabset) &&
-                   input$isolation_source_tabset == "Hosts") {
+        input$isolation_source_tabset == "Hosts") {
         "Distribution of genomes across hosts"
       } else {
         "Distribution of genomes across isolation sources"
