@@ -1082,16 +1082,20 @@ launchAMRDashboard <- function(results_root = NULL) {
         data <- queryData()
         req(data)
         # Drop internal/empty columns
-        drop_cols <- c("model_shapes", "model_colors",
-                       "output_prefix", "prefix_key")
+        drop_cols <- c(
+          "model_shapes", "model_colors",
+          "output_prefix", "prefix_key"
+        )
         # Also drop columns that are entirely NA
         all_na <- vapply(data, function(x) all(is.na(x)), logical(1))
         drop_cols <- union(drop_cols, names(which(all_na)))
         valid_columns <- setdiff(names(data), drop_cols)
         default_cols <- intersect(
-          c("species", "species_label", "drug_label", "drug_or_class",
+          c(
+            "species", "species_label", "drug_label", "drug_or_class",
             "feature_type", "feature_subtype",
-            "nmcc", "bal_acc", "f1", "sens", "spec"),
+            "nmcc", "bal_acc", "f1", "sens", "spec"
+          ),
           valid_columns
         )
         updateSelectizeInput(
@@ -1146,9 +1150,11 @@ launchAMRDashboard <- function(results_root = NULL) {
         drop_cols <- union(drop_cols, names(which(all_na)))
         valid_columns <- setdiff(names(data), drop_cols)
         default_cols <- intersect(
-          c("species", "species_label", "drug_label", "drug_or_class",
+          c(
+            "species", "species_label", "drug_label", "drug_or_class",
             "feature_type", "feature_subtype",
-            "Variable", "Importance", "Sign"),
+            "Variable", "Importance", "Sign"
+          ),
           valid_columns
         )
         updateSelectizeInput(
