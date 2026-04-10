@@ -996,9 +996,11 @@ launchAMRDashboard <- function(results_root = NULL) {
 
     # Cross model feature importance table
     output$cross_model_feature_importance_table <- DT::renderDataTable({
-      req(input$bug_cross_model_comparison_id,
-          input$drug_cross_model_comparison_id,
-          input$cross_model_comparison)
+      req(
+        input$bug_cross_model_comparison_id,
+        input$drug_cross_model_comparison_id,
+        input$cross_model_comparison
+      )
       strat <- if (isTRUE(input$cross_model_comparison == "country")) "country" else "year"
       tf <- topFeatures() %>%
         dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_cross_model_comparison_id)) %>%
@@ -1030,9 +1032,11 @@ launchAMRDashboard <- function(results_root = NULL) {
 
     observe({
       output$cross_model_perf_plot <- plotly::renderPlotly({
-        req(input$bug_cross_model_comparison_id,
-            input$drug_cross_model_comparison_id,
-            input$cross_model_comparison)
+        req(
+          input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id,
+          input$cross_model_comparison
+        )
         makeCrossModelPerformancePlot(
           queryData(),
           input$bug_cross_model_comparison_id,
@@ -1041,9 +1045,11 @@ launchAMRDashboard <- function(results_root = NULL) {
         )
       })
       output$cross_model_feature_importance_plot <- plotly::renderPlotly({
-        req(input$bug_cross_model_comparison_id,
-            input$drug_cross_model_comparison_id,
-            input$cross_model_comparison)
+        req(
+          input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id,
+          input$cross_model_comparison
+        )
         makeCrossModelFeatureImportancePlot(
           topFeatures(),
           input$bug_cross_model_comparison_id,
