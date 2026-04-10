@@ -1078,17 +1078,29 @@ launchAMRDashboard <- function(results_root = NULL) {
       # observe({
       #   data <- queryData() # Get data
       #
-      #   # Exclude columns
-      #   valid_columns <- setdiff(names(data), c("model_shapes", "model_colors"))
-      #
-      #   # Update dropdown options
-      #   updateSelectizeInput(
-      #     session,
-      #     "query_data_columns",
-      #     choices = valid_columns, # Get column names
-      #     selected = valid_columns # Default selection: all columns
-      #   )
-      # })
+      observe({
+        data <- queryData()
+        req(data)
+        # Drop internal/empty columns
+        drop_cols <- c("model_shapes", "model_colors",
+                       "output_prefix", "prefix_key")
+        # Also drop columns that are entirely NA
+        all_na <- vapply(data, function(x) all(is.na(x)), logical(1))
+        drop_cols <- union(drop_cols, names(which(all_na)))
+        valid_columns <- setdiff(names(data), drop_cols)
+        default_cols <- intersect(
+          c("species", "species_label", "drug_label", "drug_or_class",
+            "feature_type", "feature_subtype",
+            "nmcc", "bal_acc", "f1", "sens", "spec"),
+          valid_columns
+        )
+        updateSelectizeInput(
+          session,
+          "query_data_columns",
+          choices = valid_columns,
+          selected = default_cols
+        )
+      })
 
       # Render the data table
       output$queryDataTable <- DT::renderDataTable({
@@ -1125,20 +1137,27 @@ launchAMRDashboard <- function(results_root = NULL) {
           }
         }
       )
-      # Top Features Table Logic
-      # topFeatures <- reactiveVal(loadTopFeat(results_root = results_root)) # Use the loadTopFeat() function to load data
-      #
-      # observe({
-      #   data <- topFeatures() # Fetch data
-      #
-      #   # Dynamically update dropdown with column names
-      #   updateSelectizeInput(
-      #     session,
-      #     "top_features_columns",
-      #     choices = names(data), # Populate dropdown with column names
-      #     selected = names(data) # Default: all columns selected
-      #   )
-      # })
+      observe({
+        data <- topFeatures()
+        req(data)
+        # Drop internal/empty columns
+        drop_cols <- c("output_prefix", "prefix_key")
+        all_na <- vapply(data, function(x) all(is.na(x)), logical(1))
+        drop_cols <- union(drop_cols, names(which(all_na)))
+        valid_columns <- setdiff(names(data), drop_cols)
+        default_cols <- intersect(
+          c("species", "species_label", "drug_label", "drug_or_class",
+            "feature_type", "feature_subtype",
+            "Variable", "Importance", "Sign"),
+          valid_columns
+        )
+        updateSelectizeInput(
+          session,
+          "top_features_columns",
+          choices = valid_columns,
+          selected = default_cols
+        )
+      })
 
       output$topFeaturesTable <- DT::renderDataTable({
         data <- topFeatures() # Get the data

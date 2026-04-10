@@ -9,6 +9,14 @@ queryDataUI <- function() {
     fluidPage(
       h3("Query Data", style = "font-weight: bold; margin-top: 15px; margin-bottom: 15px;"),
       p("The data table provides the ability to download the raw data for model performance metrics and top features. The table can be customized by adding/removing specific columns."),
+      tags$style(HTML("
+        #query_data_columns + .selectize-control .selectize-input {
+          max-height: 68px; overflow-y: auto;
+        }
+        #top_features_columns + .selectize-control .selectize-input {
+          max-height: 68px; overflow-y: auto;
+        }
+      ")),
       uiOutput("results_species_selector_ui"),
       tabsetPanel(
         id = "query_tabset",
@@ -42,7 +50,8 @@ queryDataUI <- function() {
               downloadButton(
                 outputId = "query_data_download",
                 label = "Download Selected Data (CSV)",
-                class = "btn btn-success"
+                class = "btn",
+                style = "background-color: #5b8db8; color: white; border: none;"
               )
             )
           ),
@@ -84,7 +93,8 @@ queryDataUI <- function() {
               downloadButton(
                 outputId = "top_features_download",
                 label = "Download Selected Data (CSV)",
-                class = "btn btn-success"
+                class = "btn",
+                style = "background-color: #5b8db8; color: white; border: none;"
               )
             )
           ),
