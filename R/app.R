@@ -401,6 +401,9 @@ launchAMRDashboard <- function(results_root = NULL) {
       updateSelectizeInput(session, "bug_search_amr_across_drug",
         choices = choices, selected = sel
       )
+      updateSelectizeInput(session, "bug_cross_model_comparison_id",
+        choices = choices, selected = sel
+      )
     })
 
     # Update metadata bug selector from metadata parquets (not ML perf data)
@@ -993,6 +996,9 @@ launchAMRDashboard <- function(results_root = NULL) {
 
     # Cross model feature importance table
     output$cross_model_feature_importance_table <- DT::renderDataTable({
+      req(input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id,
+          input$cross_model_comparison)
       strat <- if (isTRUE(input$cross_model_comparison == "country")) "country" else "year"
       tf <- topFeatures() %>%
         dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_cross_model_comparison_id)) %>%
@@ -1023,30 +1029,28 @@ launchAMRDashboard <- function(results_root = NULL) {
     )
 
     observe({
-      output$cross_model_perf_plot <- renderPlot({
-        ht <- makeCrossModelPerformancePlot(
+      output$cross_model_perf_plot <- plotly::renderPlotly({
+        req(input$bug_cross_model_comparison_id,
+            input$drug_cross_model_comparison_id,
+            input$cross_model_comparison)
+        makeCrossModelPerformancePlot(
           queryData(),
           input$bug_cross_model_comparison_id,
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison
         )
-        if (is.null(ht)) {
-          return(NULL)
-        }
-        draw(ht, heatmap_legend_side = "left")
       })
-      output$cross_model_feature_importance_plot <- renderPlot({
-        ht <- makeCrossModelFeatureImportancePlot(
+      output$cross_model_feature_importance_plot <- plotly::renderPlotly({
+        req(input$bug_cross_model_comparison_id,
+            input$drug_cross_model_comparison_id,
+            input$cross_model_comparison)
+        makeCrossModelFeatureImportancePlot(
           topFeatures(),
           input$bug_cross_model_comparison_id,
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison,
           input$cross_model_top_n_features
         )
-        if (is.null(ht)) {
-          return(NULL)
-        }
-        draw(ht, heatmap_legend_side = "left")
       })
 
 

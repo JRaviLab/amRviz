@@ -1112,25 +1112,29 @@ makeCrossModelFeatureImportancePlot <- function(
 
   max_val <- max(vi_mat, na.rm = TRUE)
   min_val <- min(vi_mat, na.rm = TRUE)
-  if (min_val == max_val) min_val <- min_val - 0.00001
+  if (min_val == max_val) {
+    min_val <- max(0, min_val - 0.1)
+    max_val <- min(1, max_val + 0.1)
+  }
 
-  ComplexHeatmap::Heatmap(
-    vi_mat,
-    name = "Importance score",
-    col = circlize::colorRamp2(c(min_val, max_val), c("#c8e8e8", "#4e9a9a")),
-    row_title_side = "left",
-    column_title_side = "top",
-    row_names_side = "left",
-    column_names_side = "top",
-    cluster_rows = FALSE,
-    cluster_columns = FALSE,
-    show_row_names = TRUE,
-    show_column_names = TRUE,
-    row_names_gp = grid::gpar(fontsize = 12),
-    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"),
-    row_names_max_width = unit(12, "cm"),
-    column_names_rot = 65
-  )
+  plotly::plot_ly(
+    x = colnames(vi_mat),
+    y = rownames(vi_mat),
+    z = vi_mat,
+    type = "heatmap",
+    colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
+    colorbar = list(title = "Importance"),
+    hovertemplate = paste0(
+      "<b>Feature:</b> %{y}<br>",
+      "<b>Group:</b> %{x}<br>",
+      "<b>Importance:</b> %{z:.3f}<extra></extra>"
+    )
+  ) %>%
+    plotly::layout(
+      xaxis = list(title = "", tickangle = -45, side = "top"),
+      yaxis = list(title = "", autorange = "reversed"),
+      margin = list(l = 200, b = 20, t = 80)
+    )
 }
 
 # makeCrossModelPerformancePlot: heatmap of balanced accuracy for holdout models.
@@ -1183,35 +1187,32 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
 
   min_val <- min(models_performance, na.rm = TRUE)
   max_val <- max(models_performance, na.rm = TRUE)
-  if (min_val == max_val) min_val <- min_val - 0.00001
+  if (min_val == max_val) {
+    min_val <- max(0, min_val - 0.1)
+    max_val <- min(1, max_val + 0.1)
+  }
 
   row_title <- if (cross_model == "country") "Tested Country" else "Tested Year"
   col_title <- if (cross_model == "country") "Trained Country" else "Trained Year"
 
-  ComplexHeatmap::Heatmap(
-    models_performance,
-    name = "Balanced Accuracy",
-    col = circlize::colorRamp2(c(min_val, max_val), c("lightblue", "darkblue")),
-    row_title = row_title,
-    column_title = col_title,
-    row_title_side = "left",
-    column_title_side = "top",
-    row_title_gp = grid::gpar(fontsize = 13, fontface = "bold", col = "#333333"),
-    column_title_gp = grid::gpar(fontsize = 13, fontface = "bold", col = "#333333"),
-    cluster_rows = FALSE,
-    cluster_columns = FALSE,
-    show_row_names = TRUE,
-    show_column_names = TRUE,
-    row_names_gp = grid::gpar(fontsize = 12),
-    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"),
-    row_names_max_width = unit(12, "cm"),
-    column_names_rot = 0,
-    heatmap_legend_param = list(
-      title = "Balanced Accuracy",
-      at = round(seq(min_val, max_val, length.out = 5), 2),
-      labels = round(seq(min_val, max_val, length.out = 5), 2)
+  plotly::plot_ly(
+    x = colnames(models_performance),
+    y = rownames(models_performance),
+    z = models_performance,
+    type = "heatmap",
+    colorscale = list(c(0, "lightblue"), c(1, "darkblue")),
+    colorbar = list(title = "Balanced\nAccuracy"),
+    hovertemplate = paste0(
+      "<b>", col_title, ":</b> %{x}<br>",
+      "<b>", row_title, ":</b> %{y}<br>",
+      "<b>Bal. Accuracy:</b> %{z:.3f}<extra></extra>"
     )
-  )
+  ) %>%
+    plotly::layout(
+      xaxis = list(title = col_title, side = "top"),
+      yaxis = list(title = row_title, autorange = "reversed"),
+      margin = list(l = 120, b = 20, t = 80)
+    )
 }
 
 makeFeatureImportTable <- function(feature_import_table) {

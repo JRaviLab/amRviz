@@ -59,7 +59,7 @@ crossModelComparisonUI <- function() {
             tagList(
               column(
                 width = 12,
-                plotOutput("cross_model_perf_plot", height = "100%"),
+                plotly::plotlyOutput("cross_model_perf_plot", height = "100%"),
                 style = "padding: 0; border: 1px solid lightgray; height: 520px;"
               )
             )
@@ -79,7 +79,7 @@ crossModelComparisonUI <- function() {
               fluidRow(
                 column(
                   width = 6,
-                  plotOutput("cross_model_feature_importance_plot", height = "100%"),
+                  plotly::plotlyOutput("cross_model_feature_importance_plot", height = "100%"),
                   style = "padding: 0; height: 460px; border: 1px solid lightgray;"
                 ),
                 column(
