@@ -9,8 +9,10 @@ test_that("makeQuickStats returns a tagList with expected structure", {
     genome_drug.resistant_phenotype = c("Resistant", "Susceptible", "Resistant", "Susceptible"),
     drug_class = c("penicillins", "tetracyclines", "penicillins", "fluoroquinolones"),
     genome.isolation_country = c("USA", "UK", "USA", "Germany"),
-    species = c("staphylococcus aureus", "staphylococcus aureus",
-                "staphylococcus aureus", "staphylococcus aureus")
+    species = c(
+      "staphylococcus aureus", "staphylococcus aureus",
+      "staphylococcus aureus", "staphylococcus aureus"
+    )
   )
 
   result <- makeQuickStats(df)
