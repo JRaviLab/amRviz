@@ -713,13 +713,27 @@ makeModelPerformancePlot <- function(
     dplyr::filter(.data$feature_subtype %in% data_type) %>%
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
-  # Filter by drug class or drug if not "all"
-  if (!is.null(amr_drug_class) && length(amr_drug_class) > 0 &&
-    !identical(amr_drug_class, "all")) {
+  # Filter by drug class or drug
+  has_class <- !is.null(amr_drug_class) && length(amr_drug_class) > 0 &&
+    !identical(amr_drug_class, "all")
+  has_drug <- !is.null(amr_drug) && length(amr_drug) > 0 &&
+    nzchar(amr_drug[1]) && !identical(amr_drug, "all")
+
+  if (has_class && has_drug) {
     df <- df %>%
       dplyr::filter(
         (.data$drug_label == "drug_class" & .data$drug_or_class %in% amr_drug_class) |
           (.data$drug_label == "drug" & .data$drug_or_class %in% amr_drug)
+      )
+  } else if (has_class) {
+    df <- df %>%
+      dplyr::filter(
+        .data$drug_label == "drug_class" & .data$drug_or_class %in% amr_drug_class
+      )
+  } else if (has_drug) {
+    df <- df %>%
+      dplyr::filter(
+        .data$drug_label == "drug" & .data$drug_or_class %in% amr_drug
       )
   }
 

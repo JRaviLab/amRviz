@@ -558,7 +558,7 @@ launchAMRDashboard <- function(results_root = NULL) {
         unique() %>%
         sort()
 
-      sel <- if ("AMG" %in% drug_class_vec) "AMG" else if (length(drug_class_vec)) drug_class_vec[1] else "all"
+      sel <- "all"
       updateSelectInput(
         session,
         inputId = "drug_class_ml_perf_id",
@@ -621,22 +621,17 @@ launchAMRDashboard <- function(results_root = NULL) {
             unique()
           drug_vec <- intersect(drug_vec, drugs_in_class)
         }
-        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) {
+        sel <- if (!is.null(prev_drug) && prev_drug %in% c("all", drug_vec)) {
           prev_drug
         } else if (length(drug_vec)) drug_vec[1] else NULL
         updateSelectInput(session,
           inputId = "drug_ml_perf_id",
-          choices = drug_vec, selected = sel
+          choices = c("all", drug_vec), selected = sel
         )
       } else {
-        sel <- if (!is.null(prev_drug) && prev_drug %in% drug_vec) {
-          prev_drug
-        } else if ("GEN" %in% drug_vec) {
-          "GEN"
-        } else if (length(drug_vec)) drug_vec[1] else NULL
         updateSelectInput(session,
           inputId = "drug_ml_perf_id",
-          choices = drug_vec, selected = sel
+          choices = c("all", drug_vec), selected = "all"
         )
       }
     })
@@ -645,6 +640,14 @@ launchAMRDashboard <- function(results_root = NULL) {
     observeEvent(input$drug_ml_perf_id,
       {
         req(input$drug_ml_perf_id)
+        # Don't sync class when drug is "all"
+        if (identical(input$drug_ml_perf_id, "all")) {
+          current_class <- isolate(input$drug_class_ml_perf_id)
+          if (!identical(current_class, "all")) {
+            updateSelectInput(session, "drug_class_ml_perf_id", selected = "all")
+          }
+          return()
+        }
         sp_codes <- normalize_species(input$bug_ml_perf_id)
         meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
           fp <- get_metadata_path(sp, results_root)
