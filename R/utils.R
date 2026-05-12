@@ -481,9 +481,6 @@ makeDatAvailabilityPlot <- function(data) {
 }
 
 makeGeoChloroPlot <- function(data) {
-  if (!requireNamespace("countrycode", quietly = TRUE)) {
-    stop("Package 'countrycode' is required for this function. Install it with install.packages('countrycode').")
-  }
   data$iso3 <- countrycode::countrycode(data$genome.isolation_country, origin = "country.name", destination = "iso3c")
   plot_ly(
     data = data,
@@ -1091,9 +1088,14 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     return(NULL)
   }
 
+  # Widen range when all-NA or single value so ComplexHeatmap's legend stays valid
   min_val <- min(models_performance, na.rm = TRUE)
   max_val <- max(models_performance, na.rm = TRUE)
-  if (min_val == max_val) min_val <- min_val - 0.00001
+  if (!is.finite(min_val) || min_val == max_val) {
+    center <- if (is.finite(min_val)) min_val else 0.5
+    min_val <- max(0, center - 0.05)
+    max_val <- min(1, center + 0.05)
+  }
 
   row_title <- if (cross_model == "country") "Tested Country" else "Tested Year"
   col_title <- if (cross_model == "country") "Trained Country" else "Trained Year"

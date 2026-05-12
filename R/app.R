@@ -19,33 +19,6 @@
 #'   shiny::runApp(app)
 #' }
 launchAMRDashboard <- function(results_root = NULL) {
-  # Bug choices
-  bug_choices <- c(
-    "Enterococcus faecium" = "Efa",
-    "Staphylococcus aureus" = "Sau",
-    "Klebsiella pneumoniae" = "Kpn",
-    "Acinetobacter baumannii" = "Aba",
-    "Pseudomonas aeruginosa" = "Pae",
-    "Enterobacter spp." = "Esp.",
-    "Escherichia coli" = "Eco",
-    "Campylobacter jejuni" = "Cje",
-    "Staphylococcus epidermidis" = "Sep"
-  )
-
-  # ESKAPE bugs (sorted in ESKAPE order)
-  eskape_bugs <- c(
-    "Enterococcus faecium" = "Efa",
-    "Staphylococcus aureus" = "Sau",
-    "Klebsiella pneumoniae" = "Kpn",
-    "Acinetobacter baumannii" = "Aba",
-    "Pseudomonas aeruginosa" = "Pae",
-    "Enterobacter spp." = "Esp.",
-    "Escherichia coli" = "Eco",
-    "Campylobacter jejuni" = "Cje",
-    "Staphylococcus epidermidis" = "Sep",
-    "Streptococcus pneumoniae" = "Spn"
-  )
-
   # UI
   ui <- tagList(
     shinyjs::useShinyjs(),
@@ -274,6 +247,12 @@ launchAMRDashboard <- function(results_root = NULL) {
       updateSelectizeInput(session, "bug_search_amr_across_drug",
         choices = choices, selected = sel
       )
+      updateSelectizeInput(session, "bug_cross_model_comparison_id",
+        choices = choices, selected = sel
+      )
+      updateSelectizeInput(session, "bug_holdouts_id",
+        choices = choices, selected = sel
+      )
     })
 
     # Update metadata bug selector from metadata parquets (not ML perf data)
@@ -330,16 +309,6 @@ launchAMRDashboard <- function(results_root = NULL) {
     # observe to load all the data
     observe({
       drug_class_map(loadDrugClassMapRec())
-    })
-
-    # clear the selected bug when the user changes the drug/drug class
-    observeEvent(input$across_bug_id, {
-      updateSelectInput(
-        session,
-        inputId = "bug_search_amr_across_bug",
-        choices = bug_choices,
-        selected = unname(bug_choices) # Default to ESKAPE bugs
-      )
     })
 
     observeEvent(c(input$bug_search_amr_across_bug, input$across_bug_id, input$bug_drug_comp_model_scale, input$data_type), {
@@ -777,6 +746,7 @@ launchAMRDashboard <- function(results_root = NULL) {
           input$top_n_features,
           input$feature_importance_tabset
         )
+        req(ht)
         draw(ht, heatmap_legend_side = "right")
       })
     })
@@ -800,6 +770,7 @@ launchAMRDashboard <- function(results_root = NULL) {
           input$top_n_features,
           input$feature_importance_tabset
         )
+        req(ht)
         draw(ht, heatmap_legend_side = "right")
       })
     })
@@ -815,6 +786,7 @@ launchAMRDashboard <- function(results_root = NULL) {
           input$top_n_features,
           input$feature_importance_tabset
         )
+        req(ht)
         draw(ht, heatmap_legend_side = "right")
       })
       output$feature_importance_table <- DT::renderDataTable({
@@ -898,6 +870,7 @@ launchAMRDashboard <- function(results_root = NULL) {
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison
         )
+        req(ht)
         draw(ht, heatmap_legend_side = "left")
       })
       output$cross_model_feature_importance_plot <- renderPlot({
@@ -908,6 +881,7 @@ launchAMRDashboard <- function(results_root = NULL) {
           input$cross_model_comparison,
           input$cross_model_top_n_features
         )
+        req(ht)
         draw(ht, heatmap_legend_side = "left")
       })
 
