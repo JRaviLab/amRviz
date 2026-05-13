@@ -728,7 +728,9 @@ makeModelPerformancePlot <- function(
 makeFeatureImportancePlot <- function(
   data, bug, amr_drug, model_scale, data_type_,
   top_n_features, feature_importance_tabset,
-  annotated_dir = NULL
+  annotated_dir = NULL,
+  amrdata_root = NULL,
+  results_root = NULL
 ) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
     return(NULL)
@@ -836,6 +838,32 @@ makeFeatureImportancePlot <- function(
   if (!"COG_name" %in% names(top_features_df)) {
     top_features_df <- top_features_df %>%
       dplyr::mutate(COG_name = .data$Variable)
+  }
+
+  # Replace opaque feature IDs (e.g. "group_6367") with human-readable names
+  # from {scale}_names.parquet when available.
+  name_map <- load_feature_name_map(
+    species_code = bug_norm[1],
+    model_scale = model_scale,
+    amrdata_root = amrdata_root,
+    results_root = results_root
+  )
+  if (!is.null(name_map) && nrow(name_map)) {
+    # Domain variables in top features look like "PF21279_IPR...": split
+    # on "_" to extract the join key.
+    join_key <- if (scale == "domain") {
+      stringr::str_split_i(top_features_df$COG_name, "_", 1)
+    } else {
+      top_features_df$COG_name
+    }
+    lookup <- stats::setNames(name_map$label, name_map$Variable)
+    new_label <- lookup[join_key]
+    # Keep original id only when no label is available or it's blank
+    replace <- !is.na(new_label) & nzchar(new_label)
+    top_features_df$COG_name[replace] <- paste0(
+      top_features_df$COG_name[replace],
+      " (", new_label[replace], ")"
+    )
   }
   if (!nrow(top_features_df)) {
     return(NULL)
@@ -1043,6 +1071,447 @@ makeCrossModelFeatureImportancePlot <- function(
   )
 }
 
+# makeMetadataSankey: multi-tier sankey of resistance flow:
+# phenotype -> drug class -> antibiotic -> country -> host -> isolation source.
+# Filters to a chosen drug class (or top N classes) to keep the diagram
+# legible, since unfiltered metadata has too many flows.
+# data: metadata tibble (one row per genome-drug record)
+# drug_classes: vector of drug class names to keep (NULL = top 3 by count)
+makeMetadataSankey <- function(data, drug_classes = NULL,
+                               max_classes = 3) {
+  if (!requireNamespace("networkD3", quietly = TRUE)) {
+    return(NULL)
+  }
+  if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
+    return(NULL)
+  }
+
+  required_cols <- c(
+    "genome_drug.resistant_phenotype", "genome_drug.antibiotic",
+    "genome.isolation_country", "genome.host_common_name",
+    "genome.isolation_source", "drug_class"
+  )
+  if (!all(required_cols %in% names(data))) return(NULL)
+
+  df <- data %>%
+    dplyr::filter(
+      !is.na(.data$genome_drug.resistant_phenotype),
+      !is.na(.data$genome_drug.antibiotic),
+      !is.na(.data$drug_class),
+      !is.na(.data$genome.isolation_country),
+      !is.na(.data$genome.host_common_name),
+      !is.na(.data$genome.isolation_source),
+      nzchar(.data$genome.isolation_country),
+      nzchar(.data$genome.host_common_name),
+      nzchar(.data$genome.isolation_source),
+      .data$genome_drug.resistant_phenotype %in%
+        c("Resistant", "Susceptible")
+    )
+  if (!nrow(df)) return(NULL)
+
+  # Pick top drug classes if not explicitly given
+  if (is.null(drug_classes) || !length(drug_classes)) {
+    drug_classes <- df %>%
+      dplyr::count(.data$drug_class, name = "n") %>%
+      dplyr::arrange(dplyr::desc(.data$n)) %>%
+      dplyr::slice_head(n = max_classes) %>%
+      dplyr::pull(.data$drug_class)
+  }
+  df <- df %>% dplyr::filter(.data$drug_class %in% drug_classes)
+  if (!nrow(df)) return(NULL)
+
+  # Group rare isolation sources into "Other" to keep the diagram readable
+  top_sources <- df %>%
+    dplyr::count(.data$genome.isolation_source, name = "n") %>%
+    dplyr::arrange(dplyr::desc(.data$n)) %>%
+    dplyr::slice_head(n = 8) %>%
+    dplyr::pull(.data$genome.isolation_source)
+  df <- df %>%
+    dplyr::mutate(
+      genome.isolation_source = dplyr::if_else(
+        .data$genome.isolation_source %in% top_sources,
+        .data$genome.isolation_source,
+        "Other"
+      )
+    )
+
+  agg <- df %>%
+    dplyr::count(
+      .data$genome_drug.resistant_phenotype,
+      .data$drug_class,
+      .data$genome_drug.antibiotic,
+      .data$genome.isolation_country,
+      .data$genome.host_common_name,
+      .data$genome.isolation_source,
+      name = "n"
+    )
+
+  # Build node list (unique values across all tiers)
+  nodes <- data.frame(
+    name = unique(c(
+      agg$genome_drug.resistant_phenotype,
+      agg$drug_class,
+      agg$genome_drug.antibiotic,
+      agg$genome.isolation_country,
+      agg$genome.host_common_name,
+      agg$genome.isolation_source
+    )),
+    stringsAsFactors = FALSE
+  )
+
+  # Build links across each adjacent pair of tiers
+  mk_links <- function(src_col, tgt_col, group_col) {
+    sub <- agg
+    sub$.src <- sub[[src_col]]
+    sub$.tgt <- sub[[tgt_col]]
+    sub$.grp <- sub[[group_col]]
+    sub %>%
+      dplyr::group_by(.data$.src, .data$.tgt, .data$.grp) %>%
+      dplyr::summarise(value = sum(.data$n), .groups = "drop") %>%
+      dplyr::transmute(
+        source = match(.data$.src, nodes$name) - 1,
+        target = match(.data$.tgt, nodes$name) - 1,
+        value  = .data$value,
+        group  = as.character(.data$.grp)
+      )
+  }
+
+  links <- dplyr::bind_rows(
+    mk_links("genome_drug.resistant_phenotype", "drug_class", "drug_class"),
+    mk_links("drug_class", "genome_drug.antibiotic", "drug_class"),
+    mk_links("genome_drug.antibiotic", "genome.isolation_country",
+             "drug_class"),
+    mk_links("genome.isolation_country", "genome.host_common_name",
+             "drug_class"),
+    mk_links("genome.host_common_name", "genome.isolation_source",
+             "drug_class")
+  )
+
+  networkD3::sankeyNetwork(
+    Links = as.data.frame(links),
+    Nodes = nodes,
+    Source = "source",
+    Target = "target",
+    Value = "value",
+    NodeID = "name",
+    LinkGroup = "group",
+    fontSize = 12,
+    nodeWidth = 25,
+    sinksRight = FALSE
+  )
+}
+
+# makeCogBarChart: horizontal bar chart of the most common COGs across the
+# features in a top-features tibble (already enriched with annotations).
+# top_n: number of COGs to display.
+makeCogBarChart <- function(enriched_tbl, top_n = 15) {
+  if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
+      !"COG" %in% names(enriched_tbl)) {
+    return(plotly::plot_ly() %>%
+      plotly::layout(title = list(text = "No annotations available", x = 0)))
+  }
+
+  # Split the comma-separated COG cells and count occurrences per Variable.
+  cog_df <- enriched_tbl %>%
+    dplyr::filter(!is.na(.data$COG), nzchar(.data$COG)) %>%
+    dplyr::select(.data$Variable, .data$COG, dplyr::any_of("COG_name")) %>%
+    dplyr::distinct()
+
+  if (!nrow(cog_df)) {
+    return(plotly::plot_ly() %>%
+      plotly::layout(title = list(text = "No COGs in selection", x = 0)))
+  }
+
+  rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
+    cogs <- trimws(strsplit(cog_df$COG[i], ",", fixed = TRUE)[[1]])
+    names <- if ("COG_name" %in% names(cog_df) &&
+                 !is.na(cog_df$COG_name[i])) {
+      n <- trimws(strsplit(cog_df$COG_name[i], ";", fixed = TRUE)[[1]])
+      rep_len(n, length(cogs))
+    } else {
+      rep(NA_character_, length(cogs))
+    }
+    data.frame(COG = cogs, COG_name = names, stringsAsFactors = FALSE)
+  }))
+
+  counts <- rows %>%
+    dplyr::filter(nzchar(.data$COG)) %>%
+    dplyr::count(.data$COG, .data$COG_name, name = "n") %>%
+    dplyr::arrange(dplyr::desc(.data$n)) %>%
+    dplyr::slice_head(n = top_n) %>%
+    dplyr::mutate(
+      label = dplyr::if_else(
+        is.na(.data$COG_name) | !nzchar(.data$COG_name),
+        .data$COG,
+        paste0(.data$COG, ": ",
+               stringr::str_trunc(.data$COG_name, 40))
+      )
+    )
+
+  counts$label <- factor(counts$label, levels = rev(counts$label))
+
+  plotly::plot_ly(
+    data = counts,
+    type = "bar",
+    orientation = "h",
+    x = ~n,
+    y = ~label,
+    marker = list(color = "#5b8db8"),
+    hovertemplate = paste0(
+      "<b>%{y}</b><br>Features: %{x}<extra></extra>"
+    )
+  ) %>%
+    plotly::layout(
+      title = list(
+        text = "Top COGs among selected features",
+        x = 0, font = list(size = 13)
+      ),
+      xaxis = list(title = "Features"),
+      yaxis = list(title = ""),
+      margin = list(l = 10, t = 50, r = 20, b = 40)
+    )
+}
+
+# makeDrugFeatureNetwork: interactive force-directed graph linking drugs (or
+# drug classes) to their top features (Variables). Optionally extends to
+# cluster and COG tiers when an annotations parquet is available.
+# top_data: pre-loaded top-features tibble from loadTopFeat().
+# bug: 3-letter species code.
+# top_n: number of top features per drug to include as edges.
+# include_clusters / include_cogs: add annotation tiers when TRUE.
+# results_root: path for annotation lookup (falls back to extdata).
+makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
+                                   include_clusters = FALSE,
+                                   include_cogs = FALSE,
+                                   results_root = NULL) {
+  if (!requireNamespace("networkD3", quietly = TRUE)) {
+    stop(
+      "Package 'networkD3' is required. ",
+      "Install it with install.packages('networkD3')."
+    )
+  }
+  if (is.null(top_data) || !is.data.frame(top_data) || !nrow(top_data)) {
+    return(NULL)
+  }
+
+  df <- top_data %>%
+    dplyr::mutate(species = normalize_species(.data$species)) %>%
+    dplyr::filter(.data$species %in% normalize_species(bug)) %>%
+    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) %>%
+    dplyr::filter(!is.na(.data$Variable), !is.na(.data$drug_or_class))
+
+  if (!nrow(df)) {
+    return(NULL)
+  }
+
+  # Take top N features per drug/class by max importance
+  edges_df <- df %>%
+    dplyr::group_by(.data$drug_or_class, .data$Variable) %>%
+    dplyr::summarise(
+      Importance = max(.data$Importance, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::group_by(.data$drug_or_class) %>%
+    dplyr::slice_max(order_by = .data$Importance, n = top_n) %>%
+    dplyr::ungroup()
+
+  if (!nrow(edges_df)) {
+    return(NULL)
+  }
+
+  drugs <- unique(edges_df$drug_or_class)
+  variables <- unique(edges_df$Variable)
+
+  drug_var_edges <- edges_df %>%
+    dplyr::transmute(
+      source_name = .data$drug_or_class,
+      target_name = .data$Variable,
+      value = .data$Importance
+    )
+
+  extra_nodes_cluster <- character(0)
+  extra_nodes_cog <- character(0)
+  var_cluster_edges <- NULL
+  cluster_cog_edges <- NULL
+
+  if ((include_clusters || include_cogs)) {
+    ann <- load_feature_annotations(bug, results_root)
+    if (!is.null(ann) && nrow(ann)) {
+      # Match Variable ("PF23840_IPR056912") against ann$feature ("PF23840")
+      variables_key <- stringr::str_split_i(variables, "_", 1)
+      var_key_map <- stats::setNames(variables, variables_key)
+      ann_sub <- ann %>%
+        dplyr::filter(.data$feature %in% variables_key)
+
+      if (include_clusters && nrow(ann_sub)) {
+        cl_edges <- ann_sub %>%
+          dplyr::filter(!is.na(.data$cluster)) %>%
+          dplyr::distinct(.data$feature, .data$cluster) %>%
+          dplyr::transmute(
+            source_name = var_key_map[.data$feature],
+            target_name = .data$cluster,
+            value = 0.5
+          )
+        if (nrow(cl_edges)) {
+          var_cluster_edges <- cl_edges
+          extra_nodes_cluster <- unique(cl_edges$target_name)
+        }
+      }
+
+      if (include_cogs && nrow(ann_sub)) {
+        if (include_clusters && !is.null(var_cluster_edges)) {
+          # cluster -> COG edges
+          cc_edges <- ann_sub %>%
+            dplyr::filter(!is.na(.data$cluster), !is.na(.data$COG)) %>%
+            dplyr::distinct(.data$cluster, .data$COG) %>%
+            dplyr::transmute(
+              source_name = .data$cluster,
+              target_name = .data$COG,
+              value = 0.3
+            )
+          if (nrow(cc_edges)) {
+            cluster_cog_edges <- cc_edges
+            extra_nodes_cog <- unique(cc_edges$target_name)
+          }
+        } else {
+          # variable -> COG directly
+          cc_edges <- ann_sub %>%
+            dplyr::filter(!is.na(.data$COG)) %>%
+            dplyr::distinct(.data$feature, .data$COG) %>%
+            dplyr::transmute(
+              source_name = var_key_map[.data$feature],
+              target_name = .data$COG,
+              value = 0.3
+            )
+          if (nrow(cc_edges)) {
+            cluster_cog_edges <- cc_edges
+            extra_nodes_cog <- unique(cc_edges$target_name)
+          }
+        }
+      }
+    }
+  }
+
+  nodes <- data.frame(
+    name = c(drugs, variables, extra_nodes_cluster, extra_nodes_cog),
+    node_type = c(
+      rep("drug", length(drugs)),
+      rep("variable", length(variables)),
+      rep("cluster", length(extra_nodes_cluster)),
+      rep("cog", length(extra_nodes_cog))
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  all_edges <- dplyr::bind_rows(
+    drug_var_edges, var_cluster_edges, cluster_cog_edges
+  )
+  edges <- all_edges %>%
+    dplyr::transmute(
+      source = match(.data$source_name, nodes$name) - 1,
+      target = match(.data$target_name, nodes$name) - 1,
+      value = .data$value
+    )
+
+  color_scale <- 'd3.scaleOrdinal()
+    .domain(["drug","variable","cluster","cog"])
+    .range(["#d4872a","#5b8db8","#66a61e","#9b7fba"])'
+
+  networkD3::forceNetwork(
+    Links = edges,
+    Nodes = nodes,
+    Source = "source",
+    Target = "target",
+    Value = "value",
+    NodeID = "name",
+    Group = "node_type",
+    colourScale = networkD3::JS(color_scale),
+    opacity = 0.9,
+    zoom = TRUE,
+    fontSize = 13,
+    linkDistance = 100,
+    charge = -80,
+    legend = TRUE
+  )
+}
+
+# makeCrossModelRidgePlot: balanced accuracy by drug class for holdout models,
+# coloured by Same (self-eval) vs Different (cross-eval).
+# cross_model: "country" or "time"
+makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
+  if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
+    return(plotly::plot_ly() %>%
+      plotly::layout(title = list(text = "No data available", x = 0)))
+  }
+
+  strat <- if (cross_model == "country") "country" else "year"
+
+  df <- perf_data %>%
+    dplyr::filter(
+      normalize_species(.data$species) %in% normalize_species(bug)
+    ) %>%
+    dplyr::filter(.data$strat_label == strat) %>%
+    dplyr::filter(.data$drug_label == "drug_class")
+
+  if (!nrow(df)) {
+    return(plotly::plot_ly() %>%
+      plotly::layout(title = list(text = "No data for selection", x = 0)))
+  }
+
+  # Label: Same = trained & tested on same stratum, Different = cross-tested
+  df <- df %>%
+    dplyr::mutate(
+      test_type = dplyr::if_else(
+        .data$cross_test, "Different", "Same"
+      )
+    )
+
+  strat_label <- if (cross_model == "country") "Countries" else "Time periods"
+
+  colors <- c(Same = "#d4872a", Different = "#5b8db8")
+
+  p <- plotly::plot_ly()
+
+  for (tt in c("Same", "Different")) {
+    sub <- df[df$test_type == tt, ]
+    if (!nrow(sub)) next
+    col <- colors[[tt]]
+    p <- p %>%
+      plotly::add_trace(
+        type = "box",
+        x = sub$bal_acc,
+        y = sub$drug_or_class,
+        name = tt,
+        orientation = "h",
+        boxpoints = "all",
+        jitter = 0.4,
+        pointpos = 0,
+        marker = list(
+          color = col, opacity = 0.7, size = 6
+        ),
+        line = list(color = col),
+        fillcolor = paste0(col, "44"),
+        hovertemplate = paste0(
+          "<b>Drug class:</b> %{y}<br>",
+          "<b>Bal. Accuracy:</b> %{x:.3f}<br>",
+          "<b>Test:</b> ", tt, "<extra></extra>"
+        )
+      )
+  }
+
+  p %>% plotly::layout(
+    title = list(
+      text = paste("Balanced accuracy by drug class -", strat_label),
+      x = 0, font = list(size = 13)
+    ),
+    xaxis = list(title = "Balanced accuracy", range = c(0, 1.05)),
+    yaxis = list(title = ""),
+    legend = list(title = list(text = "Test")),
+    boxmode = "group",
+    margin = list(l = 100, t = 50)
+  )
+}
+
 # makeCrossModelPerformancePlot: heatmap of balanced accuracy for holdout models.
 # perf_data: pre-loaded performance tibble (country or year stratified rows).
 # amRml column mapping:
@@ -1095,6 +1564,7 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   max_val <- max(models_performance, na.rm = TRUE)
   if (min_val == max_val) min_val <- min_val - 0.00001
 
+<<<<<<< Updated upstream
   row_title <- if (cross_model == "country") "Tested Country" else "Tested Year"
   col_title <- if (cross_model == "country") "Trained Country" else "Trained Year"
 
@@ -1120,8 +1590,160 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
       title = "Balanced Accuracy",
       at = round(seq(min_val, max_val, length.out = 5), 2),
       labels = round(seq(min_val, max_val, length.out = 5), 2)
+=======
+  plotly::plot_ly(
+    x = colnames(models_performance),
+    y = rownames(models_performance),
+    z = models_performance,
+    type = "heatmap",
+    colorscale = list(
+      c(0, "#f2f0f7"), c(0.25, "#cbc9e2"),
+      c(0.5, "#9e9ac8"), c(0.75, "#756bb1"),
+      c(1, "#54278f")
+    ),
+    zmin = 0.5, zmax = 1.0,
+    colorbar = list(title = "Balanced\naccuracy"),
+    hovertemplate = paste0(
+      "<b>Train data:</b> %{x}<br>",
+      "<b>Test data:</b> %{y}<br>",
+      "<b>Bal. Accuracy:</b> %{z:.3f}<extra></extra>"
+    )
+  ) %>%
+    plotly::layout(
+      title = list(
+        text = if (cross_model == "country") {
+          "Cross-country performance"
+        } else {
+          "Cross-time performance"
+        },
+        x = 0, font = list(size = 13)
+      ),
+      xaxis = list(title = "Train data", side = "bottom"),
+      yaxis = list(title = "Test data", autorange = "reversed"),
+      margin = list(l = 100, b = 60, t = 50)
+>>>>>>> Stashed changes
     )
   )
+}
+
+# Load a feature-id -> human-readable name mapping from the amRdata-style
+# directory layout. Returns a tibble with columns `Variable` and `label`,
+# or NULL if no matching parquet is found. Looks in:
+#   {amrdata_root}/{species_dir}/{gene|domain|protein}_names.parquet
+#   {results_root}/{species_dir}/{gene|domain|protein}_names.parquet
+#   {extdata}/{species_dir}/{gene|domain|protein}_names.parquet
+load_feature_name_map <- function(species_code, model_scale,
+                                  amrdata_root = NULL,
+                                  results_root = NULL) {
+  scale <- dplyr::case_when(
+    model_scale == "proteins" ~ "protein",
+    model_scale == "domains" ~ "domain",
+    model_scale == "genes" ~ "gene",
+    TRUE ~ model_scale
+  )
+  fname <- paste0(scale, "_names.parquet")
+
+  # Species-code and species-label maps use the same lookup paths as
+  # cluster_feature_COG.parquet.
+  roots <- c(amrdata_root, results_root,
+             system.file("extdata", package = "amRshiny"))
+  roots <- roots[!is.null(roots) & nzchar(roots) & dir.exists(roots)]
+
+  fp <- NULL
+  for (r in roots) {
+    for (d in list.dirs(r, full.names = TRUE, recursive = FALSE)) {
+      cand <- file.path(d, fname)
+      if (file.exists(cand)) {
+        fp <- cand
+        break
+      }
+    }
+    if (!is.null(fp)) break
+  }
+  if (is.null(fp)) return(NULL)
+
+  df <- tryCatch(arrow::read_parquet(fp), error = function(e) NULL)
+  if (is.null(df) || !nrow(df)) return(NULL)
+
+  # Normalise to {Variable, label}
+  if (scale == "gene" && all(c("Gene", "Annotation") %in% names(df))) {
+    return(tibble::tibble(
+      Variable = df$Gene, label = df$Annotation
+    ))
+  }
+  if (scale == "protein" && all(
+    c("proteinID", "proteinName") %in% names(df))) {
+    return(tibble::tibble(
+      Variable = df$proteinID, label = df$proteinName
+    ))
+  }
+  if (scale == "domain" && all(c("DB.ID", "SignDesc") %in% names(df))) {
+    # domain ids need deduping since one Pfam can occur many times
+    agg <- df %>%
+      dplyr::distinct(.data$DB.ID, .data$SignDesc) %>%
+      dplyr::group_by(.data$DB.ID) %>%
+      dplyr::summarise(
+        label = dplyr::first(.data$SignDesc),
+        .groups = "drop"
+      )
+    return(tibble::tibble(Variable = agg$DB.ID, label = agg$label))
+  }
+  NULL
+}
+
+# Load cluster/COG annotations for a species if the parquet exists.
+# Searches in results_root/<species_dir>/cluster_feature_COG.parquet first,
+# then falls back to extdata/<species_dir>/cluster_feature_COG.parquet.
+load_feature_annotations <- function(species_code, results_root = NULL) {
+  fname <- "cluster_feature_COG.parquet"
+  if (!is.null(results_root) && nzchar(results_root)) {
+    for (d in list.dirs(results_root, full.names = TRUE, recursive = FALSE)) {
+      fp <- file.path(d, fname)
+      if (file.exists(fp)) return(arrow::read_parquet(fp))
+    }
+  }
+  extdata <- system.file("extdata", package = "amRshiny")
+  if (nzchar(extdata)) {
+    for (d in list.dirs(extdata, full.names = TRUE, recursive = FALSE)) {
+      fp <- file.path(d, fname)
+      if (file.exists(fp)) return(arrow::read_parquet(fp))
+    }
+  }
+  NULL
+}
+
+# Enrich a top-features tibble with cluster/COG annotations joined on
+# Variable -> feature. Collapses multiple COGs per feature into one comma-
+# separated cell. Returns the input unchanged if no annotations found.
+enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
+  if (is.null(tbl) || !nrow(tbl) || !"Variable" %in% names(tbl)) return(tbl)
+  ann <- load_feature_annotations(species_code, results_root)
+  if (is.null(ann) || !nrow(ann)) return(tbl)
+
+  # Top features Variable can be "PF23840_IPR056912" (domains) or the raw
+  # feature id (genes/proteins). Split on first "_" to extract the join key.
+  tbl <- tbl %>%
+    dplyr::mutate(
+      .join_key = stringr::str_split_i(.data$Variable, "_", 1)
+    )
+
+  join_keys <- unique(tbl$.join_key)
+
+  ann_collapsed <- ann %>%
+    dplyr::filter(.data$feature %in% join_keys) %>%
+    dplyr::group_by(.data$feature) %>%
+    dplyr::summarise(
+      cluster = dplyr::first(.data$cluster),
+      cluster_name = dplyr::first(.data$cluster_name),
+      COG = paste(unique(stats::na.omit(.data$COG)), collapse = ", "),
+      COG_name = paste(unique(stats::na.omit(.data$COG_name)),
+                       collapse = "; "),
+      .groups = "drop"
+    )
+
+  tbl %>%
+    dplyr::left_join(ann_collapsed, by = c(".join_key" = "feature")) %>%
+    dplyr::select(-.data$.join_key)
 }
 
 makeFeatureImportTable <- function(feature_import_table) {
@@ -1132,8 +1754,9 @@ makeFeatureImportTable <- function(feature_import_table) {
 
   # Preferred display order (only those that exist will be used)
   cols_priority <- c(
-    "species", "drug_or_class",
-    "COG_name", "COG_description", "ARG_name", "ARG_description",
+    "species", "drug_or_class", "Variable",
+    "cluster", "cluster_name", "COG", "COG_name",
+    "COG_description", "ARG_name", "ARG_description",
     "Gene", "Annotation", "accession",
     "feature_type", "feature_subtype", "Importance"
   )
@@ -1162,12 +1785,42 @@ makeFeatureImportTable <- function(feature_import_table) {
         TRUE ~ .data$accession
       ))
   }
-  if ("COG_name" %in% names(tbl)) {
-    tbl <- tbl |>
-      dplyr::mutate(COG_name = stringr::str_glue(
-        "<a href='https://www.ncbi.nlm.nih.gov/research/cog/cog/{COG_name}'",
-        " target='_blank' style='color:#1a73e8; text-decoration: underline;'>{COG_name}</a>"
-      ))
+  # Link cluster (fig IDs) to BVBRC, one <a> per unique id (comma-sep cells).
+  if ("cluster" %in% names(tbl)) {
+    link_fig <- function(ids) {
+      if (is.na(ids) || !nzchar(ids)) return(ids)
+      parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
+      linked <- vapply(parts, function(id) {
+        url <- paste0(
+          "https://www.bv-brc.org/view/Feature/",
+          utils::URLencode(id, reserved = TRUE)
+        )
+        paste0(
+          "<a href='", url, "' target='_blank' ",
+          "style='color:#1a73e8; text-decoration: underline;'>",
+          id, "</a>"
+        )
+      }, character(1))
+      paste(linked, collapse = ", ")
+    }
+    tbl$cluster <- vapply(tbl$cluster, link_fig, character(1))
+  }
+  # Link COG ids (comma-separated) to NCBI COG page.
+  if ("COG" %in% names(tbl)) {
+    link_cog <- function(ids) {
+      if (is.na(ids) || !nzchar(ids)) return(ids)
+      parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
+      linked <- vapply(parts, function(id) {
+        paste0(
+          "<a href='https://www.ncbi.nlm.nih.gov/research/cog/cog/",
+          id, "' target='_blank' ",
+          "style='color:#1a73e8; text-decoration: underline;'>",
+          id, "</a>"
+        )
+      }, character(1))
+      paste(linked, collapse = ", ")
+    }
+    tbl$COG <- vapply(tbl$COG, link_cog, character(1))
   }
 
   DT::datatable(
@@ -1176,7 +1829,88 @@ makeFeatureImportTable <- function(feature_import_table) {
     class = "display nowrap stripe",
     rownames = FALSE,
     width = "100%",
-    escape = FALSE
+    escape = FALSE,
+    selection = "single"
+  )
+}
+
+# makeFeatureEgoNetwork: small force-directed graph for a single selected
+# feature, showing feature -> cluster -> COG links.
+makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
+  if (!requireNamespace("networkD3", quietly = TRUE)) return(NULL)
+  if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
+      is.null(variable) || !nzchar(variable)) {
+    return(NULL)
+  }
+
+  row <- enriched_tbl %>%
+    dplyr::filter(.data$Variable == variable) %>%
+    dplyr::slice_head(n = 1)
+  if (!nrow(row)) return(NULL)
+
+  cogs <- character(0)
+  if ("COG" %in% names(row) && !is.na(row$COG) && nzchar(row$COG)) {
+    cogs <- trimws(strsplit(row$COG, ",", fixed = TRUE)[[1]])
+  }
+  cluster <- if ("cluster" %in% names(row) && !is.na(row$cluster) &&
+                 nzchar(row$cluster)) row$cluster else NA_character_
+
+  if (is.na(cluster) && !length(cogs)) return(NULL)
+
+  nodes_name <- c(variable)
+  nodes_type <- c("variable")
+  edges_src <- c()
+  edges_tgt <- c()
+
+  if (!is.na(cluster)) {
+    nodes_name <- c(nodes_name, cluster)
+    nodes_type <- c(nodes_type, "cluster")
+    edges_src <- c(edges_src, variable)
+    edges_tgt <- c(edges_tgt, cluster)
+    for (cg in cogs) {
+      nodes_name <- c(nodes_name, cg)
+      nodes_type <- c(nodes_type, "cog")
+      edges_src <- c(edges_src, cluster)
+      edges_tgt <- c(edges_tgt, cg)
+    }
+  } else {
+    for (cg in cogs) {
+      nodes_name <- c(nodes_name, cg)
+      nodes_type <- c(nodes_type, "cog")
+      edges_src <- c(edges_src, variable)
+      edges_tgt <- c(edges_tgt, cg)
+    }
+  }
+
+  nodes <- data.frame(
+    name = nodes_name, node_type = nodes_type,
+    stringsAsFactors = FALSE
+  )
+  edges <- data.frame(
+    source = match(edges_src, nodes$name) - 1,
+    target = match(edges_tgt, nodes$name) - 1,
+    value = 1
+  )
+
+  color_scale <- 'd3.scaleOrdinal()
+    .domain(["variable","cluster","cog"])
+    .range(["#5b8db8","#66a61e","#9b7fba"])'
+
+  networkD3::forceNetwork(
+    Links = edges,
+    Nodes = nodes,
+    Source = "source",
+    Target = "target",
+    Value = "value",
+    NodeID = "name",
+    Group = "node_type",
+    colourScale = networkD3::JS(color_scale),
+    opacity = 0.9,
+    zoom = TRUE,
+    fontSize = 12,
+    linkDistance = 80,
+    charge = -120,
+    legend = TRUE
   )
 }
 

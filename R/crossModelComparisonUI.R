@@ -6,7 +6,9 @@ crossModelComparisonUI <- function() {
     title = "Model holdouts",
     icon = icon("clock"),
     fluidRow(
-      h3("Model Holdouts Comparison", style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"),
+      h3("Model Holdouts Comparison",
+        style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"
+      ),
       style = "padding: 10px;",
       tagList(
         column(
@@ -38,8 +40,13 @@ crossModelComparisonUI <- function() {
           style = "height: 80px; display: flex; align-items: center;",
           radioButtons(
             inputId = "cross_model_comparison",
-            label = tags$label("Cross-train models across", style = "font-size: 15px;"),
-            choices = c("Countries" = "country", "Time (5 yr intervals)" = "time"),
+            label = tags$label("Cross-train models across",
+              style = "font-size: 15px;"
+            ),
+            choices = c(
+              "Countries" = "country",
+              "Time (5 yr intervals)" = "time"
+            ),
             selected = "country",
             inline = TRUE
           )
@@ -54,16 +61,55 @@ crossModelComparisonUI <- function() {
         tabsetPanel(
           id = "cross_model_comparison_tabset",
           type = "tabs",
+          # Tab 1: Accuracy distributions
           tabPanel(
-            "Model performance",
-            tagList(
+            "Accuracy distributions",
+            fluidRow(
+              style = "padding: 10px;",
               column(
+<<<<<<< Updated upstream
                 width = 12,
                 plotOutput("cross_model_perf_plot", height = "100%"),
                 style = "padding: 0; border: 1px solid lightgray; height: 700px;"
+=======
+                width = 6,
+                plotly::plotlyOutput("cross_model_ridge_country",
+                  height = "400px"
+                ),
+                style = "padding: 5px; border: 1px solid lightgray;"
+              ),
+              column(
+                width = 6,
+                plotly::plotlyOutput("cross_model_ridge_time",
+                  height = "400px"
+                ),
+                style = "padding: 5px; border: 1px solid lightgray;"
+>>>>>>> Stashed changes
               )
             )
           ),
+          # Tab 2: Model performance heatmaps
+          tabPanel(
+            "Model performance",
+            fluidRow(
+              style = "padding: 10px;",
+              column(
+                width = 6,
+                plotly::plotlyOutput("cross_model_perf_country",
+                  height = "400px"
+                ),
+                style = "padding: 5px; border: 1px solid lightgray;"
+              ),
+              column(
+                width = 6,
+                plotly::plotlyOutput("cross_model_perf_time",
+                  height = "400px"
+                ),
+                style = "padding: 5px; border: 1px solid lightgray;"
+              )
+            )
+          ),
+          # Tab 3: Top features
           tabPanel(
             "Top features",
             tagList(
@@ -72,13 +118,18 @@ crossModelComparisonUI <- function() {
                   width = 4,
                   div(
                     style = "padding: 10px;",
-                    sliderInput(inputId = "cross_model_top_n_features", label = "Top features", min = 0, max = 100, value = 10)
+                    sliderInput(
+                      inputId = "cross_model_top_n_features",
+                      label = "Top features",
+                      min = 0, max = 100, value = 10
+                    )
                   )
                 )
               ),
               fluidRow(
                 column(
                   width = 6,
+<<<<<<< Updated upstream
                   plotOutput("cross_model_feature_importance_plot", height = "100%"),
                   style = "padding: 0; height: 600px; border: 1px solid lightgray;"
                 ),
@@ -86,6 +137,26 @@ crossModelComparisonUI <- function() {
                   width = 6,
                   DT::dataTableOutput("cross_model_feature_importance_table"),
                   style = "padding: 0; height: 600px; border: 1px solid lightgray;"
+=======
+                  plotly::plotlyOutput(
+                    "cross_model_feature_importance_plot",
+                    height = "100%"
+                  ),
+                  style = paste0(
+                    "padding: 0; height: 400px;",
+                    " border: 1px solid lightgray;"
+                  )
+                ),
+                column(
+                  width = 6,
+                  DT::dataTableOutput(
+                    "cross_model_feature_importance_table"
+                  ),
+                  style = paste0(
+                    "padding: 0; height: 400px;",
+                    " border: 1px solid lightgray;"
+                  )
+>>>>>>> Stashed changes
                 )
               )
             )

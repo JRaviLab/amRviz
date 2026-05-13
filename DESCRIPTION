@@ -38,6 +38,7 @@ Imports:
     grid,
     here,
     magrittr,
+    networkD3,
     plotly,
     purrr,
     readr,
@@ -52,7 +53,6 @@ Imports:
 Suggests:
     countrycode,
     knitr,
-    networkD3,
     processx,
     rmarkdown,
     spelling,
