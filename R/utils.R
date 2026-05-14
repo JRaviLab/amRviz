@@ -1093,7 +1093,9 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     "genome.isolation_country", "genome.host_common_name",
     "genome.isolation_source", "drug_class"
   )
-  if (!all(required_cols %in% names(data))) return(NULL)
+  if (!all(required_cols %in% names(data))) {
+    return(NULL)
+  }
 
   df <- data %>%
     dplyr::filter(
@@ -1109,7 +1111,9 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
       .data$genome_drug.resistant_phenotype %in%
         c("Resistant", "Susceptible")
     )
-  if (!nrow(df)) return(NULL)
+  if (!nrow(df)) {
+    return(NULL)
+  }
 
   # Pick top drug classes if not explicitly given
   if (is.null(drug_classes) || !length(drug_classes)) {
@@ -1120,7 +1124,9 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
       dplyr::pull(.data$drug_class)
   }
   df <- df %>% dplyr::filter(.data$drug_class %in% drug_classes)
-  if (!nrow(df)) return(NULL)
+  if (!nrow(df)) {
+    return(NULL)
+  }
 
   # Group rare isolation sources into "Other" to keep the diagram readable
   top_sources <- df %>%
@@ -1181,12 +1187,18 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
   links <- dplyr::bind_rows(
     mk_links("genome_drug.resistant_phenotype", "drug_class", "drug_class"),
     mk_links("drug_class", "genome_drug.antibiotic", "drug_class"),
-    mk_links("genome_drug.antibiotic", "genome.isolation_country",
-             "drug_class"),
-    mk_links("genome.isolation_country", "genome.host_common_name",
-             "drug_class"),
-    mk_links("genome.host_common_name", "genome.isolation_source",
-             "drug_class")
+    mk_links(
+      "genome_drug.antibiotic", "genome.isolation_country",
+      "drug_class"
+    ),
+    mk_links(
+      "genome.isolation_country", "genome.host_common_name",
+      "drug_class"
+    ),
+    mk_links(
+      "genome.host_common_name", "genome.isolation_source",
+      "drug_class"
+    )
   )
 
   networkD3::sankeyNetwork(
@@ -1208,7 +1220,7 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 # top_n: number of COGs to display.
 makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
-      !"COG" %in% names(enriched_tbl)) {
+    !"COG" %in% names(enriched_tbl)) {
     return(plotly::plot_ly() %>%
       plotly::layout(title = list(text = "No annotations available", x = 0)))
   }
@@ -1227,7 +1239,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
     cogs <- trimws(strsplit(cog_df$COG[i], ",", fixed = TRUE)[[1]])
     names <- if ("COG_name" %in% names(cog_df) &&
-                 !is.na(cog_df$COG_name[i])) {
+      !is.na(cog_df$COG_name[i])) {
       n <- trimws(strsplit(cog_df$COG_name[i], ";", fixed = TRUE)[[1]])
       rep_len(n, length(cogs))
     } else {
@@ -1245,8 +1257,10 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
       label = dplyr::if_else(
         is.na(.data$COG_name) | !nzchar(.data$COG_name),
         .data$COG,
-        paste0(.data$COG, ": ",
-               stringr::str_trunc(.data$COG_name, 40))
+        paste0(
+          .data$COG, ": ",
+          stringr::str_trunc(.data$COG_name, 40)
+        )
       )
     )
 
@@ -1618,8 +1632,10 @@ load_feature_name_map <- function(species_code, model_scale,
 
   # Species-code and species-label maps use the same lookup paths as
   # cluster_feature_COG.parquet.
-  roots <- c(amrdata_root, results_root,
-             system.file("extdata", package = "amRviz"))
+  roots <- c(
+    amrdata_root, results_root,
+    system.file("extdata", package = "amRviz")
+  )
   roots <- roots[!is.null(roots) & nzchar(roots) & dir.exists(roots)]
 
   fp <- NULL
@@ -1633,10 +1649,14 @@ load_feature_name_map <- function(species_code, model_scale,
     }
     if (!is.null(fp)) break
   }
-  if (is.null(fp)) return(NULL)
+  if (is.null(fp)) {
+    return(NULL)
+  }
 
   df <- tryCatch(arrow::read_parquet(fp), error = function(e) NULL)
-  if (is.null(df) || !nrow(df)) return(NULL)
+  if (is.null(df) || !nrow(df)) {
+    return(NULL)
+  }
 
   # Normalise to {Variable, label}
   if (scale == "gene" && all(c("Gene", "Annotation") %in% names(df))) {
@@ -1645,7 +1665,8 @@ load_feature_name_map <- function(species_code, model_scale,
     ))
   }
   if (scale == "protein" && all(
-    c("proteinID", "proteinName") %in% names(df))) {
+    c("proteinID", "proteinName") %in% names(df)
+  )) {
     return(tibble::tibble(
       Variable = df$proteinID, label = df$proteinName
     ))
@@ -1672,14 +1693,18 @@ load_feature_annotations <- function(species_code, results_root = NULL) {
   if (!is.null(results_root) && nzchar(results_root)) {
     for (d in list.dirs(results_root, full.names = TRUE, recursive = FALSE)) {
       fp <- file.path(d, fname)
-      if (file.exists(fp)) return(arrow::read_parquet(fp))
+      if (file.exists(fp)) {
+        return(arrow::read_parquet(fp))
+      }
     }
   }
   extdata <- system.file("extdata", package = "amRviz")
   if (nzchar(extdata)) {
     for (d in list.dirs(extdata, full.names = TRUE, recursive = FALSE)) {
       fp <- file.path(d, fname)
-      if (file.exists(fp)) return(arrow::read_parquet(fp))
+      if (file.exists(fp)) {
+        return(arrow::read_parquet(fp))
+      }
     }
   }
   NULL
@@ -1689,9 +1714,13 @@ load_feature_annotations <- function(species_code, results_root = NULL) {
 # Variable -> feature. Collapses multiple COGs per feature into one comma-
 # separated cell. Returns the input unchanged if no annotations found.
 enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
-  if (is.null(tbl) || !nrow(tbl) || !"Variable" %in% names(tbl)) return(tbl)
+  if (is.null(tbl) || !nrow(tbl) || !"Variable" %in% names(tbl)) {
+    return(tbl)
+  }
   ann <- load_feature_annotations(species_code, results_root)
-  if (is.null(ann) || !nrow(ann)) return(tbl)
+  if (is.null(ann) || !nrow(ann)) {
+    return(tbl)
+  }
 
   # Top features Variable can be "PF23840_IPR056912" (domains) or the raw
   # feature id (genes/proteins). Split on first "_" to extract the join key.
@@ -1710,7 +1739,8 @@ enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
       cluster_name = dplyr::first(.data$cluster_name),
       COG = paste(unique(stats::na.omit(.data$COG)), collapse = ", "),
       COG_name = paste(unique(stats::na.omit(.data$COG_name)),
-                       collapse = "; "),
+        collapse = "; "
+      ),
       .groups = "drop"
     )
 
@@ -1761,7 +1791,9 @@ makeFeatureImportTable <- function(feature_import_table) {
   # Link cluster (fig IDs) to BVBRC, one <a> per unique id (comma-sep cells).
   if ("cluster" %in% names(tbl)) {
     link_fig <- function(ids) {
-      if (is.na(ids) || !nzchar(ids)) return(ids)
+      if (is.na(ids) || !nzchar(ids)) {
+        return(ids)
+      }
       parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
       linked <- vapply(parts, function(id) {
         url <- paste0(
@@ -1781,7 +1813,9 @@ makeFeatureImportTable <- function(feature_import_table) {
   # Link COG ids (comma-separated) to NCBI COG page.
   if ("COG" %in% names(tbl)) {
     link_cog <- function(ids) {
-      if (is.na(ids) || !nzchar(ids)) return(ids)
+      if (is.na(ids) || !nzchar(ids)) {
+        return(ids)
+      }
       parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
       linked <- vapply(parts, function(id) {
         paste0(
@@ -1810,25 +1844,35 @@ makeFeatureImportTable <- function(feature_import_table) {
 # makeFeatureEgoNetwork: small force-directed graph for a single selected
 # feature, showing feature -> cluster -> COG links.
 makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
-  if (!requireNamespace("networkD3", quietly = TRUE)) return(NULL)
+  if (!requireNamespace("networkD3", quietly = TRUE)) {
+    return(NULL)
+  }
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
-      is.null(variable) || !nzchar(variable)) {
+    is.null(variable) || !nzchar(variable)) {
     return(NULL)
   }
 
   row <- enriched_tbl %>%
     dplyr::filter(.data$Variable == variable) %>%
     dplyr::slice_head(n = 1)
-  if (!nrow(row)) return(NULL)
+  if (!nrow(row)) {
+    return(NULL)
+  }
 
   cogs <- character(0)
   if ("COG" %in% names(row) && !is.na(row$COG) && nzchar(row$COG)) {
     cogs <- trimws(strsplit(row$COG, ",", fixed = TRUE)[[1]])
   }
   cluster <- if ("cluster" %in% names(row) && !is.na(row$cluster) &&
-                 nzchar(row$cluster)) row$cluster else NA_character_
+    nzchar(row$cluster)) {
+    row$cluster
+  } else {
+    NA_character_
+  }
 
-  if (is.na(cluster) && !length(cogs)) return(NULL)
+  if (is.na(cluster) && !length(cogs)) {
+    return(NULL)
+  }
 
   nodes_name <- c(variable)
   nodes_type <- c("variable")

@@ -578,7 +578,9 @@ launchAMRDashboard <- function(results_root = NULL,
     metadata_for_bug <- reactive({
       req(input$bug_metadata_id)
       fp <- get_metadata_path(input$bug_metadata_id, results_root)
-      if (is.null(fp) || !file.exists(fp)) return(NULL)
+      if (is.null(fp) || !file.exists(fp)) {
+        return(NULL)
+      }
       arrow::read_parquet(fp) |>
         dplyr::mutate(species = input$bug_metadata_id)
     })
@@ -587,7 +589,9 @@ launchAMRDashboard <- function(results_root = NULL,
     observe({
       meta <- metadata_for_bug()
       if (is.null(meta) || !nrow(meta) ||
-          !"drug_class" %in% names(meta)) return()
+        !"drug_class" %in% names(meta)) {
+        return()
+      }
       classes <- sort(unique(meta$drug_class[!is.na(meta$drug_class)]))
       # Default selection: top 3 by record count
       top3 <- meta %>%
@@ -604,7 +608,9 @@ launchAMRDashboard <- function(results_root = NULL,
 
     output$metadata_sankey <- networkD3::renderSankeyNetwork({
       meta <- metadata_for_bug()
-      if (is.null(meta) || !nrow(meta)) return(NULL)
+      if (is.null(meta) || !nrow(meta)) {
+        return(NULL)
+      }
       makeMetadataSankey(meta, drug_classes = input$metadata_sankey_classes)
     })
 
@@ -885,7 +891,7 @@ launchAMRDashboard <- function(results_root = NULL,
     # network stay in sync.
     enriched_across_bug <- reactive({
       amr_drug <- if (!is.null(input$across_bug_id) &&
-                      input$across_bug_id == "drug_class") {
+        input$across_bug_id == "drug_class") {
         input$amr_drug_class_ml_across_bug
       } else {
         input$amr_drug_ml_across_bug
@@ -893,9 +899,11 @@ launchAMRDashboard <- function(results_root = NULL,
       bug <- input$bug_search_amr_across_bug
       tf <- filtered_top_features() %>%
         dplyr::filter(normalize_species(.data$species) %in%
-                        normalize_species(bug)) %>%
+          normalize_species(bug)) %>%
         dplyr::filter(.data$drug_or_class %in% amr_drug)
-      if (!nrow(tf)) return(NULL)
+      if (!nrow(tf)) {
+        return(NULL)
+      }
       dplyr::bind_rows(lapply(unique(tf$species), function(sp) {
         enrich_with_annotations(
           tf[tf$species == sp, ],
@@ -907,7 +915,7 @@ launchAMRDashboard <- function(results_root = NULL,
 
     enriched_across_drug <- reactive({
       amr_drug <- if (!is.null(input$across_drug_id) &&
-                      input$across_drug_id == "drug_class") {
+        input$across_drug_id == "drug_class") {
         input$amr_drug_class_ml_across_drug
       } else {
         input$amr_drug_ml_across_drug
@@ -915,23 +923,30 @@ launchAMRDashboard <- function(results_root = NULL,
       bug <- input$bug_search_amr_across_drug
       tf <- filtered_top_features() %>%
         dplyr::filter(normalize_species(.data$species) %in%
-                        normalize_species(bug)) %>%
+          normalize_species(bug)) %>%
         dplyr::filter(.data$drug_or_class %in% amr_drug)
-      if (!nrow(tf)) return(NULL)
+      if (!nrow(tf)) {
+        return(NULL)
+      }
       enrich_with_annotations(
-        tf, species_code = bug, results_root = results_root
+        tf,
+        species_code = bug, results_root = results_root
       )
     })
 
     output$across_bug_feature_importance_table <- DT::renderDataTable({
       tf <- enriched_across_bug()
-      if (is.null(tf) || !nrow(tf)) return(NULL)
+      if (is.null(tf) || !nrow(tf)) {
+        return(NULL)
+      }
       makeFeatureImportTable(tf)
     })
 
     output$across_drug_feature_importance_table <- DT::renderDataTable({
       tf <- enriched_across_drug()
-      if (is.null(tf) || !nrow(tf)) return(NULL)
+      if (is.null(tf) || !nrow(tf)) {
+        return(NULL)
+      }
       makeFeatureImportTable(tf)
     })
 
