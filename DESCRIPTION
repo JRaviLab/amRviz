@@ -29,6 +29,7 @@ Imports:
     arrow,
     circlize,
     ComplexHeatmap,
+    countrycode,
     DBI,
     dplyr,
     DT,
@@ -50,7 +51,6 @@ Imports:
     tibble,
     tidyr
 Suggests:
-    countrycode,
     knitr,
     networkD3,
     processx,
