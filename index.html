@@ -233,57 +233,57 @@
 <col width="50%">
 <col width="50%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Column</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>species</code></td>
 <td>Species code (e.g. <code>"Sfl"</code>)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>drug_or_class</code></td>
 <td>Drug or drug class abbreviation</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>drug_label</code></td>
 <td>
 <code>"drug"</code> or <code>"drug_class"</code>
 </td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>feature_type</code></td>
 <td>Molecular scale: <code>genes</code>, <code>proteins</code>, <code>domains</code>
 </td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>feature_subtype</code></td>
 <td>Data encoding: <code>binary</code>, <code>counts</code>
 </td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>strat_label</code></td>
 <td>Stratification: <code>NA</code> (baseline), <code>"country"</code>, or <code>"year"</code>
 </td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>strat_value</code></td>
 <td>Trained-on country or year (stratified models only)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>strat_value_test</code></td>
 <td>Tested-on country or year (cross models only)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>bal_acc</code></td>
 <td>Balanced accuracy</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>f1</code></td>
 <td>F1 score</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>nmcc</code></td>
 <td>Normalized Matthews correlation coefficient</td>
 </tr>
@@ -294,36 +294,36 @@
 <h3 id="top-features-_ml_top_featuresparquet">Top features (<code>*_ML_top_features.parquet</code>)<a class="anchor" aria-label="anchor" href="#top-features-_ml_top_featuresparquet"></a>
 </h3>
 <table class="table">
-<thead><tr class="header">
+<thead><tr>
 <th>Column</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>species</code></td>
 <td>Species code</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>drug_or_class</code></td>
 <td>Drug or drug class abbreviation</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>feature_type</code></td>
 <td>Molecular scale</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>feature_subtype</code></td>
 <td>Data encoding</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>strat_label</code></td>
 <td>Stratification (<code>NA</code> for baseline)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>Variable</code></td>
 <td>Feature identifier (gene/protein/domain ID)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>Importance</code></td>
 <td>Feature importance score</td>
 </tr>
@@ -334,46 +334,46 @@
 <h3 id="metadata-_metadataparquet">Metadata (<code>*_metadata.parquet</code>)<a class="anchor" aria-label="anchor" href="#metadata-_metadataparquet"></a>
 </h3>
 <table class="table">
-<thead><tr class="header">
+<thead><tr>
 <th>Column</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>genome_drug.genome_id</code></td>
 <td>Unique genome identifier</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>genome_drug.antibiotic</code></td>
 <td>Antibiotic tested</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>genome_drug.resistant_phenotype</code></td>
 <td>
 <code>"Resistant"</code> or <code>"Susceptible"</code>
 </td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>genome.isolation_country</code></td>
 <td>Country of isolation</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>genome.collection_year</code></td>
 <td>Collection year</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>genome.host_common_name</code></td>
 <td>Host organism</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>genome.isolation_source</code></td>
 <td>Isolation source</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>drug_class</code></td>
 <td>Drug class</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>resistant_classes</code></td>
 <td>All resistant drug classes for this isolate</td>
 </tr>
