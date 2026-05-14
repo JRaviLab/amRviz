@@ -67,11 +67,6 @@ crossModelComparisonUI <- function() {
             fluidRow(
               style = "padding: 10px;",
               column(
-<<<<<<< Updated upstream
-                width = 12,
-                plotOutput("cross_model_perf_plot", height = "100%"),
-                style = "padding: 0; border: 1px solid lightgray; height: 700px;"
-=======
                 width = 6,
                 plotly::plotlyOutput("cross_model_ridge_country",
                   height = "400px"
@@ -84,7 +79,6 @@ crossModelComparisonUI <- function() {
                   height = "400px"
                 ),
                 style = "padding: 5px; border: 1px solid lightgray;"
->>>>>>> Stashed changes
               )
             )
           ),
@@ -129,15 +123,6 @@ crossModelComparisonUI <- function() {
               fluidRow(
                 column(
                   width = 6,
-<<<<<<< Updated upstream
-                  plotOutput("cross_model_feature_importance_plot", height = "100%"),
-                  style = "padding: 0; height: 600px; border: 1px solid lightgray;"
-                ),
-                column(
-                  width = 6,
-                  DT::dataTableOutput("cross_model_feature_importance_table"),
-                  style = "padding: 0; height: 600px; border: 1px solid lightgray;"
-=======
                   plotly::plotlyOutput(
                     "cross_model_feature_importance_plot",
                     height = "100%"
@@ -156,7 +141,6 @@ crossModelComparisonUI <- function() {
                     "padding: 0; height: 400px;",
                     " border: 1px solid lightgray;"
                   )
->>>>>>> Stashed changes
                 )
               )
             )

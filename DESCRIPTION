@@ -1,4 +1,4 @@
-Package: amRshiny
+Package: amRviz
 Title: Interactive dashboard for AMR data and model visualization | pkg 3 of 3-pkg amR suite
 Version: 0.99.0
 Authors@R: c(
@@ -64,5 +64,5 @@ biocViews:
     MicrobialGenomics,
     Pathogen,
     Visualization
-URL: https://github.com/jravilab/amRshiny
-BugReports: https://github.com/jravilab/amRshiny/issues
+URL: https://github.com/jravilab/amRviz
+BugReports: https://github.com/jravilab/amRviz/issues

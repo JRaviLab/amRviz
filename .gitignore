@@ -11,3 +11,4 @@ docs
 # Rmd/qmd artifacts
 inst/notebooks/*.html
 *.log
+vignettes/midterm_project_2.Rmd

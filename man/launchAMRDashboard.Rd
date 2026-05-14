@@ -4,7 +4,7 @@
 \alias{launchAMRDashboard}
 \title{AMR Shiny dashboard application}
 \usage{
-launchAMRDashboard(results_root = NULL)
+launchAMRDashboard(results_root = NULL, amrdata_root = NULL)
 }
 \arguments{
 \item{results_root}{File path to the root directory containing amRml model

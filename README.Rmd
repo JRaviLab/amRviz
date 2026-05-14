@@ -13,19 +13,19 @@ knitr::opts_chunk$set(
 )
 ```
 
-# amRshiny
+# amRviz
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-**amRshiny** is an interactive Shiny dashboard for exploring antimicrobial resistance (AMR) data and machine learning model results.
+**amRviz** is an interactive Shiny dashboard for exploring antimicrobial resistance (AMR) data and machine learning model results.
 
 This is the final package in the **AMR package suite**, [JRaviLab/amR](https://github.com/jravilab/amR):
 
 - **amRdata**: Data (and metadata) preparation from BV-BRC
 - **amRml**: ML modeling and analysis
-- **amRshiny**: Interactive visualization (this package)
+- **amRviz**: Interactive visualization (this package)
 
 ## Features
 
@@ -50,17 +50,17 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 # Install Bioconductor dependencies
 BiocManager::install("ComplexHeatmap")
 
-# Install amRshiny from GitHub
+# Install amRviz from GitHub
 if (!requireNamespace("devtools", quietly = TRUE))
     install.packages("devtools")
 
-devtools::install_github("JRaviLab/amRshiny")
+devtools::install_github("JRaviLab/amRviz")
 ```
 
 ## Quick start
 
 ```r
-library(amRshiny)
+library(amRviz)
 
 # Launch the dashboard
 launch_dashboard()
@@ -147,7 +147,7 @@ Required columns:
 ### Package structure
 
 ```
-amRshiny/
+amRviz/
 ├── R/
 │   └── launch_dashboard.R    # Main launch function
 ├── inst/
@@ -163,7 +163,7 @@ amRshiny/
 
 ## Citation
 
-If you use `amRshiny` in your research, please cite:
+If you use `amRviz` in your research, please cite:
 
 ```
 Brenner E, Ghosh A, Wolfe E, Boyer E, Vang C, Lesiyon R, Mayer D, Ravi J. (2026).
@@ -188,7 +188,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ### Reporting Issues
 
-Report bugs and request features at: https://github.com/JRaviLab/amRshiny/issues
+Report bugs and request features at: https://github.com/JRaviLab/amRviz/issues
 
 ## Related projects
 
@@ -198,7 +198,7 @@ Report bugs and request features at: https://github.com/JRaviLab/amRshiny/issues
 
 ## Code of conduct
 
-Please note that the amRshiny project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
+Please note that the amRviz project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
 
 ## License
 

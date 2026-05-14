@@ -313,7 +313,7 @@ loadAMRMetadata <- function(spp_name) {
 loadDrugClassMap <- function() {
   cwd <- getwd()
   # drug_class_map_fp <- file.path(cwd, "data", "drug_class_map.tsv")
-  drug_class_map_fp <- system.file("extdata", "drug_class_map.tsv", package = "amRshiny")
+  drug_class_map_fp <- system.file("extdata", "drug_class_map.tsv", package = "amRviz")
   message(stringr::str_glue("loadDrugClassMap(): Looking for TSV at: {drug_class_map_fp}"))
   drug_class_map_df <- readr::read_tsv(
     here(drug_class_map_fp),
@@ -777,7 +777,7 @@ makeFeatureImportancePlot <- function(
   # Attempt to load annotated files for COG name lookup
   ann_dirs <- c(
     annotated_dir,
-    system.file("extdata", "Annotated", package = "amRshiny")
+    system.file("extdata", "Annotated", package = "amRviz")
   )
   ann_dirs <- ann_dirs[!is.null(ann_dirs) & nzchar(ann_dirs) & dir.exists(ann_dirs)]
 
@@ -964,23 +964,24 @@ makeFeatureImportancePlot <- function(
   min_val <- min(vi_mat, na.rm = TRUE)
   if (min_val == max_val) min_val <- min_val - 0.00001
 
-  ComplexHeatmap::Heatmap(
-    vi_mat,
-    name = "Importance score",
-    col = circlize::colorRamp2(c(min_val, max_val), c("lightgreen", "darkgreen")),
-    row_title_side = "left",
-    column_title_side = "top",
-    row_names_side = "left",
-    column_names_side = "top",
-    cluster_rows = FALSE,
-    cluster_columns = FALSE,
-    show_row_names = TRUE,
-    show_column_names = TRUE,
-    row_names_gp = grid::gpar(fontsize = 12),
-    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"),
-    row_names_max_width = unit(12, "cm"),
-    column_names_rot = 65
-  )
+  plotly::plot_ly(
+    x = colnames(vi_mat),
+    y = rownames(vi_mat),
+    z = vi_mat,
+    type = "heatmap",
+    colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
+    colorbar = list(title = "Importance"),
+    hovertemplate = paste0(
+      "<b>Feature:</b> %{y}<br>",
+      "<b>Group:</b> %{x}<br>",
+      "<b>Importance:</b> %{z:.3f}<extra></extra>"
+    )
+  ) %>%
+    plotly::layout(
+      xaxis = list(title = "", tickangle = -45, side = "top"),
+      yaxis = list(title = "", autorange = "reversed"),
+      margin = list(l = 200, b = 20, t = 80)
+    )
 }
 
 
@@ -1052,23 +1053,24 @@ makeCrossModelFeatureImportancePlot <- function(
   min_val <- min(vi_mat, na.rm = TRUE)
   if (min_val == max_val) min_val <- min_val - 0.00001
 
-  ComplexHeatmap::Heatmap(
-    vi_mat,
-    name = "Importance score",
-    col = circlize::colorRamp2(c(min_val, max_val), c("lightgreen", "darkgreen")),
-    row_title_side = "left",
-    column_title_side = "top",
-    row_names_side = "left",
-    column_names_side = "top",
-    cluster_rows = FALSE,
-    cluster_columns = FALSE,
-    show_row_names = TRUE,
-    show_column_names = TRUE,
-    row_names_gp = grid::gpar(fontsize = 12),
-    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"),
-    row_names_max_width = unit(12, "cm"),
-    column_names_rot = 65
-  )
+  plotly::plot_ly(
+    x = colnames(vi_mat),
+    y = rownames(vi_mat),
+    z = vi_mat,
+    type = "heatmap",
+    colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
+    colorbar = list(title = "Importance"),
+    hovertemplate = paste0(
+      "<b>Feature:</b> %{y}<br>",
+      "<b>Group:</b> %{x}<br>",
+      "<b>Importance:</b> %{z:.3f}<extra></extra>"
+    )
+  ) %>%
+    plotly::layout(
+      xaxis = list(title = "", tickangle = -45, side = "top"),
+      yaxis = list(title = "", autorange = "reversed"),
+      margin = list(l = 200, b = 20, t = 80)
+    )
 }
 
 # makeMetadataSankey: multi-tier sankey of resistance flow:
@@ -1564,33 +1566,6 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   max_val <- max(models_performance, na.rm = TRUE)
   if (min_val == max_val) min_val <- min_val - 0.00001
 
-<<<<<<< Updated upstream
-  row_title <- if (cross_model == "country") "Tested Country" else "Tested Year"
-  col_title <- if (cross_model == "country") "Trained Country" else "Trained Year"
-
-  ComplexHeatmap::Heatmap(
-    models_performance,
-    name = "Balanced Accuracy",
-    col = circlize::colorRamp2(c(min_val, max_val), c("lightblue", "darkblue")),
-    row_title = row_title,
-    column_title = col_title,
-    row_title_side = "left",
-    column_title_side = "top",
-    row_title_gp = grid::gpar(fontsize = 14, fontface = "bold"),
-    column_title_gp = grid::gpar(fontsize = 14, fontface = "bold"),
-    cluster_rows = FALSE,
-    cluster_columns = FALSE,
-    show_row_names = TRUE,
-    show_column_names = TRUE,
-    row_names_gp = grid::gpar(fontsize = 12),
-    column_names_gp = grid::gpar(fontsize = 12, fontface = "bold"),
-    row_names_max_width = unit(12, "cm"),
-    column_names_rot = 0,
-    heatmap_legend_param = list(
-      title = "Balanced Accuracy",
-      at = round(seq(min_val, max_val, length.out = 5), 2),
-      labels = round(seq(min_val, max_val, length.out = 5), 2)
-=======
   plotly::plot_ly(
     x = colnames(models_performance),
     y = rownames(models_performance),
@@ -1621,9 +1596,7 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
       xaxis = list(title = "Train data", side = "bottom"),
       yaxis = list(title = "Test data", autorange = "reversed"),
       margin = list(l = 100, b = 60, t = 50)
->>>>>>> Stashed changes
     )
-  )
 }
 
 # Load a feature-id -> human-readable name mapping from the amRdata-style
@@ -1646,7 +1619,7 @@ load_feature_name_map <- function(species_code, model_scale,
   # Species-code and species-label maps use the same lookup paths as
   # cluster_feature_COG.parquet.
   roots <- c(amrdata_root, results_root,
-             system.file("extdata", package = "amRshiny"))
+             system.file("extdata", package = "amRviz"))
   roots <- roots[!is.null(roots) & nzchar(roots) & dir.exists(roots)]
 
   fp <- NULL
@@ -1702,7 +1675,7 @@ load_feature_annotations <- function(species_code, results_root = NULL) {
       if (file.exists(fp)) return(arrow::read_parquet(fp))
     }
   }
-  extdata <- system.file("extdata", package = "amRshiny")
+  extdata <- system.file("extdata", package = "amRviz")
   if (nzchar(extdata)) {
     for (d in list.dirs(extdata, full.names = TRUE, recursive = FALSE)) {
       fp <- file.path(d, fname)
@@ -2007,7 +1980,7 @@ loadMLResults <- function(results_root = NULL, species_dirs = NULL, verbose = TR
   }
 
   # Demo fallback: scan extdata subdirectories recursively for *_ML_perf.parquet
-  extdata <- system.file("extdata", package = "amRshiny")
+  extdata <- system.file("extdata", package = "amRviz")
   if (!nzchar(extdata)) {
     return(tibble::tibble())
   }
@@ -2029,7 +2002,7 @@ loadTopFeat <- function(results_root = NULL, species_dirs = NULL, verbose = TRUE
   }
 
   # Demo fallback: scan extdata subdirectories for *_ML_top_features.parquet
-  extdata <- system.file("extdata", package = "amRshiny")
+  extdata <- system.file("extdata", package = "amRviz")
   if (!nzchar(extdata)) {
     return(tibble::tibble())
   }
@@ -2057,7 +2030,7 @@ get_metadata_path <- function(species_code, results_root = NULL) {
   }
 
   # Demo mode: search species subdirectories under extdata
-  extdata <- system.file("extdata", package = "amRshiny")
+  extdata <- system.file("extdata", package = "amRviz")
   if (nzchar(extdata)) {
     subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
     for (d in subdirs) {
