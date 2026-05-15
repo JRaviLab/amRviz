@@ -422,12 +422,11 @@ launchAMRDashboard <- function(results_root = NULL,
         unique() %>%
         sort()
 
-      sel <- if ("AMG" %in% drug_class_vec) "AMG" else if (length(drug_class_vec)) drug_class_vec[1] else "all"
       updateSelectInput(
         session,
         inputId = "drug_class_ml_perf_id",
         choices = c("all", drug_class_vec),
-        selected = sel
+        selected = "all"
       )
     })
 
