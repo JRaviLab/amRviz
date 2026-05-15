@@ -10,6 +10,11 @@ launchAMRDashboard(results_root = NULL, amrdata_root = NULL)
 \item{results_root}{File path to the root directory containing amRml model
 output results. If \code{NULL} (default), the application will attempt to
 use example data bundled with the package, where available.}
+
+\item{amrdata_root}{File path to the root directory containing amRdata
+annotation parquets (e.g. \code{cluster_feature_COG.parquet},
+\code{gene_names.parquet}). If \code{NULL} (default), \verb{~/amRdata/data} is used
+when present; otherwise annotation-based features are disabled.}
 }
 \value{
 A Shiny application object

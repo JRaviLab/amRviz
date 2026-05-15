@@ -22,20 +22,17 @@ Description: Interactive Shiny dashboard for exploring antimicrobial resistance
 License: BSD_3_clause + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Depends:
     R (>= 4.5.0)
 Imports:
     arrow,
-    circlize,
-    ComplexHeatmap,
+    countrycode,
     DBI,
     dplyr,
     DT,
     duckdb,
     ggplot2,
     glue,
-    grid,
     here,
     magrittr,
     networkD3,
@@ -51,7 +48,6 @@ Imports:
     tibble,
     tidyr
 Suggests:
-    countrycode,
     knitr,
     processx,
     rmarkdown,
@@ -66,3 +62,4 @@ biocViews:
     Visualization
 URL: https://github.com/jravilab/amRviz
 BugReports: https://github.com/jravilab/amRviz/issues
+Config/roxygen2/version: 8.0.0

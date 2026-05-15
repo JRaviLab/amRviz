@@ -20,9 +20,6 @@
 #' @importFrom rlang sym .data
 #' @importFrom arrow read_parquet write_parquet
 #' @importFrom plotly plot_ly layout colorbar renderPlotly plotlyOutput
-#' @importFrom ComplexHeatmap Heatmap draw
-#' @importFrom circlize colorRamp2
-#' @importFrom grid gpar unit
 #' @importFrom DT datatable
 #' @importFrom glue glue
 #' @importFrom stats setNames
@@ -481,9 +478,6 @@ makeDatAvailabilityPlot <- function(data) {
 }
 
 makeGeoChloroPlot <- function(data) {
-  if (!requireNamespace("countrycode", quietly = TRUE)) {
-    stop("Package 'countrycode' is required for this function. Install it with install.packages('countrycode').")
-  }
   data$iso3 <- countrycode::countrycode(data$genome.isolation_country, origin = "country.name", destination = "iso3c")
   plot_ly(
     data = data,
@@ -962,7 +956,6 @@ makeFeatureImportancePlot <- function(
 
   max_val <- max(vi_mat, na.rm = TRUE)
   min_val <- min(vi_mat, na.rm = TRUE)
-  if (min_val == max_val) min_val <- min_val - 0.00001
 
   plotly::plot_ly(
     x = colnames(vi_mat),
@@ -1051,7 +1044,6 @@ makeCrossModelFeatureImportancePlot <- function(
 
   max_val <- max(vi_mat, na.rm = TRUE)
   min_val <- min(vi_mat, na.rm = TRUE)
-  if (min_val == max_val) min_val <- min_val - 0.00001
 
   plotly::plot_ly(
     x = colnames(vi_mat),
@@ -1578,7 +1570,6 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
 
   min_val <- min(models_performance, na.rm = TRUE)
   max_val <- max(models_performance, na.rm = TRUE)
-  if (min_val == max_val) min_val <- min_val - 0.00001
 
   plotly::plot_ly(
     x = colnames(models_performance),

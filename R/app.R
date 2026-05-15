@@ -6,6 +6,10 @@
 #' @param results_root File path to the root directory containing amRml model
 #'        output results. If `NULL` (default), the application will attempt to
 #'        use example data bundled with the package, where available.
+#' @param amrdata_root File path to the root directory containing amRdata
+#'        annotation parquets (e.g. `cluster_feature_COG.parquet`,
+#'        `gene_names.parquet`). If `NULL` (default), `~/amRdata/data` is used
+#'        when present; otherwise annotation-based features are disabled.
 #'
 #' @return A Shiny application object
 #' @export
@@ -25,33 +29,6 @@ launchAMRDashboard <- function(results_root = NULL,
     default_amrdata <- file.path(path.expand("~"), "amRdata", "data")
     if (dir.exists(default_amrdata)) amrdata_root <- default_amrdata
   }
-  # Bug choices
-  bug_choices <- c(
-    "Enterococcus faecium" = "Efa",
-    "Staphylococcus aureus" = "Sau",
-    "Klebsiella pneumoniae" = "Kpn",
-    "Acinetobacter baumannii" = "Aba",
-    "Pseudomonas aeruginosa" = "Pae",
-    "Enterobacter spp." = "Esp.",
-    "Escherichia coli" = "Eco",
-    "Campylobacter jejuni" = "Cje",
-    "Staphylococcus epidermidis" = "Sep"
-  )
-
-  # ESKAPE bugs (sorted in ESKAPE order)
-  eskape_bugs <- c(
-    "Enterococcus faecium" = "Efa",
-    "Staphylococcus aureus" = "Sau",
-    "Klebsiella pneumoniae" = "Kpn",
-    "Acinetobacter baumannii" = "Aba",
-    "Pseudomonas aeruginosa" = "Pae",
-    "Enterobacter spp." = "Esp.",
-    "Escherichia coli" = "Eco",
-    "Campylobacter jejuni" = "Cje",
-    "Staphylococcus epidermidis" = "Sep",
-    "Streptococcus pneumoniae" = "Spn"
-  )
-
   # UI
   ui <- tagList(
     shinyjs::useShinyjs(),
@@ -453,30 +430,6 @@ launchAMRDashboard <- function(results_root = NULL,
         selected = sel
       )
     })
-    # model holdouts filtering
-
-    observeEvent(input$bug_holdouts_id,
-      {
-        req(input$bug_holdouts_id)
-
-        # Build choices filtered to the selected 3-letter species code
-        choices <- getHoldoutsDrugChoices(perf_data = queryData(), bug = input$bug_holdouts_id)
-
-        # Keep the user's current selection if still valid; otherwise pick first
-        prev <- isolate(input$holdouts_drug)
-        sel <- if (!is.null(prev) && prev %in% choices) prev else if (length(choices)) choices[[1]] else NULL
-
-        # Update the dropdown (use updateSelectizeInput if your UI uses selectize=TRUE)
-        updateSelectizeInput(
-          session,
-          inputId  = "holdouts_drug",
-          choices  = choices,
-          selected = sel,
-          server   = TRUE
-        )
-      },
-      ignoreInit = FALSE
-    ) # run once on app load so it populates immediately
 
 
     observeEvent(input$drug_class_ml_perf_id, {
