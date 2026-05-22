@@ -6,6 +6,10 @@
 #' @param results_root File path to the root directory containing amRml model
 #'        output results. If `NULL` (default), the application will attempt to
 #'        use example data bundled with the package, where available.
+#' @param amrdata_root File path to the root directory containing amRdata
+#'        annotation parquets (e.g. `cluster_feature_COG.parquet`,
+#'        `gene_names.parquet`). If `NULL` (default), `~/amRdata/data` is used
+#'        when present; otherwise annotation-based features are disabled.
 #'
 #' @return A Shiny application object
 #' @export
@@ -18,11 +22,17 @@
 #'   app <- launchAMRDashboard()
 #'   shiny::runApp(app)
 #' }
-launchAMRDashboard <- function(results_root = NULL) {
+launchAMRDashboard <- function(results_root = NULL,
+                               amrdata_root = NULL) {
+  # Default amrdata_root: ~/amRdata/data if it exists
+  if (is.null(amrdata_root)) {
+    default_amrdata <- file.path(path.expand("~"), "amRdata", "data")
+    if (dir.exists(default_amrdata)) amrdata_root <- default_amrdata
+  }
   # UI
   ui <- tagList(
     shinyjs::useShinyjs(),
-    tags$head(includeCSS(system.file("app/www/style.css", package = "amRshiny"))),
+    tags$head(includeCSS(system.file("app/www/style.css", package = "amRviz"))),
     tags$head(
       tags$style(HTML("
                       .innerbox {
@@ -101,7 +111,7 @@ launchAMRDashboard <- function(results_root = NULL) {
           tags$strong("Motivation: "),
           tags$p("Identifying antimicrobial resistance (AMR) in bacterial pathogens is critical for diagnostics and treatment, but resistance is a complex trait arising from diverse mechanisms spanning multiple molecular scales. Existing computational approaches often function as black boxes and rarely explore cross-species or multi-drug patterns. We developed amR, an integrated R package suite providing a complete framework from bacterial genome sequences to interpretable AMR predictions, enabling identification of resistance mechanisms across species and drugs."),
           tags$strong("Results: "),
-          tags$p("The amR suite consists of three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs species-specific pangenomes, and extracts features at four molecular scales: gene/protein clusters, protein domains, and structural variants. All data are stored in efficient Parquet and DuckDB formats. amRml trains interpretable logistic regression machine learning models per species-drug combination, generating ranked features by importance and comprehensive performance metrics (balanced accuracy, F1, MCC). Models identify known resistance determinants (e.g., gyrA mutations for fluoroquinolones, mecA for beta-lactams) alongside poorly characterized features representing potential novel mechanisms. amRshiny provides an interactive Shiny dashboard to explore isolate metadata distributions, compare model performance across species and drugs, visualize top predictive AMR features, and analyze cross-model patterns (including features specific to geographic/temporal strata). The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides the first comprehensive programmatic framework and R package for AMR research."),
+          tags$p("The amR suite consists of three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs species-specific pangenomes, and extracts features at four molecular scales: gene/protein clusters, protein domains, and structural variants. All data are stored in efficient Parquet and DuckDB formats. amRml trains interpretable logistic regression machine learning models per species-drug combination, generating ranked features by importance and comprehensive performance metrics (balanced accuracy, F1, MCC). Models identify known resistance determinants (e.g., gyrA mutations for fluoroquinolones, mecA for beta-lactams) alongside poorly characterized features representing potential novel mechanisms. amRviz delivers an interactive visualization toolkit, built on Shiny, that brings the amRdata and amRml outputs together: users can browse isolate metadata distributions, compare model performance across species and drugs, inspect top predictive AMR features alongside their cluster and COG annotations, and analyze cross-model patterns (including features specific to geographic or temporal strata) through linked plots, networks, and Sankey diagrams. The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides the first comprehensive programmatic framework and R package for AMR research."),
           tags$strong("Availability and implementation: "),
           tags$p("https://github.com/JRaviLab/amR"),
           tags$hr(),
@@ -112,6 +122,7 @@ launchAMRDashboard <- function(results_root = NULL) {
       modelPerfUI(),
       featureImportanceUI(),
       crossModelComparisonUI(),
+      networkUI(),
       queryDataUI()
     ),
     tags$footer(
@@ -217,7 +228,7 @@ launchAMRDashboard <- function(results_root = NULL) {
       scan_dirs <- if (!is.null(rr) && nzchar(rr)) {
         list.dirs(rr, full.names = TRUE, recursive = FALSE)
       } else {
-        extdata <- system.file("extdata", package = "amRshiny")
+        extdata <- system.file("extdata", package = "amRviz")
         if (nzchar(extdata)) list.dirs(extdata, full.names = TRUE, recursive = FALSE) else character(0)
       }
       choices <- character(0)
@@ -250,7 +261,7 @@ launchAMRDashboard <- function(results_root = NULL) {
       updateSelectizeInput(session, "bug_cross_model_comparison_id",
         choices = choices, selected = sel
       )
-      updateSelectizeInput(session, "bug_holdouts_id",
+      updateSelectizeInput(session, "network_bug_id",
         choices = choices, selected = sel
       )
     })
@@ -309,6 +320,18 @@ launchAMRDashboard <- function(results_root = NULL) {
     # observe to load all the data
     observe({
       drug_class_map(loadDrugClassMapRec())
+    })
+
+    # When the drug/drug class radio toggle changes, refresh the bug selector
+    # using species actually present in the loaded data (not a hardcoded list).
+    observeEvent(input$across_bug_id, {
+      choices <- available_species()
+      updateSelectInput(
+        session,
+        inputId = "bug_search_amr_across_bug",
+        choices = choices,
+        selected = choices
+      )
     })
 
     observeEvent(c(input$bug_search_amr_across_bug, input$across_bug_id, input$bug_drug_comp_model_scale, input$data_type), {
@@ -399,38 +422,13 @@ launchAMRDashboard <- function(results_root = NULL) {
         unique() %>%
         sort()
 
-      sel <- if ("AMG" %in% drug_class_vec) "AMG" else if (length(drug_class_vec)) drug_class_vec[1] else "all"
       updateSelectInput(
         session,
         inputId = "drug_class_ml_perf_id",
         choices = c("all", drug_class_vec),
-        selected = sel
+        selected = "all"
       )
     })
-    # model holdouts filtering
-
-    observeEvent(input$bug_holdouts_id,
-      {
-        req(input$bug_holdouts_id)
-
-        # Build choices filtered to the selected 3-letter species code
-        choices <- getHoldoutsDrugChoices(perf_data = queryData(), bug = input$bug_holdouts_id)
-
-        # Keep the user's current selection if still valid; otherwise pick first
-        prev <- isolate(input$holdouts_drug)
-        sel <- if (!is.null(prev) && prev %in% choices) prev else if (length(choices)) choices[[1]] else NULL
-
-        # Update the dropdown (use updateSelectizeInput if your UI uses selectize=TRUE)
-        updateSelectizeInput(
-          session,
-          inputId  = "holdouts_drug",
-          choices  = choices,
-          selected = sel,
-          server   = TRUE
-        )
-      },
-      ignoreInit = FALSE
-    ) # run once on app load so it populates immediately
 
 
     observeEvent(input$drug_class_ml_perf_id, {
@@ -526,6 +524,46 @@ launchAMRDashboard <- function(results_root = NULL) {
           plotOutput("resistance_vs_susceptible_plot")
         )
       )
+    })
+
+    # Shared metadata reactive — used by the new sankey output below.
+    metadata_for_bug <- reactive({
+      req(input$bug_metadata_id)
+      fp <- get_metadata_path(input$bug_metadata_id, results_root)
+      if (is.null(fp) || !file.exists(fp)) {
+        return(NULL)
+      }
+      arrow::read_parquet(fp) |>
+        dplyr::mutate(species = input$bug_metadata_id)
+    })
+
+    # Populate the sankey drug-class selector from the metadata
+    observe({
+      meta <- metadata_for_bug()
+      if (is.null(meta) || !nrow(meta) ||
+        !"drug_class" %in% names(meta)) {
+        return()
+      }
+      classes <- sort(unique(meta$drug_class[!is.na(meta$drug_class)]))
+      # Default selection: top 3 by record count
+      top3 <- meta %>%
+        dplyr::filter(!is.na(.data$drug_class)) %>%
+        dplyr::count(.data$drug_class, name = "n") %>%
+        dplyr::arrange(dplyr::desc(.data$n)) %>%
+        dplyr::slice_head(n = 3) %>%
+        dplyr::pull(.data$drug_class)
+      updateSelectInput(
+        session, "metadata_sankey_classes",
+        choices = classes, selected = top3
+      )
+    })
+
+    output$metadata_sankey <- networkD3::renderSankeyNetwork({
+      meta <- metadata_for_bug()
+      if (is.null(meta) || !nrow(meta)) {
+        return(NULL)
+      }
+      makeMetadataSankey(meta, drug_classes = input$metadata_sankey_classes)
     })
 
     ## get a quick summary plot;
@@ -728,7 +766,7 @@ launchAMRDashboard <- function(results_root = NULL) {
     })
 
     observe({
-      output$across_bug_feature_importance_plot <- renderPlot({
+      output$across_bug_feature_importance_plot <- plotly::renderPlotly({
         if (is.null(input$across_bug_id)) {
           return(NULL)
         }
@@ -737,22 +775,22 @@ launchAMRDashboard <- function(results_root = NULL) {
         } else {
           input$amr_drug_class_ml_across_bug
         }
-        ht <- makeFeatureImportancePlot(
+        makeFeatureImportancePlot(
           topFeatures(),
           input$bug_search_amr_across_bug,
           amr_drug,
           input$bug_drug_comp_model_scale,
           input$data_type,
           input$top_n_features,
-          input$feature_importance_tabset
+          input$feature_importance_tabset,
+          amrdata_root = amrdata_root,
+          results_root = results_root
         )
-        req(ht)
-        draw(ht, heatmap_legend_side = "right")
       })
     })
 
     observe({
-      output$across_drug_feature_importance_plot <- renderPlot({
+      output$across_drug_feature_importance_plot <- plotly::renderPlotly({
         if (is.null(input$across_drug_id)) {
           return(NULL)
         }
@@ -761,33 +799,33 @@ launchAMRDashboard <- function(results_root = NULL) {
         } else {
           input$amr_drug_class_ml_across_drug
         }
-        ht <- makeFeatureImportancePlot(
+        makeFeatureImportancePlot(
           topFeatures(),
           input$bug_search_amr_across_drug,
           amr_drug,
           input$bug_drug_comp_model_scale,
           input$data_type,
           input$top_n_features,
-          input$feature_importance_tabset
+          input$feature_importance_tabset,
+          amrdata_root = amrdata_root,
+          results_root = results_root
         )
-        req(ht)
-        draw(ht, heatmap_legend_side = "right")
       })
     })
 
     observe({
-      output$feature_importance_plot <- renderPlot({
-        ht <- makeFeatureImportancePlot(
+      output$feature_importance_plot <- plotly::renderPlotly({
+        makeFeatureImportancePlot(
           topFeatures(),
           input$bug_ml_perf_id,
           input$amr_drug_ml_across_bug,
           input$model_scale,
           input$data_type,
           input$top_n_features,
-          input$feature_importance_tabset
+          input$feature_importance_tabset,
+          amrdata_root = amrdata_root,
+          results_root = results_root
         )
-        req(ht)
-        draw(ht, heatmap_legend_side = "right")
       })
       output$feature_importance_table <- DT::renderDataTable({
         tf <- filtered_top_features() %>%
@@ -801,34 +839,93 @@ launchAMRDashboard <- function(results_root = NULL) {
     })
 
     # Feature importance tables: across bug and across drug
-    output$across_bug_feature_importance_table <- DT::renderDataTable({
-      amr_drug <- if (!is.null(input$across_bug_id) && input$across_bug_id == "drug_class") {
+    # Reactives return the enriched tibble so table, barplot, and ego
+    # network stay in sync.
+    enriched_across_bug <- reactive({
+      amr_drug <- if (!is.null(input$across_bug_id) &&
+        input$across_bug_id == "drug_class") {
         input$amr_drug_class_ml_across_bug
       } else {
         input$amr_drug_ml_across_bug
       }
+      bug <- input$bug_search_amr_across_bug
       tf <- filtered_top_features() %>%
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_search_amr_across_bug)) %>%
+        dplyr::filter(normalize_species(.data$species) %in%
+          normalize_species(bug)) %>%
         dplyr::filter(.data$drug_or_class %in% amr_drug)
       if (!nrow(tf)) {
+        return(NULL)
+      }
+      dplyr::bind_rows(lapply(unique(tf$species), function(sp) {
+        enrich_with_annotations(
+          tf[tf$species == sp, ],
+          species_code = sp,
+          results_root = results_root
+        )
+      }))
+    })
+
+    enriched_across_drug <- reactive({
+      amr_drug <- if (!is.null(input$across_drug_id) &&
+        input$across_drug_id == "drug_class") {
+        input$amr_drug_class_ml_across_drug
+      } else {
+        input$amr_drug_ml_across_drug
+      }
+      bug <- input$bug_search_amr_across_drug
+      tf <- filtered_top_features() %>%
+        dplyr::filter(normalize_species(.data$species) %in%
+          normalize_species(bug)) %>%
+        dplyr::filter(.data$drug_or_class %in% amr_drug)
+      if (!nrow(tf)) {
+        return(NULL)
+      }
+      enrich_with_annotations(
+        tf,
+        species_code = bug, results_root = results_root
+      )
+    })
+
+    output$across_bug_feature_importance_table <- DT::renderDataTable({
+      tf <- enriched_across_bug()
+      if (is.null(tf) || !nrow(tf)) {
         return(NULL)
       }
       makeFeatureImportTable(tf)
     })
 
     output$across_drug_feature_importance_table <- DT::renderDataTable({
-      amr_drug <- if (!is.null(input$across_drug_id) && input$across_drug_id == "drug_class") {
-        input$amr_drug_class_ml_across_drug
-      } else {
-        input$amr_drug_ml_across_drug
-      }
-      tf <- filtered_top_features() %>%
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_search_amr_across_drug)) %>%
-        dplyr::filter(.data$drug_or_class %in% amr_drug)
-      if (!nrow(tf)) {
+      tf <- enriched_across_drug()
+      if (is.null(tf) || !nrow(tf)) {
         return(NULL)
       }
       makeFeatureImportTable(tf)
+    })
+
+    # COG bar charts — top COGs across the currently displayed features
+    output$across_bug_cog_barplot <- plotly::renderPlotly({
+      makeCogBarChart(enriched_across_bug())
+    })
+    output$across_drug_cog_barplot <- plotly::renderPlotly({
+      makeCogBarChart(enriched_across_drug())
+    })
+
+    # Ego networks — reacts to selected row in each table
+    output$across_bug_ego_network <- networkD3::renderForceNetwork({
+      tf <- enriched_across_bug()
+      sel <- input$across_bug_feature_importance_table_rows_selected
+      if (is.null(tf) || !nrow(tf) || is.null(sel) || !length(sel)) {
+        return(NULL)
+      }
+      makeFeatureEgoNetwork(tf, tf$Variable[sel])
+    })
+    output$across_drug_ego_network <- networkD3::renderForceNetwork({
+      tf <- enriched_across_drug()
+      sel <- input$across_drug_feature_importance_table_rows_selected
+      if (is.null(tf) || !nrow(tf) || is.null(sel) || !length(sel)) {
+        return(NULL)
+      }
+      makeFeatureEgoNetwork(tf, tf$Variable[sel])
     })
 
     # Cross model feature importance table
@@ -863,28 +960,76 @@ launchAMRDashboard <- function(results_root = NULL) {
     )
 
     observe({
-      output$cross_model_perf_plot <- renderPlot({
-        ht <- makeCrossModelPerformancePlot(
+      # Ridge plots — always show both country and time side by side
+      output$cross_model_ridge_country <- plotly::renderPlotly({
+        req(input$bug_cross_model_comparison_id)
+        makeCrossModelRidgePlot(
           queryData(),
+          input$bug_cross_model_comparison_id,
+          "country"
+        )
+      })
+      output$cross_model_ridge_time <- plotly::renderPlotly({
+        req(input$bug_cross_model_comparison_id)
+        makeCrossModelRidgePlot(
+          queryData(),
+          input$bug_cross_model_comparison_id,
+          "time"
+        )
+      })
+
+      # Heatmaps — country and time side by side
+      output$cross_model_perf_country <- plotly::renderPlotly({
+        req(
+          input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id
+        )
+        makeCrossModelPerformancePlot(
+          queryData(),
+          input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id,
+          "country"
+        )
+      })
+      output$cross_model_perf_time <- plotly::renderPlotly({
+        req(
+          input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id
+        )
+        makeCrossModelPerformancePlot(
+          queryData(),
+          input$bug_cross_model_comparison_id,
+          input$drug_cross_model_comparison_id,
+          "time"
+        )
+      })
+      output$cross_model_feature_importance_plot <- plotly::renderPlotly({
+        req(
           input$bug_cross_model_comparison_id,
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison
         )
-        req(ht)
-        draw(ht, heatmap_legend_side = "left")
-      })
-      output$cross_model_feature_importance_plot <- renderPlot({
-        ht <- makeCrossModelFeatureImportancePlot(
+        makeCrossModelFeatureImportancePlot(
           topFeatures(),
           input$bug_cross_model_comparison_id,
           input$drug_cross_model_comparison_id,
           input$cross_model_comparison,
           input$cross_model_top_n_features
         )
-        req(ht)
-        draw(ht, heatmap_legend_side = "left")
       })
 
+      # Drug-feature network
+      output$drug_feature_network <- networkD3::renderForceNetwork({
+        req(input$network_bug_id, input$network_top_n)
+        makeDrugFeatureNetwork(
+          topFeatures(),
+          input$network_bug_id,
+          top_n = input$network_top_n,
+          include_clusters = isTRUE(input$network_include_clusters),
+          include_cogs = isTRUE(input$network_include_cogs),
+          results_root = results_root
+        )
+      })
 
       # # Load performance metrics data
       # queryData <- reactiveVal(loadMLResults(results_root = results_root))

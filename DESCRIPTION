@@ -1,4 +1,4 @@
-Package: amRshiny
+Package: amRviz
 Title: Interactive dashboard for AMR data and model visualization | pkg 3 of 3-pkg amR suite
 Version: 0.99.0
 Authors@R: c(
@@ -22,13 +22,10 @@ Description: Interactive Shiny dashboard for exploring antimicrobial resistance
 License: BSD_3_clause + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Depends:
     R (>= 4.5.0)
 Imports:
     arrow,
-    circlize,
-    ComplexHeatmap,
     countrycode,
     DBI,
     dplyr,
@@ -36,9 +33,9 @@ Imports:
     duckdb,
     ggplot2,
     glue,
-    grid,
     here,
     magrittr,
+    networkD3,
     plotly,
     purrr,
     readr,
@@ -52,7 +49,6 @@ Imports:
     tidyr
 Suggests:
     knitr,
-    networkD3,
     processx,
     rmarkdown,
     spelling,
@@ -64,5 +60,6 @@ biocViews:
     MicrobialGenomics,
     Pathogen,
     Visualization
-URL: https://github.com/jravilab/amRshiny
-BugReports: https://github.com/jravilab/amRshiny/issues
+URL: https://github.com/jravilab/amRviz
+BugReports: https://github.com/jravilab/amRviz/issues
+Config/roxygen2/version: 8.0.0

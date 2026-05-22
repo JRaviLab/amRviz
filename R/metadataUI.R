@@ -97,6 +97,47 @@ metadataUI <- function() {
             )
           )
         )
+      ),
+      fluidRow(
+        column(
+          width = 12,
+          div(
+            class = "plot-container",
+            div(
+              class = "plot-header",
+              style = paste0(
+                "text-align: center; font-family: 'Arial', sans-serif;",
+                " font-size: 14px; margin-top: 10px; margin-bottom: 8px;"
+              ),
+              paste(
+                "Resistance flow:",
+                "phenotype -> drug class -> drug ->",
+                "country -> host -> isolation source"
+              )
+            ),
+            div(
+              style = "padding: 0 10px;",
+              selectInput(
+                inputId = "metadata_sankey_classes",
+                label = tags$label(
+                  "Drug classes (top 3 by default)",
+                  style = "font-size: 13px;"
+                ),
+                choices = NULL,
+                selected = NULL,
+                multiple = TRUE,
+                selectize = TRUE,
+                width = "100%"
+              )
+            ),
+            shinycssloaders::withSpinner(
+              networkD3::sankeyNetworkOutput(
+                "metadata_sankey",
+                height = "550px"
+              )
+            )
+          )
+        )
       )
     )
   )
