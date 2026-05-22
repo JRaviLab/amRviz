@@ -7,7 +7,8 @@ test_that("makeCrossModelRidgePlot returns plotly placeholder for NULL input", {
 
 test_that("makeCrossModelRidgePlot returns plotly placeholder for zero-row data", {
   result <- makeCrossModelRidgePlot(
-    tibble::tibble(), bug = "Sfl", cross_model = "country"
+    tibble::tibble(),
+    bug = "Sfl", cross_model = "country"
   )
   expect_s3_class(result, "plotly")
 })
