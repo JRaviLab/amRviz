@@ -63,6 +63,34 @@ test_that("makeFeatureImportTable adds hyperlinks for COG column", {
   expect_true(any(grepl("href", unlist(result$x$data))))
 })
 
+test_that("makeFeatureImportTable adds hyperlinks for cluster column", {
+  df <- tibble::tibble(
+    species = c("Sfl"),
+    drug_or_class = c("ampicillin"),
+    cluster = c("fig|42897.100.peg.487"),
+    Importance = c(0.5)
+  )
+
+  result <- makeFeatureImportTable(df)
+  expect_s3_class(result, "datatables")
+  expect_true(any(grepl("bv-brc.org", unlist(result$x$data))))
+})
+
+test_that("makeFeatureImportTable links each comma-separated cluster ID", {
+  df <- tibble::tibble(
+    species = c("Sfl"),
+    drug_or_class = c("ampicillin"),
+    cluster = c("fig|42897.100.peg.487, fig|42897.100.peg.488"),
+    Importance = c(0.5)
+  )
+
+  result <- makeFeatureImportTable(df)
+  # Two separate <a> tags expected, one per fig ID.
+  hrefs <- unlist(result$x$data)
+  n_anchors <- sum(stringr::str_count(hrefs, "<a href="))
+  expect_gte(n_anchors, 2)
+})
+
 test_that("makeFeatureImportTable replaces non-ARG in ARG_name column", {
   df <- tibble::tibble(
     species = c("Sau", "Sau"),
