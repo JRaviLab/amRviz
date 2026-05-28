@@ -1324,7 +1324,7 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     "#c4a35a", # mustard
     "#9b7fba", # dusty purple
     "#d4735e", # terracotta
-    "#6a6f4e"  # olive
+    "#6a6f4e" # olive
   )
   colour_scale <- networkD3::JS(paste0(
     'd3.scaleOrdinal().domain(["Resistant","Susceptible"]).range(["',
