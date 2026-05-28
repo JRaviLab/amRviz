@@ -112,7 +112,6 @@ launchAMRDashboard()
 
 The dashboard works with pre-computed data files located in `inst/app/data/`:
 
-- `amr_filtered_tbls.db`: DuckDB database with AMR data
 - `all_performances.tsv`: Model performance metrics
 - `drug_class_map.tsv`: Drug classification mapping
 - `metadata/`: Species-specific metadata files

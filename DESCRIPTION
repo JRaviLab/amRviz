@@ -27,10 +27,8 @@ Depends:
 Imports:
     arrow,
     countrycode,
-    DBI,
     dplyr,
     DT,
-    duckdb,
     ggplot2,
     glue,
     here,
