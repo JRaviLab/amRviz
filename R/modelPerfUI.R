@@ -83,7 +83,7 @@ modelPerfUI <- function() {
                 width = 12,
                 div(
                   style = "height: 600px;",
-                  plotOutput("model_perfomance_plot", height = "100%")
+                  plotly::plotlyOutput("model_perfomance_plot", height = "100%")
                 )
               )
             )
