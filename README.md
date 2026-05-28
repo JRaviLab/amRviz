@@ -127,6 +127,7 @@ results/
 | `strat_value_test` | Tested-on country or year (cross models only) |
 | `bal_acc` | Balanced accuracy |
 | `f1` | F1 score |
+| `mcc` | Matthews correlation coefficient |
 | `nmcc` | Normalized Matthews correlation coefficient |
 
 ### Top features (`*_ML_top_features.parquet`)
@@ -181,7 +182,7 @@ amRviz/
 If you use `amRviz` in your research, please cite:
 
 ```
-Brenner E, Ghosh A, Wolfe E, Boyer E, Vang C, Lesiyon R, Mayer D, Ravi J. (2026).
+Brenner E, Ghosh A, Boyer E, Vang C, Wolfe E, McKim A, Lesiyon R, Mayer D, Ravi J. (2026).
 amR: an R package suite to predict antimicrobial resistance in bacterial pathogens.
 R package version 0.99.0.
 https://github.com/JRaviLab/amR
