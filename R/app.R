@@ -86,34 +86,108 @@ launchAMRDashboard <- function(results_root = NULL,
                         border-radius: 5px;
                         text-align: center;
                       }
+
+                      /* App header (title row, above nav tabs) */
+                      .amr-app-header {
+                        background-color: #2b2b2b;
+                        padding: 14px 24px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-bottom: 1px solid #3a3a3a;
+                      }
+                      .amr-app-header-title {
+                        color: #ffffff;
+                        font-weight: bold;
+                        font-size: 26px;
+                        letter-spacing: 1.5px;
+                        font-family: sans-serif;
+                      }
+                      .amr-app-header-logo img {
+                        height: 60px;
+                        border-radius: 50%;
+                      }
                     "))
+    ),
+    # App header: title row separate from the nav tabs
+    tags$div(
+      class = "amr-app-header",
+      tags$div(
+        class = "amr-app-header-title",
+        "amRviz"
+      ),
+      tags$div(
+        class = "amr-app-header-logo",
+        tags$img(src = "www/logo.png", onerror = "this.style.display='none'")
+      )
     ),
     navbarPage(
       id = "tabselected",
       selected = "home",
-      title = div("AMR"), # not clickable
+      title = "",
       # 2. Home icon tab (right of AMR dashboard)
       tabPanel(
         title = icon("home", class = "home-tab-icon"),
         value = "home",
         fluidPage(
+          style = "max-width: 960px; margin: 0 auto; padding: 24px 16px;",
+
+          # Overview & Features
+          h3("Overview and Features",
+            style = "font-weight: bold; margin-bottom: 12px;"
+          ),
+          tags$p("amRviz allows users to:"),
+          tags$ul(
+            style = "line-height: 2; margin-bottom: 16px;",
+            tags$li("Explore AMR model performance across species, drugs, and drug classes."),
+            tags$li("Compare predictive performance across molecular feature scales (gene, protein, domain, structure)."),
+            tags$li("Identify key genomic features driving resistance predictions."),
+            tags$li("Analyze model generalization across geography and time."),
+            tags$li("Visualize and filter isolate metadata and model results interactively.")
+          ),
+          tags$p(
+            style = "margin-bottom: 28px;",
+            tags$em("amRviz is interactive, modular, and scalable for exploring AMR data and machine learning outputs.")
+          ),
+
+          # Workflow figure
+          div(
+            style = "text-align: center; margin-bottom: 32px;",
+            tags$img(
+              src = "www/amr_overview.png",
+              style = "max-width: 70%; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.12);",
+              onerror = "this.style.display='none'"
+            )
+          ),
+          tags$hr(),
+
           h2("amR: an R package suite to predict antimicrobial resistance in bacterial pathogens"),
           tags$p(
             tags$strong("Authors: "),
-            "Evan P Brenner,#, Abhirupa Ghosh,#, Ethan P Wolfe, Emily A Boyer, Charmie K Vang, Raymond L Lesiyon, David Mayer, Janani Ravi*."
+            "Evan P Brenner^, Abhirupa Ghosh^, Emily A Boyer, Charmie K Vang, Ethan P Wolfe, Alexander P McKim, Raymond L Lesiyon, David Mayer, Janani Ravi*."
           ),
           tags$p(
-            "Department of Biomedical Informatics, Center for Health Artificial Intelligence, University of Colorado Anschutz, Aurora, CO, USA",
-            tags$span(style = "font-style: italic", "#Co-primary, contributed equally. *Corresponding author: janani.ravi@cuanschutz.edu")
+            "Department of Biomedical Informatics, Center for Health Artificial Intelligence, University of Colorado Anschutz, Aurora, CO 80045.",
+            tags$span(style = "font-style: italic", " ^Co-primary authors contributing equally. *Corresponding author: janani.ravi@cuanschutz.edu")
+          ),
+          tags$p(
+            tags$strong("Keywords: "),
+            "antimicrobial resistance, machine learning, bacterial genomics, pangenomics, interpretable models, drug resistance prediction, multiscale features, R package"
           ),
           br(),
           h4("Abstract"),
           tags$strong("Motivation: "),
           tags$p("Identifying antimicrobial resistance (AMR) in bacterial pathogens is critical for diagnostics and treatment, but resistance is a complex trait arising from diverse mechanisms spanning multiple molecular scales. Existing computational approaches often function as black boxes and rarely explore cross-species or multi-drug patterns. We developed amR, an integrated R package suite providing a complete framework from bacterial genome sequences to interpretable AMR predictions, enabling identification of resistance mechanisms across species and drugs."),
           tags$strong("Results: "),
-          tags$p("The amR suite consists of three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs species-specific pangenomes, and extracts features at four molecular scales: gene/protein clusters, protein domains, and structural variants. All data are stored in efficient Parquet and DuckDB formats. amRml trains interpretable logistic regression machine learning models per species-drug combination, generating ranked features by importance and comprehensive performance metrics (balanced accuracy, F1, MCC). Models identify known resistance determinants (e.g., gyrA mutations for fluoroquinolones, mecA for beta-lactams) alongside poorly characterized features representing potential novel mechanisms. amRviz delivers an interactive visualization toolkit, built on Shiny, that brings the amRdata and amRml outputs together: users can browse isolate metadata distributions, compare model performance across species and drugs, inspect top predictive AMR features alongside their cluster and COG annotations, and analyze cross-model patterns (including features specific to geographic or temporal strata) through linked plots, networks, and Sankey diagrams. The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides the first comprehensive programmatic framework and R package for AMR research."),
+          tags$p("The amR suite contains three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs pangenomes, and extracts features at gene/protein cluster, protein domain, and structural variant scales, along with annotating protein clusters with Clusters of Orthologous Genes and ResFinder AMR-associated features. Data are stored in memory-efficient Parquet and DuckDB formats. amRml trains interpretable machine learning models per species-drug combination, calculates feature importance and comprehensive performance metrics, and provides rich ground for mechanism discovery. amRviz provides an interactive Shiny dashboard to explore metadata distributions, model performance across species and drugs, visualize top predictive AMR features, and analyze cross-model patterns (including across geographic/temporal strata). The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides an accessible, comprehensive framework for AMR research."),
           tags$strong("Availability and implementation: "),
-          tags$p("https://github.com/JRaviLab/amR"),
+          tags$p("amR is developed in R. We use Dockerized software for data curation and feature extraction, perform modeling with the tidymodels framework, and visualize results using Shiny. The suite is available at: ",
+            tags$a(href = "https://github.com/JRaviLab/amR", "https://github.com/JRaviLab/amR"), "."
+          ),
+          tags$p(
+            tags$strong("Contact: "),
+            tags$a(href = "mailto:janani.ravi@cuanschutz.edu", "janani.ravi@cuanschutz.edu")
+          ),
           tags$hr(),
         )
       ),
@@ -1129,6 +1203,12 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
   }
+
+  # Register inst/app/www/ so images and CSS are served from the package
+  shiny::addResourcePath(
+    "www",
+    system.file("app/www", package = "amRviz")
+  )
 
   # Return the Shiny application object
   shiny::shinyApp(ui = ui, server = server)
