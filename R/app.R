@@ -160,7 +160,6 @@ launchAMRDashboard <- function(results_root = NULL,
             )
           ),
           tags$hr(),
-
           h2("amR: an R package suite to predict antimicrobial resistance in bacterial pathogens"),
           tags$p(
             tags$strong("Authors: "),
@@ -181,7 +180,8 @@ launchAMRDashboard <- function(results_root = NULL,
           tags$strong("Results: "),
           tags$p("The amR suite contains three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs pangenomes, and extracts features at gene/protein cluster, protein domain, and structural variant scales, along with annotating protein clusters with Clusters of Orthologous Genes and ResFinder AMR-associated features. Data are stored in memory-efficient Parquet and DuckDB formats. amRml trains interpretable machine learning models per species-drug combination, calculates feature importance and comprehensive performance metrics, and provides rich ground for mechanism discovery. amRviz provides an interactive Shiny dashboard to explore metadata distributions, model performance across species and drugs, visualize top predictive AMR features, and analyze cross-model patterns (including across geographic/temporal strata). The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides an accessible, comprehensive framework for AMR research."),
           tags$strong("Availability and implementation: "),
-          tags$p("amR is developed in R. We use Dockerized software for data curation and feature extraction, perform modeling with the tidymodels framework, and visualize results using Shiny. The suite is available at: ",
+          tags$p(
+            "amR is developed in R. We use Dockerized software for data curation and feature extraction, perform modeling with the tidymodels framework, and visualize results using Shiny. The suite is available at: ",
             tags$a(href = "https://github.com/JRaviLab/amR", "https://github.com/JRaviLab/amR"), "."
           ),
           tags$p(
