@@ -872,7 +872,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
     ggplot2::labs(x = NULL, y = NULL, title = "Molecular scale") +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
-      plot.title  = ggplot2::element_text(
+      plot.title = ggplot2::element_text(
         hjust = 0.5, size = 12,
         color = "#333333", family = "sans"
       ),
@@ -919,7 +919,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
     ggplot2::labs(x = NULL, y = NULL, title = "Data type") +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
-      plot.title  = ggplot2::element_text(
+      plot.title = ggplot2::element_text(
         hjust = 0.5, size = 12,
         color = "#333333", family = "sans"
       ),
