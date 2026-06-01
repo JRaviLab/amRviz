@@ -32,7 +32,6 @@ Imports:
     ggplot2,
     glue,
     here,
-    magrittr,
     networkD3,
     plotly,
     purrr,

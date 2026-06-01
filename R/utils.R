@@ -86,11 +86,11 @@ getHoldoutsDrugChoices <- function(perf_data, bug = NULL) {
   }
 
   # Filter to stratified models only (country or year, not baseline)
-  df <- perf_data %>%
+  df <- perf_data |>
     dplyr::filter(!is.na(.data$strat_label) & nzchar(.data$strat_label))
 
   if ("species" %in% names(df)) {
-    df <- df %>% dplyr::mutate(species = normalize_species(.data$species))
+    df <- df |> dplyr::mutate(species = normalize_species(.data$species))
   }
 
   if (!is.null(bug) && "species" %in% names(df)) {
@@ -153,8 +153,8 @@ loadDrugClassMap <- function() {
   drug_class_map_df <- readr::read_tsv(
     here(drug_class_map_fp),
     show_col_types = FALSE
-  ) %>%
-    dplyr::select(drug.antibiotic_name, drug_class) %>%
+  ) |>
+    dplyr::select(drug.antibiotic_name, drug_class) |>
     dplyr::distinct()
   return(drug_class_map_df)
 }
@@ -206,27 +206,27 @@ makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
   n_genomes_resistant <- total_strains[total_strains$Var1 == "Resistant", "Freq"]
   n_genomes_susceptible <- total_strains[total_strains$Var1 == "Susceptible", "Freq"]
 
-  top_n_drugs <- data_with_drug_class %>%
-    dplyr::group_by(genome_drug.antibiotic) %>%
-    dplyr::summarize(n = n()) %>%
-    dplyr::arrange(desc(n)) %>%
-    dplyr::slice_head(n = 5) %>%
+  top_n_drugs <- data_with_drug_class |>
+    dplyr::group_by(genome_drug.antibiotic) |>
+    dplyr::summarize(n = n()) |>
+    dplyr::arrange(desc(n)) |>
+    dplyr::slice_head(n = 5) |>
     dplyr::pull(genome_drug.antibiotic)
 
-  top_n_drugs_class <- data_with_drug_class %>%
-    dplyr::filter(!is.na(drug_class)) %>%
-    dplyr::group_by(drug_class) %>%
-    dplyr::summarize(n = n()) %>%
-    dplyr::arrange(desc(n)) %>%
-    dplyr::slice_head(n = 5) %>%
+  top_n_drugs_class <- data_with_drug_class |>
+    dplyr::filter(!is.na(drug_class)) |>
+    dplyr::group_by(drug_class) |>
+    dplyr::summarize(n = n()) |>
+    dplyr::arrange(desc(n)) |>
+    dplyr::slice_head(n = 5) |>
     dplyr::pull(drug_class)
 
-  top_n_countries <- data_with_drug_class %>%
-    dplyr::filter(!grepl(pattern = "NA", x = genome.isolation_country)) %>%
-    dplyr::group_by(genome.isolation_country) %>%
-    dplyr::summarize(n = n()) %>%
-    dplyr::arrange(desc(n)) %>%
-    dplyr::slice_head(n = 5) %>%
+  top_n_countries <- data_with_drug_class |>
+    dplyr::filter(!grepl(pattern = "NA", x = genome.isolation_country)) |>
+    dplyr::group_by(genome.isolation_country) |>
+    dplyr::summarize(n = n()) |>
+    dplyr::arrange(desc(n)) |>
+    dplyr::slice_head(n = 5) |>
     dplyr::pull(genome.isolation_country)
   spp_name <- unique(data_with_drug_class$species)
   summary_paragraph <- tags$p(
@@ -275,9 +275,9 @@ makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
 }
 
 makeDatAvailabilityPlot <- function(data) {
-  data <- data %>%
-    dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) %>%
-    count() %>%
+  data <- data |>
+    dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
+    count() |>
     ungroup()
   g <- ggplot(
     data,
@@ -330,8 +330,8 @@ makeGeoChloroPlot <- function(data) {
       c(1, "#9a5e1c")
     ),
     marker = list(line = list(width = 0.5, color = "white"))
-  ) %>%
-    colorbar(title = list(text = "No. of isolates", font = list(size = 14))) %>%
+  ) |>
+    colorbar(title = list(text = "No. of isolates", font = list(size = 14))) |>
     layout(
       # title = list(text = "Geographic distribution", font = list(size = 14)),
       geo = list(
@@ -392,15 +392,15 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
 }
 
 makeHostIsolatePlot <- function(data) {
-  data <- data %>%
+  data <- data |>
     dplyr::mutate(
       genome.host_common_name = stringr::str_to_lower(genome.host_common_name),
       genome.isolation_source = stringr::str_to_lower(genome.isolation_source)
     )
 
-  host_df <- data %>%
-    dplyr::group_by(genome_drug.antibiotic, genome.host_common_name) %>%
-    dplyr::summarize(n = n()) %>%
+  host_df <- data |>
+    dplyr::group_by(genome_drug.antibiotic, genome.host_common_name) |>
+    dplyr::summarize(n = n()) |>
     dplyr::ungroup()
 
   n_hosts <- length(unique(host_df$genome.host_common_name))
@@ -437,10 +437,10 @@ makeHostIsolatePlot <- function(data) {
 }
 
 makeIsolationSourcesPlot <- function(data) {
-  isolation_source <- data %>%
+  isolation_source <- data |>
     dplyr::mutate(genome.isolation_source = stringr::str_to_lower(genome.isolation_source)) |>
-    dplyr::group_by(genome_drug.antibiotic, genome.isolation_source) %>%
-    dplyr::summarize(n = n()) %>%
+    dplyr::group_by(genome_drug.antibiotic, genome.isolation_source) |>
+    dplyr::summarize(n = n()) |>
     dplyr::ungroup()
 
   top_isolate_source <- isolation_source |>
@@ -459,7 +459,7 @@ makeIsolationSourcesPlot <- function(data) {
         "Other"
       )
     )
-  isolation_source <- isolation_source %>%
+  isolation_source <- isolation_source |>
     mutate(genome.isolation_source_ = stringr::str_trunc(genome.isolation_source_, width = 20))
 
   n_sources <- length(unique(isolation_source$genome.isolation_source_))
@@ -505,21 +505,21 @@ makeModelPerformancePlot <- function(
   amr_drug_class, amr_drug
 ) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
-    return(plotly::plot_ly() %>%
+    return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No data available", x = 0)))
   }
 
   # Filter to baseline models (strat_label is NA = no country/year stratification)
-  df <- data %>%
-    dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) %>%
-    dplyr::filter(.data$feature_type %in% model_scale) %>%
-    dplyr::filter(.data$feature_subtype %in% data_type) %>%
+  df <- data |>
+    dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
+    dplyr::filter(.data$feature_type %in% model_scale) |>
+    dplyr::filter(.data$feature_subtype %in% data_type) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
   # Filter by drug class or drug if not "all"
   if (!is.null(amr_drug_class) && length(amr_drug_class) > 0 &&
     !identical(amr_drug_class, "all")) {
-    df <- df %>%
+    df <- df |>
       dplyr::filter(
         (.data$drug_label == "drug_class" & .data$drug_or_class %in% amr_drug_class) |
           (.data$drug_label == "drug" & .data$drug_or_class %in% amr_drug)
@@ -527,23 +527,23 @@ makeModelPerformancePlot <- function(
   }
 
   if (!nrow(df)) {
-    return(plotly::plot_ly() %>%
+    return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No data for current selection", x = 0)))
   }
 
   # Normalize species and set ESKAPE factor order
   eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-  df <- df %>%
+  df <- df |>
     dplyr::mutate(species = normalize_species(.data$species))
   present <- unique(df$species)
   lvls <- intersect(eskape_order, present)
   if (length(lvls) > 0) {
-    df <- df %>% dplyr::mutate(species = factor(.data$species, levels = lvls))
+    df <- df |> dplyr::mutate(species = factor(.data$species, levels = lvls))
   }
 
   # Order feature_type so legend + colors line up with SCALE_COLORS.
   ft_levels <- intersect(names(SCALE_COLORS), unique(df$feature_type))
-  df <- df %>%
+  df <- df |>
     dplyr::mutate(feature_type = factor(.data$feature_type, levels = ft_levels))
 
   has_drug <- !is.null(amr_drug) && length(amr_drug) > 0 && nzchar(amr_drug[1])
@@ -551,7 +551,7 @@ makeModelPerformancePlot <- function(
   # Build the plot one feature_type at a time. Both the main box trace and the
   # overlay-marker trace (a transparent box with boxpoints = "all") share the
   # same offsetgroup so boxmode = "group" puts them in the same dodge slot.
-  p <- plotly::plot_ly() %>%
+  p <- plotly::plot_ly() |>
     plotly::layout(
       title = list(text = "Performance metrics", x = 0, font = list(size = 14)),
       boxmode = "group",
@@ -570,12 +570,12 @@ makeModelPerformancePlot <- function(
     )
 
   for (ft in ft_levels) {
-    sub <- df %>% dplyr::filter(.data$feature_type == ft)
+    sub <- df |> dplyr::filter(.data$feature_type == ft)
     if (!nrow(sub)) next
     color <- unname(SCALE_COLORS[ft])
     fill <- paste0(color, "66") # ~40% opacity, matches old alpha = 0.4
 
-    p <- p %>%
+    p <- p |>
       plotly::add_trace(
         type = "box",
         x = sub$species,
@@ -590,9 +590,9 @@ makeModelPerformancePlot <- function(
       )
 
     if (has_drug) {
-      sub_pts <- sub %>% dplyr::filter(.data$drug_or_class %in% amr_drug)
+      sub_pts <- sub |> dplyr::filter(.data$drug_or_class %in% amr_drug)
       if (nrow(sub_pts) > 0) {
-        p <- p %>%
+        p <- p |>
           plotly::add_trace(
             type = "box",
             x = sub_pts$species,
@@ -656,12 +656,12 @@ makeFeatureImportancePlot <- function(
   #   feature_subtype = encoding (binary/counts)
   #   drug_or_class = drug/class abbreviation
   #   strat_label   = NA for baseline (no country/year stratification)
-  top_features_df <- data %>%
-    dplyr::mutate(species = normalize_species(.data$species)) %>%
-    dplyr::filter(.data$species %in% bug_norm) %>%
-    dplyr::filter(.data$drug_or_class %in% amr_drug) %>%
-    dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) %>%
-    dplyr::filter(.data$feature_subtype %in% data_type_) %>%
+  top_features_df <- data |>
+    dplyr::mutate(species = normalize_species(.data$species)) |>
+    dplyr::filter(.data$species %in% bug_norm) |>
+    dplyr::filter(.data$drug_or_class %in% amr_drug) |>
+    dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) |>
+    dplyr::filter(.data$feature_subtype %in% data_type_) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
   if (!nrow(top_features_df)) {
@@ -723,8 +723,8 @@ makeFeatureImportancePlot <- function(
 
     if (!is.null(join_by_expr)) {
       top_features_df <- tryCatch(
-        top_features_df %>%
-          dplyr::inner_join(annotated_table, by = join_by_expr) %>%
+        top_features_df |>
+          dplyr::inner_join(annotated_table, by = join_by_expr) |>
           dplyr::filter(!is.na(.data$COG_name)),
         error = function(e) {
           message("Annotation join failed: ", conditionMessage(e))
@@ -736,7 +736,7 @@ makeFeatureImportancePlot <- function(
 
   # If no annotation join produced COG_name, fall back to Variable
   if (!"COG_name" %in% names(top_features_df)) {
-    top_features_df <- top_features_df %>%
+    top_features_df <- top_features_df |>
       dplyr::mutate(COG_name = .data$Variable)
   }
 
@@ -770,24 +770,24 @@ makeFeatureImportancePlot <- function(
   }
 
   # Aggregate: max importance per group x COG
-  top_features_df <- top_features_df %>%
-    dplyr::group_by(!!rlang::sym(group_column), .data$COG_name) %>%
+  top_features_df <- top_features_df |>
+    dplyr::group_by(!!rlang::sym(group_column), .data$COG_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
 
   # Min-max normalise within each group
-  top_features_df <- top_features_df %>%
-    dplyr::group_by(!!rlang::sym(group_column)) %>%
+  top_features_df <- top_features_df |>
+    dplyr::group_by(!!rlang::sym(group_column)) |>
     dplyr::mutate(
       Importance = (.data$Importance - min(.data$Importance, na.rm = TRUE)) /
         (max(.data$Importance, na.rm = TRUE) - min(.data$Importance, na.rm = TRUE))
-    ) %>%
+    ) |>
     dplyr::ungroup()
 
   # Slice top N features per group
   if (!identical(top_n_features, "all")) {
-    top_features_df <- top_features_df %>%
-      dplyr::group_by(!!rlang::sym(group_column)) %>%
-      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) %>%
+    top_features_df <- top_features_df |>
+      dplyr::group_by(!!rlang::sym(group_column)) |>
+      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) |>
       dplyr::ungroup()
   }
 
@@ -797,9 +797,9 @@ makeFeatureImportancePlot <- function(
 
   # Build wide matrix
   if (feature_importance_tabset == "across_bug") {
-    vi_wider <- top_features_df %>%
-      dplyr::select(.data$COG_name, .data$Importance, .data$species) %>%
-      dplyr::distinct() %>%
+    vi_wider <- top_features_df |>
+      dplyr::select(.data$COG_name, .data$Importance, .data$species) |>
+      dplyr::distinct() |>
       tidyr::pivot_wider(names_from = "species", values_from = "Importance")
 
     group_cols <- setdiff(colnames(vi_wider), "COG_name")
@@ -807,18 +807,18 @@ makeFeatureImportancePlot <- function(
       return(NULL)
     }
 
-    vi_wider <- vi_wider %>%
-      dplyr::rowwise() %>%
+    vi_wider <- vi_wider |>
+      dplyr::rowwise() |>
       dplyr::mutate(
         .n = sum(!is.na(c_across(all_of(group_cols)))),
         .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
-      ) %>%
-      dplyr::ungroup() %>%
-      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) %>%
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
       dplyr::select(-.data$.n, -.data$.mx)
 
-    vi_mat <- vi_wider %>%
-      tibble::column_to_rownames("COG_name") %>%
+    vi_mat <- vi_wider |>
+      tibble::column_to_rownames("COG_name") |>
       as.matrix()
 
     eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
@@ -827,13 +827,13 @@ makeFeatureImportancePlot <- function(
   }
 
   if (feature_importance_tabset == "across_drug") {
-    top_features_df <- top_features_df %>%
+    top_features_df <- top_features_df |>
       dplyr::mutate(drug_or_class = stringr::str_trim(as.character(.data$drug_or_class)))
 
-    vi_wider <- top_features_df %>%
-      dplyr::select(.data$COG_name, .data$Importance, .data$drug_or_class) %>%
-      dplyr::group_by(.data$COG_name, .data$drug_or_class) %>%
-      dplyr::summarise(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop") %>%
+    vi_wider <- top_features_df |>
+      dplyr::select(.data$COG_name, .data$Importance, .data$drug_or_class) |>
+      dplyr::group_by(.data$COG_name, .data$drug_or_class) |>
+      dplyr::summarise(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop") |>
       tidyr::pivot_wider(names_from = "drug_or_class", values_from = "Importance")
 
     group_cols <- setdiff(colnames(vi_wider), "COG_name")
@@ -841,18 +841,18 @@ makeFeatureImportancePlot <- function(
       return(NULL)
     }
 
-    vi_wider <- vi_wider %>%
-      dplyr::rowwise() %>%
+    vi_wider <- vi_wider |>
+      dplyr::rowwise() |>
       dplyr::mutate(
         .n = sum(!is.na(c_across(all_of(group_cols)))),
         .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
-      ) %>%
-      dplyr::ungroup() %>%
-      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) %>%
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
       dplyr::select(-.data$.n, -.data$.mx)
 
-    vi_mat <- vi_wider %>%
-      tibble::column_to_rownames("COG_name") %>%
+    vi_mat <- vi_wider |>
+      tibble::column_to_rownames("COG_name") |>
       as.matrix()
   }
 
@@ -875,7 +875,7 @@ makeFeatureImportancePlot <- function(
       "<b>Group:</b> %{x}<br>",
       "<b>Importance:</b> %{z:.3f}<extra></extra>"
     )
-  ) %>%
+  ) |>
     plotly::layout(
       xaxis = list(title = "", tickangle = -45, side = "top"),
       yaxis = list(title = "", autorange = "reversed"),
@@ -906,10 +906,10 @@ makeCrossModelFeatureImportancePlot <- function(
   strat <- if (cross_model == "country") "country" else "year"
   strat_col <- "strat_value" # trained-on value in new schema
 
-  features_df <- top_data %>%
-    dplyr::filter(.data$species %in% bug) %>%
-    dplyr::filter(.data$drug_or_class %in% drug) %>%
-    dplyr::filter(.data$strat_label == strat) %>%
+  features_df <- top_data |>
+    dplyr::filter(.data$species %in% bug) |>
+    dplyr::filter(.data$drug_or_class %in% drug) |>
+    dplyr::filter(.data$strat_label == strat) |>
     dplyr::filter(!.data$cross_test)
 
   if (!nrow(features_df)) {
@@ -917,14 +917,14 @@ makeCrossModelFeatureImportancePlot <- function(
   }
 
   if (!identical(top_n_features, "all")) {
-    features_df <- features_df %>%
-      dplyr::group_by(!!rlang::sym(strat_col)) %>%
-      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) %>%
+    features_df <- features_df |>
+      dplyr::group_by(!!rlang::sym(strat_col)) |>
+      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) |>
       dplyr::ungroup()
   }
 
-  vi_wider <- features_df %>%
-    dplyr::select(.data$Variable, .data$Importance, !!rlang::sym(strat_col)) %>%
+  vi_wider <- features_df |>
+    dplyr::select(.data$Variable, .data$Importance, !!rlang::sym(strat_col)) |>
     tidyr::pivot_wider(
       names_from = strat_col,
       values_from = "Importance",
@@ -935,8 +935,8 @@ makeCrossModelFeatureImportancePlot <- function(
     return(NULL)
   }
 
-  vi_mat <- vi_wider %>%
-    tibble::column_to_rownames("Variable") %>%
+  vi_mat <- vi_wider |>
+    tibble::column_to_rownames("Variable") |>
     as.matrix()
 
   # column-wise min-max normalisation
@@ -963,7 +963,7 @@ makeCrossModelFeatureImportancePlot <- function(
       "<b>Group:</b> %{x}<br>",
       "<b>Importance:</b> %{z:.3f}<extra></extra>"
     )
-  ) %>%
+  ) |>
     plotly::layout(
       xaxis = list(title = "", tickangle = -45, side = "top"),
       yaxis = list(title = "", autorange = "reversed"),
@@ -995,7 +995,7 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     return(NULL)
   }
 
-  df <- data %>%
+  df <- data |>
     dplyr::filter(
       !is.na(.data$genome_drug.resistant_phenotype),
       !is.na(.data$genome_drug.antibiotic),
@@ -1015,24 +1015,24 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 
   # Pick top drug classes if not explicitly given
   if (is.null(drug_classes) || !length(drug_classes)) {
-    drug_classes <- df %>%
-      dplyr::count(.data$drug_class, name = "n") %>%
-      dplyr::arrange(dplyr::desc(.data$n)) %>%
-      dplyr::slice_head(n = max_classes) %>%
+    drug_classes <- df |>
+      dplyr::count(.data$drug_class, name = "n") |>
+      dplyr::arrange(dplyr::desc(.data$n)) |>
+      dplyr::slice_head(n = max_classes) |>
       dplyr::pull(.data$drug_class)
   }
-  df <- df %>% dplyr::filter(.data$drug_class %in% drug_classes)
+  df <- df |> dplyr::filter(.data$drug_class %in% drug_classes)
   if (!nrow(df)) {
     return(NULL)
   }
 
   # Group rare isolation sources into "Other" to keep the diagram readable
-  top_sources <- df %>%
-    dplyr::count(.data$genome.isolation_source, name = "n") %>%
-    dplyr::arrange(dplyr::desc(.data$n)) %>%
-    dplyr::slice_head(n = 8) %>%
+  top_sources <- df |>
+    dplyr::count(.data$genome.isolation_source, name = "n") |>
+    dplyr::arrange(dplyr::desc(.data$n)) |>
+    dplyr::slice_head(n = 8) |>
     dplyr::pull(.data$genome.isolation_source)
-  df <- df %>%
+  df <- df |>
     dplyr::mutate(
       genome.isolation_source = dplyr::if_else(
         .data$genome.isolation_source %in% top_sources,
@@ -1041,7 +1041,7 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
       )
     )
 
-  agg <- df %>%
+  agg <- df |>
     dplyr::count(
       .data$genome_drug.resistant_phenotype,
       .data$drug_class,
@@ -1071,9 +1071,9 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     sub$.src <- sub[[src_col]]
     sub$.tgt <- sub[[tgt_col]]
     sub$.grp <- sub[[group_col]]
-    sub %>%
-      dplyr::group_by(.data$.src, .data$.tgt, .data$.grp) %>%
-      dplyr::summarise(value = sum(.data$n), .groups = "drop") %>%
+    sub |>
+      dplyr::group_by(.data$.src, .data$.tgt, .data$.grp) |>
+      dplyr::summarise(value = sum(.data$n), .groups = "drop") |>
       dplyr::transmute(
         source = match(.data$.src, nodes$name) - 1,
         target = match(.data$.tgt, nodes$name) - 1,
@@ -1144,18 +1144,18 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
     !"COG" %in% names(enriched_tbl)) {
-    return(plotly::plot_ly() %>%
+    return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No annotations available", x = 0)))
   }
 
   # Split the comma-separated COG cells and count occurrences per Variable.
-  cog_df <- enriched_tbl %>%
-    dplyr::filter(!is.na(.data$COG), nzchar(.data$COG)) %>%
-    dplyr::select(.data$Variable, .data$COG, dplyr::any_of("COG_name")) %>%
+  cog_df <- enriched_tbl |>
+    dplyr::filter(!is.na(.data$COG), nzchar(.data$COG)) |>
+    dplyr::select(.data$Variable, .data$COG, dplyr::any_of("COG_name")) |>
     dplyr::distinct()
 
   if (!nrow(cog_df)) {
-    return(plotly::plot_ly() %>%
+    return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No COGs in selection", x = 0)))
   }
 
@@ -1171,11 +1171,11 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
     data.frame(COG = cogs, COG_name = names, stringsAsFactors = FALSE)
   }))
 
-  counts <- rows %>%
-    dplyr::filter(nzchar(.data$COG)) %>%
-    dplyr::count(.data$COG, .data$COG_name, name = "n") %>%
-    dplyr::arrange(dplyr::desc(.data$n)) %>%
-    dplyr::slice_head(n = top_n) %>%
+  counts <- rows |>
+    dplyr::filter(nzchar(.data$COG)) |>
+    dplyr::count(.data$COG, .data$COG_name, name = "n") |>
+    dplyr::arrange(dplyr::desc(.data$n)) |>
+    dplyr::slice_head(n = top_n) |>
     dplyr::mutate(
       label = dplyr::if_else(
         is.na(.data$COG_name) | !nzchar(.data$COG_name),
@@ -1199,7 +1199,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
     hovertemplate = paste0(
       "<b>%{y}</b><br>Features: %{x}<extra></extra>"
     )
-  ) %>%
+  ) |>
     plotly::layout(
       title = list(
         text = "Top COGs among selected features",
@@ -1233,10 +1233,10 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     return(NULL)
   }
 
-  df <- top_data %>%
-    dplyr::mutate(species = normalize_species(.data$species)) %>%
-    dplyr::filter(.data$species %in% normalize_species(bug)) %>%
-    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) %>%
+  df <- top_data |>
+    dplyr::mutate(species = normalize_species(.data$species)) |>
+    dplyr::filter(.data$species %in% normalize_species(bug)) |>
+    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
     dplyr::filter(!is.na(.data$Variable), !is.na(.data$drug_or_class))
 
   if (!nrow(df)) {
@@ -1244,14 +1244,14 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   }
 
   # Take top N features per drug/class by max importance
-  edges_df <- df %>%
-    dplyr::group_by(.data$drug_or_class, .data$Variable) %>%
+  edges_df <- df |>
+    dplyr::group_by(.data$drug_or_class, .data$Variable) |>
     dplyr::summarise(
       Importance = max(.data$Importance, na.rm = TRUE),
       .groups = "drop"
-    ) %>%
-    dplyr::group_by(.data$drug_or_class) %>%
-    dplyr::slice_max(order_by = .data$Importance, n = top_n) %>%
+    ) |>
+    dplyr::group_by(.data$drug_or_class) |>
+    dplyr::slice_max(order_by = .data$Importance, n = top_n) |>
     dplyr::ungroup()
 
   if (!nrow(edges_df)) {
@@ -1261,7 +1261,7 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   drugs <- unique(edges_df$drug_or_class)
   variables <- unique(edges_df$Variable)
 
-  drug_var_edges <- edges_df %>%
+  drug_var_edges <- edges_df |>
     dplyr::transmute(
       source_name = .data$drug_or_class,
       target_name = .data$Variable,
@@ -1279,13 +1279,13 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
       # Match Variable ("PF23840_IPR056912") against ann$feature ("PF23840")
       variables_key <- stringr::str_split_i(variables, "_", 1)
       var_key_map <- stats::setNames(variables, variables_key)
-      ann_sub <- ann %>%
+      ann_sub <- ann |>
         dplyr::filter(.data$feature %in% variables_key)
 
       if (include_clusters && nrow(ann_sub)) {
-        cl_edges <- ann_sub %>%
-          dplyr::filter(!is.na(.data$cluster)) %>%
-          dplyr::distinct(.data$feature, .data$cluster) %>%
+        cl_edges <- ann_sub |>
+          dplyr::filter(!is.na(.data$cluster)) |>
+          dplyr::distinct(.data$feature, .data$cluster) |>
           dplyr::transmute(
             source_name = var_key_map[.data$feature],
             target_name = .data$cluster,
@@ -1300,9 +1300,9 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
       if (include_cogs && nrow(ann_sub)) {
         if (include_clusters && !is.null(var_cluster_edges)) {
           # cluster -> COG edges
-          cc_edges <- ann_sub %>%
-            dplyr::filter(!is.na(.data$cluster), !is.na(.data$COG)) %>%
-            dplyr::distinct(.data$cluster, .data$COG) %>%
+          cc_edges <- ann_sub |>
+            dplyr::filter(!is.na(.data$cluster), !is.na(.data$COG)) |>
+            dplyr::distinct(.data$cluster, .data$COG) |>
             dplyr::transmute(
               source_name = .data$cluster,
               target_name = .data$COG,
@@ -1314,9 +1314,9 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
           }
         } else {
           # variable -> COG directly
-          cc_edges <- ann_sub %>%
-            dplyr::filter(!is.na(.data$COG)) %>%
-            dplyr::distinct(.data$feature, .data$COG) %>%
+          cc_edges <- ann_sub |>
+            dplyr::filter(!is.na(.data$COG)) |>
+            dplyr::distinct(.data$feature, .data$COG) |>
             dplyr::transmute(
               source_name = var_key_map[.data$feature],
               target_name = .data$COG,
@@ -1345,7 +1345,7 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   all_edges <- dplyr::bind_rows(
     drug_var_edges, var_cluster_edges, cluster_cog_edges
   )
-  edges <- all_edges %>%
+  edges <- all_edges |>
     dplyr::transmute(
       source = match(.data$source_name, nodes$name) - 1,
       target = match(.data$target_name, nodes$name) - 1,
@@ -1379,26 +1379,26 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
 # cross_model: "country" or "time"
 makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
-    return(plotly::plot_ly() %>%
+    return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No data available", x = 0)))
   }
 
   strat <- if (cross_model == "country") "country" else "year"
 
-  df <- perf_data %>%
+  df <- perf_data |>
     dplyr::filter(
       normalize_species(.data$species) %in% normalize_species(bug)
-    ) %>%
-    dplyr::filter(.data$strat_label == strat) %>%
+    ) |>
+    dplyr::filter(.data$strat_label == strat) |>
     dplyr::filter(.data$drug_label == "drug_class")
 
   if (!nrow(df)) {
-    return(plotly::plot_ly() %>%
+    return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No data for selection", x = 0)))
   }
 
   # Label: Same = trained & tested on same stratum, Different = cross-tested
-  df <- df %>%
+  df <- df |>
     dplyr::mutate(
       test_type = dplyr::if_else(
         .data$cross_test, "Different", "Same"
@@ -1415,7 +1415,7 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
     sub <- df[df$test_type == tt, ]
     if (!nrow(sub)) next
     col <- colors[[tt]]
-    p <- p %>%
+    p <- p |>
       plotly::add_trace(
         type = "box",
         x = sub$bal_acc,
@@ -1438,7 +1438,7 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
       )
   }
 
-  p %>% plotly::layout(
+  p |> plotly::layout(
     title = list(
       text = paste("Balanced accuracy by drug class -", strat_label),
       x = 0, font = list(size = 13)
@@ -1465,9 +1465,9 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
 
   strat <- if (cross_model == "country") "country" else "year"
 
-  df <- perf_data %>%
-    dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) %>%
-    dplyr::filter(.data$drug_or_class %in% drug) %>%
+  df <- perf_data |>
+    dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
+    dplyr::filter(.data$drug_or_class %in% drug) |>
     dplyr::filter(.data$strat_label == strat)
 
   if (!nrow(df)) {
@@ -1475,7 +1475,7 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   }
 
   # For self-evaluation rows (strat_value_test is NA), set tested = trained
-  df <- df %>%
+  df <- df |>
     dplyr::mutate(
       strat_value_test = dplyr::if_else(
         is.na(.data$strat_value_test),
@@ -1485,14 +1485,14 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     )
 
   # Aggregate bal_acc (mean across scales/encodings for same train/test pair)
-  models_performance <- df %>%
-    dplyr::group_by(.data$strat_value, .data$strat_value_test) %>%
-    dplyr::summarise(bal_acc = mean(.data$bal_acc, na.rm = TRUE), .groups = "drop") %>%
+  models_performance <- df |>
+    dplyr::group_by(.data$strat_value, .data$strat_value_test) |>
+    dplyr::summarise(bal_acc = mean(.data$bal_acc, na.rm = TRUE), .groups = "drop") |>
     tidyr::pivot_wider(
       names_from = "strat_value",
       values_from = "bal_acc"
-    ) %>%
-    tibble::column_to_rownames("strat_value_test") %>%
+    ) |>
+    tibble::column_to_rownames("strat_value_test") |>
     as.matrix()
 
   if (!length(models_performance)) {
@@ -1519,7 +1519,7 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
       "<b>Test data:</b> %{y}<br>",
       "<b>Bal. Accuracy:</b> %{z:.3f}<extra></extra>"
     )
-  ) %>%
+  ) |>
     plotly::layout(
       title = list(
         text = if (cross_model == "country") {
@@ -1595,9 +1595,9 @@ load_feature_name_map <- function(species_code, model_scale,
   }
   if (scale == "domain" && all(c("DB.ID", "SignDesc") %in% names(df))) {
     # domain ids need deduping since one Pfam can occur many times
-    agg <- df %>%
-      dplyr::distinct(.data$DB.ID, .data$SignDesc) %>%
-      dplyr::group_by(.data$DB.ID) %>%
+    agg <- df |>
+      dplyr::distinct(.data$DB.ID, .data$SignDesc) |>
+      dplyr::group_by(.data$DB.ID) |>
       dplyr::summarise(
         label = dplyr::first(.data$SignDesc),
         .groups = "drop"
@@ -1646,16 +1646,16 @@ enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
 
   # Top features Variable can be "PF23840_IPR056912" (domains) or the raw
   # feature id (genes/proteins). Split on first "_" to extract the join key.
-  tbl <- tbl %>%
+  tbl <- tbl |>
     dplyr::mutate(
       .join_key = stringr::str_split_i(.data$Variable, "_", 1)
     )
 
   join_keys <- unique(tbl$.join_key)
 
-  ann_collapsed <- ann %>%
-    dplyr::filter(.data$feature %in% join_keys) %>%
-    dplyr::group_by(.data$feature) %>%
+  ann_collapsed <- ann |>
+    dplyr::filter(.data$feature %in% join_keys) |>
+    dplyr::group_by(.data$feature) |>
     dplyr::summarise(
       cluster = dplyr::first(.data$cluster),
       cluster_name = dplyr::first(.data$cluster_name),
@@ -1666,8 +1666,8 @@ enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
       .groups = "drop"
     )
 
-  tbl %>%
-    dplyr::left_join(ann_collapsed, by = c(".join_key" = "feature")) %>%
+  tbl |>
+    dplyr::left_join(ann_collapsed, by = c(".join_key" = "feature")) |>
     dplyr::select(-.data$.join_key)
 }
 
@@ -1774,8 +1774,8 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     return(NULL)
   }
 
-  row <- enriched_tbl %>%
-    dplyr::filter(.data$Variable == variable) %>%
+  row <- enriched_tbl |>
+    dplyr::filter(.data$Variable == variable) |>
     dplyr::slice_head(n = 1)
   if (!nrow(row)) {
     return(NULL)
