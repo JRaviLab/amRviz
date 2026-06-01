@@ -106,6 +106,43 @@ launchAMRDashboard <- function(results_root = NULL,
                         height: 60px;
                         border-radius: 50%;
                       }
+
+                      /* Navbar (tabs row) — dark theme matching app header */
+                      .navbar {
+                        background-color: #1a1a1a !important;
+                        border: none !important;
+                        margin-bottom: 0 !important;
+                        min-height: 44px !important;
+                        border-radius: 0 !important;
+                      }
+                      .navbar-default {
+                        background-color: #1a1a1a !important;
+                        border-color: #1a1a1a !important;
+                      }
+                      /* hide the empty brand spacer */
+                      .navbar-brand {
+                        display: none !important;
+                      }
+                      .navbar-nav > li > a {
+                        color: #cccccc !important;
+                        font-size: 14px !important;
+                        padding: 13px 18px !important;
+                        transition: background-color 0.2s, color 0.2s;
+                      }
+                      .navbar-nav > li > a:hover {
+                        color: #ffffff !important;
+                        background-color: #333333 !important;
+                      }
+                      .navbar-nav > li.active > a,
+                      .navbar-nav > li.active > a:focus,
+                      .navbar-nav > li.active > a:hover {
+                        color: #ffffff !important;
+                        background-color: #2b2b2b !important;
+                        border-bottom: 3px solid #5b9bd5 !important;
+                      }
+                      .home-tab-icon {
+                        font-size: 16px;
+                      }
                     "))
     ),
     # App header: title row separate from the nav tabs
@@ -853,6 +890,21 @@ launchAMRDashboard <- function(results_root = NULL,
         input$model_metrics,
         input$drug_class_ml_perf_id,
         input$drug_ml_perf_id
+      )
+    })
+
+    # Performance overview tab
+    output$nmcc_strip_plot <- plotly::renderPlotly({
+      makeNmccStripPlot(
+        queryData(),
+        selected_drug_class = input$drug_class_ml_perf_id,
+        selected_drug       = input$drug_ml_perf_id
+      )
+    })
+    output$nmcc_heatmap <- plotly::renderPlotly({
+      makeNmccHeatmap(
+        queryData(),
+        selected_drug_class = input$drug_class_ml_perf_id
       )
     })
 
