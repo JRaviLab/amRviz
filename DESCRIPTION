@@ -63,4 +63,3 @@ biocViews:
 URL: https://github.com/jravilab/amRviz
 BugReports: https://github.com/jravilab/amRviz/issues
 Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3

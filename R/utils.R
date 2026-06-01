@@ -48,11 +48,28 @@ PHENOTYPE_COLORS <- c(
 )
 
 # Categorical palette for metadata plots (hosts, isolation sources, etc.).
+# Use `meta_palette(n)` at call sites rather than referencing META_COLORS
+# directly, so plots handle species with more than length(META_COLORS) unique
+# values without falling back to NA / gray70.
 META_COLORS <- c(
   "#4a6b8a", "#87ceeb", "#e6ab80", "#8b6b7a",
   "#4e9a9a", "#c4a35a", "#9b7fba", "#5b8db8",
   "#d4735e", "#d4872a", "#b5b5b5"
 )
+
+# Return a vector of `n` muted categorical colors. For n <= length(META_COLORS)
+# returns the first n curated colors verbatim; for n above that, interpolates
+# via colorRampPalette() so callers get a full palette no matter how many
+# unique values their data has.
+meta_palette <- function(n = length(META_COLORS)) {
+  if (n <= 0) {
+    return(character(0))
+  }
+  if (n <= length(META_COLORS)) {
+    return(META_COLORS[seq_len(n)])
+  }
+  grDevices::colorRampPalette(META_COLORS)(n)
+}
 
 # normalize_species helper: make "Esp." and "Esp" equivalent by removing
 # a single trailing dot for comparisons (preserves NA).
@@ -616,6 +633,8 @@ makeHostIsolatePlot <- function(data) {
     dplyr::summarize(n = n()) %>%
     dplyr::ungroup()
 
+  n_hosts <- length(unique(host_df$genome.host_common_name))
+
   g <- ggplot(
     host_df,
     aes(
@@ -630,7 +649,7 @@ makeHostIsolatePlot <- function(data) {
     )
   ) +
     geom_col(position = "stack") +
-    scale_fill_manual(values = META_COLORS, na.value = "gray70") +
+    scale_fill_manual(values = meta_palette(n_hosts), na.value = "gray70") +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
@@ -673,6 +692,8 @@ makeIsolationSourcesPlot <- function(data) {
   isolation_source <- isolation_source %>%
     mutate(genome.isolation_source_ = stringr::str_trunc(genome.isolation_source_, width = 20))
 
+  n_sources <- length(unique(isolation_source$genome.isolation_source_))
+
   isolation_source_plot <- ggplot(
     isolation_source,
     aes(
@@ -687,7 +708,7 @@ makeIsolationSourcesPlot <- function(data) {
     )
   ) +
     geom_col(position = "stack") +
-    scale_fill_manual(values = META_COLORS, na.value = "gray70") +
+    scale_fill_manual(values = meta_palette(n_sources), na.value = "gray70") +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
