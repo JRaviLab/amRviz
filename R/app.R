@@ -14,7 +14,6 @@
 #' @return A Shiny application object
 #' @export
 #' @import shiny
-#' @importFrom magrittr %>%
 #' @importFrom utils head write.csv
 #' @importFrom shinyjs useShinyjs
 #' @examples
@@ -287,8 +286,8 @@ launchAMRDashboard <- function(results_root = NULL,
       if (!all(c("species", "species_label") %in% names(df))) {
         return(character(0))
       }
-      pairs <- df %>%
-        dplyr::filter(!(.data$species %in% c("cross", "MDR"))) %>%
+      pairs <- df |>
+        dplyr::filter(!(.data$species %in% c("cross", "MDR"))) |>
         dplyr::distinct(.data$species, .data$species_label)
       choices <- pairs$species
       names(choices) <- gsub("_", " ", pairs$species_label)
@@ -356,14 +355,14 @@ launchAMRDashboard <- function(results_root = NULL,
       if (is.null(tf) || !nrow(tf)) {
         return(tibble::tibble())
       }
-      tf %>%
-        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) %>%
+      tf |>
+        dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
         dplyr::filter(!isTRUE(.data$cross_test))
     })
 
     loadDrugClassMapRec <- reactive({
-      loadDrugClassMap() %>%
-        dplyr::select(drug.antibiotic_name, drug_class) %>%
+      loadDrugClassMap() |>
+        dplyr::select(drug.antibiotic_name, drug_class) |>
         dplyr::distinct()
     })
 
@@ -487,13 +486,13 @@ launchAMRDashboard <- function(results_root = NULL,
 
     # Update the model performance drug class dropdown when bug selection changes
     observeEvent(input$bug_ml_perf_id, {
-      data <- queryData() %>%
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) %>%
+      data <- queryData() |>
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) |>
         dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
-      drug_class_vec <- data %>%
-        dplyr::filter(.data$drug_label == "drug_class") %>%
-        dplyr::pull(.data$drug_or_class) %>%
-        unique() %>%
+      drug_class_vec <- data |>
+        dplyr::filter(.data$drug_label == "drug_class") |>
+        dplyr::pull(.data$drug_or_class) |>
+        unique() |>
         sort()
 
       updateSelectInput(
@@ -507,13 +506,13 @@ launchAMRDashboard <- function(results_root = NULL,
 
     observeEvent(input$drug_class_ml_perf_id, {
       req(input$drug_class_ml_perf_id)
-      base_data <- queryData() %>%
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) %>%
+      base_data <- queryData() |>
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) |>
         dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
-      drug_vec <- base_data %>%
-        dplyr::filter(.data$drug_label == "drug") %>%
-        dplyr::pull(.data$drug_or_class) %>%
-        unique() %>%
+      drug_vec <- base_data |>
+        dplyr::filter(.data$drug_label == "drug") |>
+        dplyr::pull(.data$drug_or_class) |>
+        unique() |>
         sort()
 
       if (input$drug_class_ml_perf_id != "all") {
@@ -524,9 +523,9 @@ launchAMRDashboard <- function(results_root = NULL,
           if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
         }))
         if (nrow(meta) && all(c("class_abbr", "drug_abbr") %in% names(meta))) {
-          drugs_in_class <- meta %>%
-            dplyr::filter(.data$class_abbr %in% input$drug_class_ml_perf_id) %>%
-            dplyr::pull(.data$drug_abbr) %>%
+          drugs_in_class <- meta |>
+            dplyr::filter(.data$class_abbr %in% input$drug_class_ml_perf_id) |>
+            dplyr::pull(.data$drug_abbr) |>
             unique()
           drug_vec <- intersect(drug_vec, drugs_in_class)
         }
@@ -638,11 +637,11 @@ launchAMRDashboard <- function(results_root = NULL,
       }
       classes <- sort(unique(meta$drug_class[!is.na(meta$drug_class)]))
       # Default selection: top 3 by record count
-      top3 <- meta %>%
-        dplyr::filter(!is.na(.data$drug_class)) %>%
-        dplyr::count(.data$drug_class, name = "n") %>%
-        dplyr::arrange(dplyr::desc(.data$n)) %>%
-        dplyr::slice_head(n = 3) %>%
+      top3 <- meta |>
+        dplyr::filter(!is.na(.data$drug_class)) |>
+        dplyr::count(.data$drug_class, name = "n") |>
+        dplyr::arrange(dplyr::desc(.data$n)) |>
+        dplyr::slice_head(n = 3) |>
         dplyr::pull(.data$drug_class)
       updateSelectInput(
         session, "metadata_sankey_classes",
@@ -709,8 +708,8 @@ launchAMRDashboard <- function(results_root = NULL,
         }
       )
 
-      data <- data %>%
-        dplyr::filter(genome.isolation_country != "") %>%
+      data <- data |>
+        dplyr::filter(genome.isolation_country != "") |>
         dplyr::mutate(
           genome_drug.evidence = case_when(
             genome_drug.laboratory_typing_method %in%
@@ -724,11 +723,11 @@ launchAMRDashboard <- function(results_root = NULL,
               "Computational Prediction" ~ "Computational Method",
             TRUE ~ genome_drug.laboratory_typing_method
           )
-        ) %>%
-        group_by(genome.isolation_country, genome_drug.antibiotic) %>%
-        summarize(count = n(), .groups = "drop") %>%
-        dplyr::group_by(genome.isolation_country) %>%
-        dplyr::summarise(count = sum(count), .groups = "drop") %>%
+        ) |>
+        group_by(genome.isolation_country, genome_drug.antibiotic) |>
+        summarize(count = n(), .groups = "drop") |>
+        dplyr::group_by(genome.isolation_country) |>
+        dplyr::summarise(count = sum(count), .groups = "drop") |>
         dplyr::collect()
 
       makeGeoChloroPlot(data)
@@ -747,7 +746,7 @@ launchAMRDashboard <- function(results_root = NULL,
         }
       )
 
-      data <- data %>%
+      data <- data |>
         dplyr::mutate(
           genome_drug.evidence = case_when(
             genome_drug.laboratory_typing_method %in%
@@ -761,15 +760,15 @@ launchAMRDashboard <- function(results_root = NULL,
               "Computational Prediction" ~ "Computational Method",
             TRUE ~ genome_drug.laboratory_typing_method
           )
-        ) %>%
-        dplyr::filter(!is.na(genome.collection_year)) %>%
+        ) |>
+        dplyr::filter(!is.na(genome.collection_year)) |>
         group_by(
           genome_drug.antibiotic,
           genome_drug.resistant_phenotype,
           genome.isolation_country,
           genome.collection_year
-        ) %>%
-        summarize(n = n()) %>%
+        ) |>
+        summarize(n = n()) |>
         dplyr::collect()
       # print(data)
       makeTimeSeriesAMRPlot(data, input$amr_drug_search)
@@ -788,8 +787,8 @@ launchAMRDashboard <- function(results_root = NULL,
         }
       )
 
-      data <- data %>%
-        dplyr::filter(genome.host_common_name != "") %>%
+      data <- data |>
+        dplyr::filter(genome.host_common_name != "") |>
         dplyr::mutate(
           genome_drug.evidence = case_when(
             genome_drug.laboratory_typing_method %in%
@@ -803,7 +802,7 @@ launchAMRDashboard <- function(results_root = NULL,
               "Computational Prediction" ~ "Computational Method",
             TRUE ~ genome_drug.laboratory_typing_method
           )
-        ) %>%
+        ) |>
         dplyr::collect()
 
       makeHostIsolatePlot(data)
@@ -822,8 +821,8 @@ launchAMRDashboard <- function(results_root = NULL,
         }
       )
 
-      data <- data %>%
-        dplyr::filter(genome.host_common_name != "") %>%
+      data <- data |>
+        dplyr::filter(genome.host_common_name != "") |>
         dplyr::mutate(
           genome_drug.evidence = case_when(
             genome_drug.laboratory_typing_method %in%
@@ -837,7 +836,7 @@ launchAMRDashboard <- function(results_root = NULL,
               "Computational Prediction" ~ "Computational Method",
             TRUE ~ genome_drug.laboratory_typing_method
           )
-        ) %>%
+        ) |>
         dplyr::collect()
       makeIsolationSourcesPlot(data)
     })
@@ -920,8 +919,8 @@ launchAMRDashboard <- function(results_root = NULL,
         )
       })
       output$feature_importance_table <- DT::renderDataTable({
-        tf <- filtered_top_features() %>%
-          dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) %>%
+        tf <- filtered_top_features() |>
+          dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_ml_perf_id)) |>
           dplyr::filter(.data$drug_or_class %in% input$amr_drug_ml_across_bug)
         if (!nrow(tf)) {
           return(NULL)
@@ -941,9 +940,9 @@ launchAMRDashboard <- function(results_root = NULL,
         input$amr_drug_ml_across_bug
       }
       bug <- input$bug_search_amr_across_bug
-      tf <- filtered_top_features() %>%
+      tf <- filtered_top_features() |>
         dplyr::filter(normalize_species(.data$species) %in%
-          normalize_species(bug)) %>%
+          normalize_species(bug)) |>
         dplyr::filter(.data$drug_or_class %in% amr_drug)
       if (!nrow(tf)) {
         return(NULL)
@@ -965,9 +964,9 @@ launchAMRDashboard <- function(results_root = NULL,
         input$amr_drug_ml_across_drug
       }
       bug <- input$bug_search_amr_across_drug
-      tf <- filtered_top_features() %>%
+      tf <- filtered_top_features() |>
         dplyr::filter(normalize_species(.data$species) %in%
-          normalize_species(bug)) %>%
+          normalize_species(bug)) |>
         dplyr::filter(.data$drug_or_class %in% amr_drug)
       if (!nrow(tf)) {
         return(NULL)
@@ -1023,10 +1022,10 @@ launchAMRDashboard <- function(results_root = NULL,
     # Cross model feature importance table
     output$cross_model_feature_importance_table <- DT::renderDataTable({
       strat <- if (isTRUE(input$cross_model_comparison == "country")) "country" else "year"
-      tf <- topFeatures() %>%
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_cross_model_comparison_id)) %>%
-        dplyr::filter(.data$drug_or_class %in% input$drug_cross_model_comparison_id) %>%
-        dplyr::filter(.data$strat_label == strat) %>%
+      tf <- topFeatures() |>
+        dplyr::filter(normalize_species(.data$species) %in% normalize_species(input$bug_cross_model_comparison_id)) |>
+        dplyr::filter(.data$drug_or_class %in% input$drug_cross_model_comparison_id) |>
+        dplyr::filter(.data$strat_label == strat) |>
         dplyr::filter(!isTRUE(.data$cross_test))
       if (!nrow(tf)) {
         return(NULL)
