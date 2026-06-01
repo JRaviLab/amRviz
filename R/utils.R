@@ -5,7 +5,7 @@
 #' @importFrom dplyr count summarise where
 #' @importFrom ggplot2 ggplot aes geom_col geom_line geom_point geom_boxplot
 #' @importFrom ggplot2 theme_bw theme_minimal theme element_text labs
-#' @importFrom ggplot2 scale_fill_brewer scale_color_brewer coord_cartesian
+#' @importFrom ggplot2 scale_fill_manual scale_color_manual coord_cartesian
 #' @importFrom ggplot2 position_jitterdodge ggtitle
 #' @importFrom here here
 #' @importFrom DBI dbConnect dbGetQuery dbWriteTable
@@ -28,6 +28,48 @@ NULL
 
 # Species code regex (note: Esp. includes escaped period)
 SPECIES_PATTERN <- "(Efa|Sau|Kpn|Aba|Pae|Esp\\.?)"
+
+# Unified palette for molecular feature scales (gene, protein, domain, struct).
+# Keyed to match the values in the `feature_type` column.
+SCALE_COLORS <- c(
+  domains  = "#66a61e",
+  genes    = "#e6ab80",
+  proteins = "#87ceeb",
+  struct   = "#a52a2a"
+)
+
+# AMR phenotype palette (R/S/I plus full-word + lowercase variants so it works
+# regardless of how the column is encoded). Susceptible is intentionally
+# neutral grey so Resistant amber stands out as the signal of interest.
+PHENOTYPE_COLORS <- c(
+  R = "#d4872a", Resistant = "#d4872a", resistant = "#d4872a",
+  S = "#8a8a8a", Susceptible = "#8a8a8a", susceptible = "#8a8a8a",
+  I = "#e6ab80", Intermediate = "#e6ab80", intermediate = "#e6ab80"
+)
+
+# Categorical palette for metadata plots (hosts, isolation sources, etc.).
+# Use `meta_palette(n)` at call sites rather than referencing META_COLORS
+# directly, so plots handle species with more than length(META_COLORS) unique
+# values without falling back to NA / gray70.
+META_COLORS <- c(
+  "#4a6b8a", "#87ceeb", "#e6ab80", "#8b6b7a",
+  "#4e9a9a", "#c4a35a", "#9b7fba", "#5b8db8",
+  "#d4735e", "#d4872a", "#b5b5b5"
+)
+
+# Return a vector of `n` muted categorical colors. For n <= length(META_COLORS)
+# returns the first n curated colors verbatim; for n above that, interpolates
+# via colorRampPalette() so callers get a full palette no matter how many
+# unique values their data has.
+meta_palette <- function(n = length(META_COLORS)) {
+  if (n <= 0) {
+    return(character(0))
+  }
+  if (n <= length(META_COLORS)) {
+    return(META_COLORS[seq_len(n)])
+  }
+  grDevices::colorRampPalette(META_COLORS)(n)
+}
 
 # normalize_species helper: make "Esp." and "Esp" equivalent by removing
 # a single trailing dot for comparisons (preserves NA).
@@ -347,23 +389,34 @@ getAmrDrugs <- function(amr_drug, amr_drug_class) {
   return(amr_drugs)
 }
 
-quickStatBox <- function(title, value, unit = "", bg_color = "#f0f0f0", text_color = "black") {
+quickStatBox <- function(title, value, icon_name, bg_color, text_color = "white") {
   div(
     style = glue::glue("
       background-color: {bg_color};
       color: {text_color};
-      padding: 20px;
-      margin: 5px auto;
+      padding: 10px 14px;
+      margin: 4px 3px;
       border-radius: 10px;
-      width:95%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 55px;
       font-family: sans-serif;
     "),
-    div(style = "font-size: 16px;", title),
     div(
-      style = "font-size: 12px; margin-top: 5px;",
-      paste0(value, if (unit != "") paste0(" ", unit))
+      div(
+        style = "font-size: 18px; font-weight: bold; line-height: 1.2;",
+        value
+      ),
+      div(
+        style = "font-size: 11px; margin-top: 3px; opacity: 0.9;",
+        title
+      )
+    ),
+    div(
+      style = "font-size: 24px; opacity: 0.4;",
+      icon(icon_name)
     )
   )
 }
@@ -407,40 +460,45 @@ makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
     dplyr::pull(genome.isolation_country)
   spp_name <- unique(data_with_drug_class$species)
   summary_paragraph <- tags$p(
-    style = "text-align: center; font-weight: bold; padding: 12px 0; font-family: sans-serif; font-size: 20px;",
-    stringr::str_glue("Data summary for {stringr::str_to_sentence(spp_name)}")
+    style = "font-weight: bold; padding: 4px 4px 4px; font-family: sans-serif; font-size: 14px;",
+    stringr::str_glue("Data summary for {stringr::str_to_sentence(spp_name[1])}")
   )
   tagList(
     summary_paragraph,
     fluidRow(
-      column(2, quickStatBox("# isolate-drug-AMR_phenotype combo", total_genomes,
-        bg_color = "#000000", text_color = "white"
-      )),
-      column(2, quickStatBox("# unique genomes", total_uniques_genomes,
-        bg_color = "#56B4E9", text_color = "black"
-      )),
-      column(2, quickStatBox("# resistant isolates", n_genomes_resistant,
-        bg_color = "#009E73", text_color = "black"
-      )),
-      column(2, quickStatBox("# susceptible isolates", n_genomes_susceptible,
-        bg_color = "#F0E442", text_color = "black"
-      )),
-      column(2, quickStatBox("# drugs", paste(n_amr_drugs, collapse = ", "),
-        bg_color = "#0072B2"
-      ), text_color = "white"),
-      column(2, quickStatBox("# drug classes", paste(n_amr_drug_class, collapse = ", "),
-        bg_color = "#D55E00", text_color = "white"
-      )),
+      column(4, quickStatBox("Isolate-drug records", total_genomes, "database", "#3c5a6f")),
+      column(4, quickStatBox("Unique genomes", total_uniques_genomes, "dna", "#7aab6e")),
+      column(4, quickStatBox("Drugs tested", n_amr_drugs, "pills", "#9b7fba"))
     ),
     fluidRow(
-      column(4, quickStatBox("Top 5 drugs", paste(top_n_drugs, collapse = "\n"),
-        bg_color = "#CC79A7", , text_color = "black"
+      column(4, quickStatBox("Resistant isolates", n_genomes_resistant, "virus", "#d4872a")),
+      column(4, quickStatBox("Susceptible isolates", n_genomes_susceptible, "shield-halved", "#8a8a8a")),
+      column(4, quickStatBox("Drug classes", n_amr_drug_class, "layer-group", "#8b6b7a"))
+    ),
+    fluidRow(
+      column(4, quickStatBox(
+        "Top 5 drugs",
+        tags$span(
+          style = "font-size:11px; line-height:1.5;",
+          HTML(paste(top_n_drugs, collapse = "<br/>"))
+        ),
+        "star", "#4e9a9a"
       )),
-      column(4, quickStatBox("Top 5 drug classes", paste(top_n_drugs_class, collapse = "\n"),
-        bg_color = "#999999", text_color = "black"
+      column(4, quickStatBox(
+        "Top 5 drug classes",
+        tags$span(
+          style = "font-size:11px; line-height:1.5;",
+          HTML(paste(top_n_drugs_class, collapse = "<br/>"))
+        ),
+        "list", "#6a6f4e"
       )),
-      column(4, quickStatBox("Top countries", paste(top_n_countries, collapse = "\n"),
-        bg_color = "#E69F00", text_color = "white"
+      column(4, quickStatBox(
+        "Top 5 countries",
+        tags$span(
+          style = "font-size:11px; line-height:1.5;",
+          HTML(paste(top_n_countries, collapse = "<br/>"))
+        ),
+        "globe", "#d4735e"
       ))
     )
   )
@@ -451,30 +509,38 @@ makeDatAvailabilityPlot <- function(data) {
     dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) %>%
     count() %>%
     ungroup()
-  ggplot(
+  g <- ggplot(
     data,
     aes(
       x = genome_drug.antibiotic,
       y = n,
       color = genome_drug.resistant_phenotype,
-      fill = genome_drug.resistant_phenotype
+      fill = genome_drug.resistant_phenotype,
+      text = paste0(
+        "Drug: ", genome_drug.antibiotic,
+        "<br>Phenotype: ", genome_drug.resistant_phenotype,
+        "<br>Isolates: ", n
+      )
     )
   ) +
     geom_col() +
+    scale_fill_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
+    scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
-      legend.title = element_text(size = 14),
+      legend.title = element_text(size = 12),
       legend.text = element_text(size = 10),
       axis.text = element_text(size = 10),
       axis.title = element_text(size = 10)
     ) +
     labs(
-      x = "Drugs",
+      x = "Drug",
       y = "No. of isolates",
       color = "AMR phenotype",
       fill = "AMR phenotype"
     )
+  plotly::ggplotly(g, tooltip = "text")
 }
 
 makeGeoChloroPlot <- function(data) {
@@ -486,7 +552,13 @@ makeGeoChloroPlot <- function(data) {
     z = ~count,
     text = ~ paste(iso3, "<br>Genomes:", count),
     hoverinfo = "text",
-    colorscale = "Viridis",
+    colorscale = list(
+      c(0, "#fdf3e6"),
+      c(0.25, "#f0d3a5"),
+      c(0.5, "#e2ad6a"),
+      c(0.75, "#d4872a"),
+      c(1, "#9a5e1c")
+    ),
     marker = list(line = list(width = 0.5, color = "white"))
   ) %>%
     colorbar(title = list(text = "No. of isolates", font = list(size = 14))) %>%
@@ -517,29 +589,36 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
     title_amr_drug
   )
 
-  ggplot(
+  g <- ggplot(
     data,
     aes(
       x = genome.collection_year,
       y = n,
-      colour = genome_drug.resistant_phenotype
+      colour = genome_drug.resistant_phenotype,
+      text = paste0(
+        "Year: ", genome.collection_year,
+        "<br>Phenotype: ", genome_drug.resistant_phenotype,
+        "<br>Isolates: ", n
+      )
     )
   ) +
-    geom_line() +
+    geom_line(aes(group = genome_drug.resistant_phenotype)) +
     geom_point() +
+    scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
     labs(
       title = title_amr_drug,
       x = "Year",
       y = "No. of isolates",
       colour = "AMR phenotype"
     ) +
-    theme_minimal() +
+    theme_bw() +
     theme(
-      legend.title = element_text(size = 14),
-      legend.text = element_text(size = 12),
-      axis.text = element_text(size = 12),
-      axis.title = element_text(size = 12)
+      legend.title = element_text(size = 12),
+      legend.text = element_text(size = 10),
+      axis.text = element_text(size = 10),
+      axis.title = element_text(size = 10)
     )
+  plotly::ggplotly(g, tooltip = "text")
 }
 
 makeHostIsolatePlot <- function(data) {
@@ -554,27 +633,37 @@ makeHostIsolatePlot <- function(data) {
     dplyr::summarize(n = n()) %>%
     dplyr::ungroup()
 
-  ggplot(
+  n_hosts <- length(unique(host_df$genome.host_common_name))
+
+  g <- ggplot(
     host_df,
     aes(
       x = genome_drug.antibiotic,
       y = n,
-      fill = genome.host_common_name
+      fill = genome.host_common_name,
+      text = paste0(
+        "Drug: ", genome_drug.antibiotic,
+        "<br>Host: ", genome.host_common_name,
+        "<br>Isolates: ", n
+      )
     )
   ) +
     geom_col(position = "stack") +
+    scale_fill_manual(values = meta_palette(n_hosts), na.value = "gray70") +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
       axis.text.y = element_text(size = 10),
+      legend.title = element_text(size = 12),
       legend.text = element_text(size = 10),
-      axis.title = element_text(size = 10),
+      axis.title = element_text(size = 10)
     ) +
     labs(
-      x = "Drugs",
+      x = "Drug",
       y = "No. of isolates",
       fill = "Host"
     )
+  plotly::ggplotly(g, tooltip = "text")
 }
 
 makeIsolationSourcesPlot <- function(data) {
@@ -603,28 +692,37 @@ makeIsolationSourcesPlot <- function(data) {
   isolation_source <- isolation_source %>%
     mutate(genome.isolation_source_ = stringr::str_trunc(genome.isolation_source_, width = 20))
 
+  n_sources <- length(unique(isolation_source$genome.isolation_source_))
+
   isolation_source_plot <- ggplot(
     isolation_source,
     aes(
       x = genome_drug.antibiotic,
       y = n,
-      fill = genome.isolation_source_
+      fill = genome.isolation_source_,
+      text = paste0(
+        "Drug: ", genome_drug.antibiotic,
+        "<br>Source: ", genome.isolation_source_,
+        "<br>Isolates: ", n
+      )
     )
   ) +
     geom_col(position = "stack") +
+    scale_fill_manual(values = meta_palette(n_sources), na.value = "gray70") +
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
       axis.text.y = element_text(size = 10),
+      legend.title = element_text(size = 12),
       legend.text = element_text(size = 10),
       axis.title = element_text(size = 10)
     ) +
     labs(
-      x = "",
+      x = "Drug",
       y = "No. of isolates",
       fill = "Isolation source"
     )
-  return(isolation_source_plot)
+  plotly::ggplotly(isolation_source_plot, tooltip = "text")
 }
 
 # makeModelPerformancePlot: plot baseline ML model performance metrics.
@@ -637,9 +735,8 @@ makeModelPerformancePlot <- function(
   amr_drug_class, amr_drug
 ) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
-    return(ggplot() +
-      labs(title = "No data available") +
-      theme_bw())
+    return(plotly::plot_ly() %>%
+      plotly::layout(title = list(text = "No data available", x = 0)))
   }
 
   # Filter to baseline models (strat_label is NA = no country/year stratification)
@@ -660,9 +757,8 @@ makeModelPerformancePlot <- function(
   }
 
   if (!nrow(df)) {
-    return(ggplot() +
-      labs(title = "No data for current selection") +
-      theme_bw())
+    return(plotly::plot_ly() %>%
+      plotly::layout(title = list(text = "No data for current selection", x = 0)))
   }
 
   # Normalize species and set ESKAPE factor order
@@ -675,39 +771,79 @@ makeModelPerformancePlot <- function(
     df <- df %>% dplyr::mutate(species = factor(.data$species, levels = lvls))
   }
 
-  metric_sym <- rlang::sym(metrics)
-  g <- ggplot(
-    df,
-    aes(
-      x = .data$species,
-      y = !!metric_sym,
-      fill = .data$feature_type,
-      color = .data$feature_type
-    )
-  ) +
-    geom_boxplot(alpha = 0.4) +
-    labs(
-      title = "Performance metrics",
-      x = "Species",
-      y = metrics,
-      fill = "Scale",
-      color = "Scale"
-    ) +
-    scale_fill_brewer(palette = "Set2") +
-    scale_color_brewer(palette = "Dark2") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    coord_cartesian(ylim = c(0, 1))
+  # Order feature_type so legend + colors line up with SCALE_COLORS.
+  ft_levels <- intersect(names(SCALE_COLORS), unique(df$feature_type))
+  df <- df %>%
+    dplyr::mutate(feature_type = factor(.data$feature_type, levels = ft_levels))
 
-  if (!is.null(amr_drug) && length(amr_drug) > 0 && nzchar(amr_drug[1])) {
-    g <- g +
-      geom_point(
-        data = df %>% dplyr::filter(.data$drug_or_class %in% amr_drug),
-        position = position_jitterdodge(jitter.width = 0.1),
-        size = 4
+  has_drug <- !is.null(amr_drug) && length(amr_drug) > 0 && nzchar(amr_drug[1])
+
+  # Build the plot one feature_type at a time. Both the main box trace and the
+  # overlay-marker trace (a transparent box with boxpoints = "all") share the
+  # same offsetgroup so boxmode = "group" puts them in the same dodge slot.
+  p <- plotly::plot_ly() %>%
+    plotly::layout(
+      title = list(text = "Performance metrics", x = 0, font = list(size = 14)),
+      boxmode = "group",
+      xaxis = list(
+        title = list(text = "Species", font = list(size = 10)),
+        tickfont = list(size = 10), tickangle = -45
+      ),
+      yaxis = list(
+        title = list(text = metrics, font = list(size = 10)),
+        tickfont = list(size = 10), range = c(0, 1.03)
+      ),
+      legend = list(
+        title = list(text = "Scale", font = list(size = 12)),
+        font = list(size = 10)
       )
+    )
+
+  for (ft in ft_levels) {
+    sub <- df %>% dplyr::filter(.data$feature_type == ft)
+    if (!nrow(sub)) next
+    color <- unname(SCALE_COLORS[ft])
+    fill <- paste0(color, "66") # ~40% opacity, matches old alpha = 0.4
+
+    p <- p %>%
+      plotly::add_trace(
+        type = "box",
+        x = sub$species,
+        y = sub[[metrics]],
+        name = ft,
+        legendgroup = ft,
+        offsetgroup = ft,
+        line = list(color = color),
+        fillcolor = fill,
+        marker = list(color = color),
+        boxpoints = FALSE
+      )
+
+    if (has_drug) {
+      sub_pts <- sub %>% dplyr::filter(.data$drug_or_class %in% amr_drug)
+      if (nrow(sub_pts) > 0) {
+        p <- p %>%
+          plotly::add_trace(
+            type = "box",
+            x = sub_pts$species,
+            y = sub_pts[[metrics]],
+            boxpoints = "all",
+            pointpos = 0,
+            jitter = 0,
+            line = list(width = 0),
+            fillcolor = "rgba(0,0,0,0)",
+            marker = list(size = 12, color = color),
+            legendgroup = ft,
+            offsetgroup = ft,
+            showlegend = FALSE,
+            hoverinfo = "x+y+name",
+            name = ft
+          )
+      }
+    }
   }
-  g
+
+  p
 }
 
 # makeFeatureImportancePlot: heatmap of top features across bugs or drugs.
@@ -1193,6 +1329,30 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     )
   )
 
+  # Sankey-specific muted palette. Resistant -> amber and Susceptible -> grey
+  # are explicitly mapped; remaining range colors are deliberately lower-
+  # saturation than META_COLORS so the translucent link bands don't read as
+  # bright pastels at the Sankey's default opacity.
+  range_colors <- c(
+    "#d4872a", # Resistant (amber)
+    "#8a8a8a", # Susceptible (grey)
+    "#7a8a9b", # muted slate blue
+    "#c4a991", # dusty peach
+    "#9ab18a", # sage green
+    "#a99c8f", # warm taupe
+    "#8b6b7a", # mauve
+    "#4e9a9a", # teal
+    "#c4a35a", # mustard
+    "#9b7fba", # dusty purple
+    "#d4735e", # terracotta
+    "#6a6f4e" # olive
+  )
+  colour_scale <- networkD3::JS(paste0(
+    'd3.scaleOrdinal().domain(["Resistant","Susceptible"]).range(["',
+    paste(range_colors, collapse = '","'),
+    '"])'
+  ))
+
   networkD3::sankeyNetwork(
     Links = as.data.frame(links),
     Nodes = nodes,
@@ -1201,6 +1361,7 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     Value = "value",
     NodeID = "name",
     LinkGroup = "group",
+    colourScale = colour_scale,
     fontSize = 12,
     nodeWidth = 25,
     sinksRight = FALSE

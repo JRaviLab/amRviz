@@ -565,7 +565,7 @@ launchAMRDashboard <- function(results_root = NULL,
         box(
           title = "", # "Resistance vs Susceptible across time",
           width = 12,
-          plotOutput("r_s_across_time_plot")
+          plotly::plotlyOutput("r_s_across_time_plot")
         )
       )
     })
@@ -575,7 +575,7 @@ launchAMRDashboard <- function(results_root = NULL,
         box(
           title = "", # "Host",
           width = 12,
-          plotOutput("host_isolate_plot")
+          plotly::plotlyOutput("host_isolate_plot")
         )
       )
     })
@@ -585,7 +585,7 @@ launchAMRDashboard <- function(results_root = NULL,
         box(
           title = "", # "Isolation source",
           width = 12,
-          plotOutput("isolation_source_plot")
+          plotly::plotlyOutput("isolation_source_plot")
         )
       )
     })
@@ -595,8 +595,26 @@ launchAMRDashboard <- function(results_root = NULL,
         box(
           title = "", # "Data availability",
           width = 12,
-          plotOutput("resistance_vs_susceptible_plot")
+          plotly::plotlyOutput("resistance_vs_susceptible_plot")
         )
+      )
+    })
+
+    # Header above the Isolation sources / Hosts tabset — title swaps with tab.
+    output$isolation_source_header <- renderUI({
+      title <- if (!is.null(input$isolation_source_tabset) &&
+        input$isolation_source_tabset == "Hosts") {
+        "Distribution of genomes across hosts"
+      } else {
+        "Distribution of genomes across isolation sources"
+      }
+      div(
+        class = "plot-header",
+        style = paste0(
+          "text-align: center; font-family: 'Arial', sans-serif;",
+          " font-size: 14px; margin-top: 8px; margin-bottom: 8px;"
+        ),
+        title
       )
     })
 
@@ -662,7 +680,7 @@ launchAMRDashboard <- function(results_root = NULL,
     observe({
       req(input$bug_metadata_id)
 
-      output$resistance_vs_susceptible_plot <- renderPlot({
+      output$resistance_vs_susceptible_plot <- plotly::renderPlotly({
         metadata <- purrr::map_dfr(
           .x = input$bug_metadata_id,
           .f = function(x) {
@@ -716,7 +734,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeGeoChloroPlot(data)
     })
 
-    output$r_s_across_time_plot <- renderPlot({
+    output$r_s_across_time_plot <- plotly::renderPlotly({
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
@@ -757,7 +775,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeTimeSeriesAMRPlot(data, input$amr_drug_search)
     })
 
-    output$host_isolate_plot <- renderPlot({
+    output$host_isolate_plot <- plotly::renderPlotly({
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
@@ -791,7 +809,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeHostIsolatePlot(data)
     })
 
-    output$isolation_source_plot <- renderPlot({
+    output$isolation_source_plot <- plotly::renderPlotly({
       data <- purrr::map_dfr(
         .x = input$bug_metadata_id,
         .f = function(x) {
@@ -827,7 +845,7 @@ launchAMRDashboard <- function(results_root = NULL,
 
     ## ML Metrics
     # plotly::renderPlotly
-    output$model_perfomance_plot <- renderPlot({
+    output$model_perfomance_plot <- plotly::renderPlotly({
       makeModelPerformancePlot(
         queryData(),
         input$bug_ml_perf_id,

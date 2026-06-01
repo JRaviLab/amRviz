@@ -35,7 +35,7 @@ metadataUI <- function() {
             class = "plot-container",
             div(
               class = "plot-header",
-              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 30px; margin-bottom: 30px;",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes"
             ),
             styledBox("resistance_vs_susceptible_ui")
@@ -47,7 +47,7 @@ metadataUI <- function() {
             class = "plot-container",
             div(
               class = "plot-header",
-              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 30px; margin-bottom: 30px;",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Global distribution of resistant phenotypes"
             ),
             styledBox("geo_isolate_plot_ui")
@@ -61,7 +61,7 @@ metadataUI <- function() {
             class = "plot-container",
             div(
               class = "plot-header",
-              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 10px; margin-bottom: 20px;",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes by year"
             ),
             styledBox("r_s_across_time_ui")
@@ -71,12 +71,9 @@ metadataUI <- function() {
           width = 6,
           div(
             class = "plot-container",
-            div(
-              class = "plot-header",
-              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 10px; margin-bottom: 30px;",
-              "Distribution of genomes across isolation sources"
-            ),
+            uiOutput("isolation_source_header"),
             tabBox(
+              id = "isolation_source_tabset",
               width = 12,
               tabPanel(
                 "Isolation sources",
@@ -84,15 +81,7 @@ metadataUI <- function() {
               ),
               tabPanel(
                 "Hosts",
-                div(
-                  class = "plot-container",
-                  div(
-                    class = "plot-header",
-                    style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 10px; margin-bottom: 0px;",
-                    "Distribution of genomes across hosts"
-                  ),
-                  styledBox("host_isolate_plot_ui")
-                )
+                styledBox("host_isolate_plot_ui")
               )
             )
           )

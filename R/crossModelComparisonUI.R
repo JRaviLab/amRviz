@@ -138,7 +138,8 @@ crossModelComparisonUI <- function() {
                     "cross_model_feature_importance_table"
                   ),
                   style = paste0(
-                    "padding: 0; height: 400px;",
+                    "padding: 0; min-height: 400px;",
+                    " margin-bottom: 20px;",
                     " border: 1px solid lightgray;"
                   )
                 )
