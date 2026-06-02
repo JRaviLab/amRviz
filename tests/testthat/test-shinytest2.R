@@ -1,14 +1,13 @@
-# shinytest2 smoke tests
+# shinytest2 app tests
 #
-# These drive the real dashboard in a headless browser to confirm that the app
-# launches and that every tab renders against the bundled Shigella flexneri
-# demo data without throwing a Shiny output error. They complement the unit
-# tests in the other test files, which exercise the internal data/plot helpers
-# in isolation.
+# These open the real dashboard in a hidden browser and check that the app
+# starts up and that every tab shows its plots using the built-in Shigella
+# flexneri demo data, with no errors. The other test files check the helper
+# functions on their own; these check the whole app running together.
 #
-# The tests are skipped automatically when shinytest2 or a Chrome/Chromium
-# binary is unavailable (e.g. on some build machines), so they never turn into
-# spurious errors during R CMD check / BiocCheck.
+# If shinytest2 or a Chrome browser isn't installed, the tests are skipped
+# instead of failing, so they won't cause false errors during R CMD check or
+# BiocCheck.
 
 skip_if_no_shinytest2 <- function() {
   testthat::skip_on_cran()
@@ -19,9 +18,9 @@ skip_if_no_shinytest2 <- function() {
   }
 }
 
-# Build an AppDriver for the demo app with generous load/idle timeouts, since
-# the first render reads several Parquet files and draws plotly/networkD3
-# widgets. A fixed seed keeps any stochastic layout reproducible.
+# Start the demo app for testing. We allow long wait times because the app
+# loads several data files and draws interactive plots when it first opens.
+# Setting a fixed seed makes the results the same each time the test is run.
 new_demo_app <- function(name) {
   shinytest2::AppDriver$new(
     launchAMRDashboard(),
@@ -32,12 +31,13 @@ new_demo_app <- function(name) {
   )
 }
 
-# Assert that a given Shiny output rendered and is not displaying an error.
+# Check that a given plot or table appeared on the page and is not showing
+# an error message.
 expect_output_ok <- function(app, output_id) {
   html <- app$get_html(sprintf("#%s", output_id))
   testthat::expect_true(
     !is.null(html) && nzchar(html),
-    info = sprintf("output '%s' is missing from the DOM", output_id)
+    info = sprintf("output '%s' did not appear on the page", output_id)
   )
   testthat::expect_false(
     grepl("shiny-output-error", html, fixed = TRUE),
@@ -67,7 +67,7 @@ test_that("each dashboard tab renders its primary output", {
   withr::defer(app$stop())
   app$wait_for_idle(timeout = 60 * 1000)
 
-  # tab value (input$tabselected) -> a primary output that must render on it.
+  # Each entry pairs a tab with one plot or table that should appear on it.
   tabs <- list(
     list(value = "Metadata", output = "quick_metadata_stats"),
     list(value = "model_perf_tab", output = "model_perfomance_plot"),
