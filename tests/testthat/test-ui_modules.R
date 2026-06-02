@@ -29,14 +29,14 @@ test_that("crossModelComparisonUI returns a shiny tabPanel", {
 # ── UI helper functions ──────────────────────────────────────────────────────
 
 test_that("quickStatBox returns a shiny tag", {
-  result <- quickStatBox("Test Title", "42")
+  result <- quickStatBox("Test Title", "42", "database", "#3c5a6f")
   expect_s3_class(result, "shiny.tag")
 })
 
 test_that("quickStatBox accepts custom colors", {
   result <- quickStatBox(
     "Title", "100",
-    bg_color = "#fff", text_color = "black"
+    icon_name = "dna", bg_color = "#fff", text_color = "black"
   )
   expect_s3_class(result, "shiny.tag")
 })

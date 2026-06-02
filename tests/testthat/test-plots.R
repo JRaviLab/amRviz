@@ -2,7 +2,7 @@
 
 # ── makeDatAvailabilityPlot ──────────────────────────────────────────────────
 
-test_that("makeDatAvailabilityPlot returns a ggplot object", {
+test_that("makeDatAvailabilityPlot returns a plotly object", {
   df <- tibble::tibble(
     genome_drug.antibiotic = c(
       "ampicillin", "ampicillin", "tetracycline"
@@ -13,12 +13,12 @@ test_that("makeDatAvailabilityPlot returns a ggplot object", {
   )
 
   result <- makeDatAvailabilityPlot(df)
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 # ── makeTimeSeriesAMRPlot ────────────────────────────────────────────────────
 
-test_that("makeTimeSeriesAMRPlot returns a ggplot object", {
+test_that("makeTimeSeriesAMRPlot returns a plotly object", {
   df <- tibble::tibble(
     genome.collection_year = c(2018, 2019, 2020, 2018, 2019, 2020),
     genome_drug.resistant_phenotype = rep(
@@ -29,7 +29,7 @@ test_that("makeTimeSeriesAMRPlot returns a ggplot object", {
   )
 
   result <- makeTimeSeriesAMRPlot(df, "ampicillin")
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 test_that("makeTimeSeriesAMRPlot handles amr_drug = 'all'", {
@@ -40,12 +40,12 @@ test_that("makeTimeSeriesAMRPlot handles amr_drug = 'all'", {
   )
 
   result <- makeTimeSeriesAMRPlot(df, "all")
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 # ── makeHostIsolatePlot ──────────────────────────────────────────────────────
 
-test_that("makeHostIsolatePlot returns a ggplot object", {
+test_that("makeHostIsolatePlot returns a plotly object", {
   df <- tibble::tibble(
     genome_drug.antibiotic = c(
       "ampicillin", "ampicillin", "tetracycline"
@@ -55,12 +55,12 @@ test_that("makeHostIsolatePlot returns a ggplot object", {
   )
 
   result <- makeHostIsolatePlot(df)
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 # ── makeIsolationSourcesPlot ─────────────────────────────────────────────────
 
-test_that("makeIsolationSourcesPlot returns a ggplot object", {
+test_that("makeIsolationSourcesPlot returns a plotly object", {
   df <- tibble::tibble(
     genome_drug.antibiotic = c(
       "ampicillin", "tetracycline", "ampicillin"
@@ -69,27 +69,27 @@ test_that("makeIsolationSourcesPlot returns a ggplot object", {
   )
 
   result <- makeIsolationSourcesPlot(df)
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 # ── makeModelPerformancePlot ─────────────────────────────────────────────────
 
-test_that("makeModelPerformancePlot returns ggplot for NULL data", {
+test_that("makeModelPerformancePlot returns plotly for NULL data", {
   result <- makeModelPerformancePlot(
     data = NULL, bug = "Sau", model_scale = "genes",
     data_type = "binary", metrics = "nmcc",
     amr_drug_class = NULL, amr_drug = NULL
   )
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
-test_that("makeModelPerformancePlot returns ggplot for zero-row data", {
+test_that("makeModelPerformancePlot returns plotly for zero-row data", {
   result <- makeModelPerformancePlot(
     data = data.frame(), bug = "Sau", model_scale = "genes",
     data_type = "binary", metrics = "nmcc",
     amr_drug_class = NULL, amr_drug = NULL
   )
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 test_that("makeModelPerformancePlot generates valid plot with demo data", {
@@ -109,7 +109,7 @@ test_that("makeModelPerformancePlot generates valid plot with demo data", {
     amr_drug_class = "all",
     amr_drug = NULL
   )
-  expect_s3_class(result, "gg")
+  expect_s3_class(result, "plotly")
 })
 
 # ── makeFeatureImportancePlot ────────────────────────────────────────────────
