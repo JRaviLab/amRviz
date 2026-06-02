@@ -46,7 +46,7 @@ modelPerfUI <- function() {
                     "model_scale",
                     label = tags$label("Model scale", style = "font-size: 15px;"),
                     choices = c("genes", "domains", "proteins"),
-                    multiple = T,
+                    multiple = TRUE,
                     selectize = TRUE,
                     selected = c("genes", "proteins", "domains"),
                     width = "80%"
@@ -58,7 +58,7 @@ modelPerfUI <- function() {
                     "data_type",
                     label = tags$label("Data type", style = "font-size: 15px;"),
                     choices = c("count" = "counts", "binary" = "binary"),
-                    multiple = F,
+                    multiple = FALSE,
                     selectize = TRUE,
                     width = "80%",
                     selected = c("binary")
