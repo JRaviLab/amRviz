@@ -20,7 +20,7 @@
 #' @importFrom plotly plot_ly layout colorbar renderPlotly plotlyOutput
 #' @importFrom DT datatable
 #' @importFrom glue glue
-#' @importFrom stats setNames
+#' @importFrom stats median setNames
 #' @importFrom utils packageVersion
 NULL
 
@@ -649,16 +649,14 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL, selected_drug = 
     return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
   }
 
-  scale_colors <- c(
-    "Domain"  = "#66a61e",
-    "Gene"    = "#e6ab80",
-    "Protein" = "#87ceeb",
-    "Struct"  = "#a52a2a"
-  )
-  scale_order <- c("domains", "genes", "proteins", "struct")
   scale_labels <- c(
     domains = "Domain", genes = "Gene",
     proteins = "Protein", struct = "Struct"
+  )
+  scale_order <- names(scale_labels)
+  scale_colors <- setNames(
+    unname(SCALE_COLORS[scale_order]),
+    scale_labels
   )
 
   df <- df |>
@@ -676,7 +674,7 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL, selected_drug = 
   }
 
   # Highlight selected drug or drug class. Priority: specific drug > class.
-  # When drug_class == "all", suppress both highlights — no specific class
+  # When drug_class == "all", suppress both highlights - no specific class
   # is selected so the accompanying drug selection is not meaningful.
   class_active <- !is.null(selected_drug_class) &&
     nzchar(selected_drug_class) &&
@@ -824,16 +822,14 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
     )
 
   # Section 2: molecular scale x drug_class (alpha-modulated scale color)
-  scale_colors <- c(
-    Domain  = "#66a61e",
-    Gene    = "#e6ab80",
-    Protein = "#87ceeb",
-    Struct  = "#a52a2a"
-  )
-  scale_order <- c("domains", "genes", "proteins", "struct")
   scale_labels <- c(
     domains = "Domain", genes = "Gene",
     proteins = "Protein", struct = "Struct"
+  )
+  scale_order <- names(scale_labels)
+  scale_colors <- setNames(
+    unname(SCALE_COLORS[scale_order]),
+    scale_labels
   )
 
   sc_summ <- df |>
@@ -972,11 +968,11 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
 
 # makeFeatureImportancePlot: heatmap of top features across bugs or drugs.
 # data: pre-loaded top-features tibble from loadTopFeat() / topFeatures()
-# amRml column mapping (new → expected here):
-#   drug_or_class  → drug/class abbreviation identifier
-#   feature_subtype → data encoding (binary/counts)
-#   feature_type    → molecular scale for baseline (genes/domains/proteins/struct)
-#   strat_label     → NA for baseline models
+# amRml column mapping (new -> expected here):
+#   drug_or_class  -> drug/class abbreviation identifier
+#   feature_subtype -> data encoding (binary/counts)
+#   feature_type    -> molecular scale for baseline (genes/domains/proteins/struct)
+#   strat_label     -> NA for baseline models
 # Annotation join is attempted from results_root/Annotated/ or extdata/Annotated/;
 # if no annotated files found, Variable name is used directly as feature label.
 makeFeatureImportancePlot <- function(
@@ -1241,9 +1237,9 @@ makeFeatureImportancePlot <- function(
 # makeCrossModelFeatureImportancePlot: heatmap of top features for holdout models.
 # top_data: pre-loaded top-features tibble (country or year stratified rows).
 # amRml column mapping:
-#   drug_or_class → drug/class abbreviation
-#   strat_label   → "country" or "year"
-#   strat_value   → trained-on country/year
+#   drug_or_class -> drug/class abbreviation
+#   strat_label   -> "country" or "year"
+#   strat_value   -> trained-on country/year
 makeCrossModelFeatureImportancePlot <- function(
   top_data, bug, drug, cross_model, top_n_features,
   annotated_dir = NULL
@@ -1808,10 +1804,10 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
 # makeCrossModelPerformancePlot: heatmap of balanced accuracy for holdout models.
 # perf_data: pre-loaded performance tibble (country or year stratified rows).
 # amRml column mapping:
-#   drug_or_class   → drug/class abbreviation
-#   strat_label     → "country" or "year"
-#   strat_value     → trained-on country/year
-#   strat_value_test → tested-on country/year (NA for self-evaluation)
+#   drug_or_class   -> drug/class abbreviation
+#   strat_label     -> "country" or "year"
+#   strat_value     -> trained-on country/year
+#   strat_value_test -> tested-on country/year (NA for self-evaluation)
 makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(NULL)
@@ -2288,7 +2284,7 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
 loadMLResults <- function(results_root = NULL, species_dirs = NULL, verbose = TRUE) {
   rr <- .normalize_results_root(results_root)
 
-  # User mode: results_root + species selected → load from selected subdirectories
+  # User mode: results_root + species selected -> load from selected subdirectories
   if (!is.null(rr) && !is.null(species_dirs) && length(species_dirs) > 0) {
     dfs <- lapply(species_dirs, .load_one_species_perf, verbose = verbose)
     return(dplyr::bind_rows(dfs))

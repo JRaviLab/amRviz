@@ -107,7 +107,7 @@ launchAMRDashboard <- function(results_root = NULL,
                         border-radius: 50%;
                       }
 
-                      /* Navbar (tabs row) — dark theme matching app header */
+                      /* Navbar (tabs row) - dark theme matching app header */
                       .navbar {
                         background-color: #1a1a1a !important;
                         border: none !important;
@@ -313,7 +313,7 @@ launchAMRDashboard <- function(results_root = NULL,
     )
 
     # Derive species choices from loaded ML perf data (excludes pseudo-species like "cross").
-    # names = human-readable label (underscores → spaces, e.g. "Shigella flexneri")
+    # names = human-readable label (underscores -> spaces, e.g. "Shigella flexneri")
     # values = 3-letter species code (e.g. "Sfl")
     available_species <- reactive({
       df <- queryData()
@@ -636,7 +636,7 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
 
-    # Header above the Isolation sources / Hosts tabset — title swaps with tab.
+    # Header above the Isolation sources / Hosts tabset - title swaps with tab.
     output$isolation_source_header <- renderUI({
       title <- if (!is.null(input$isolation_source_tabset) &&
         input$isolation_source_tabset == "Hosts") {
@@ -654,7 +654,7 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
 
-    # Shared metadata reactive — used by the new sankey output below.
+    # Shared metadata reactive - used by the new sankey output below.
     metadata_for_bug <- reactive({
       req(input$bug_metadata_id)
       fp <- get_metadata_path(input$bug_metadata_id, results_root)
@@ -1045,7 +1045,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeFeatureImportTable(tf)
     })
 
-    # COG bar charts — top COGs across the currently displayed features
+    # COG bar charts - top COGs across the currently displayed features
     output$across_bug_cog_barplot <- plotly::renderPlotly({
       makeCogBarChart(enriched_across_bug())
     })
@@ -1053,7 +1053,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeCogBarChart(enriched_across_drug())
     })
 
-    # Ego networks — reacts to selected row in each table
+    # Ego networks - reacts to selected row in each table
     output$across_bug_ego_network <- networkD3::renderForceNetwork({
       tf <- enriched_across_bug()
       sel <- input$across_bug_feature_importance_table_rows_selected
@@ -1103,7 +1103,7 @@ launchAMRDashboard <- function(results_root = NULL,
     )
 
     observe({
-      # Ridge plots — always show both country and time side by side
+      # Ridge plots - always show both country and time side by side
       output$cross_model_ridge_country <- plotly::renderPlotly({
         req(input$bug_cross_model_comparison_id)
         makeCrossModelRidgePlot(
@@ -1121,7 +1121,7 @@ launchAMRDashboard <- function(results_root = NULL,
         )
       })
 
-      # Heatmaps — country and time side by side
+      # Heatmaps - country and time side by side
       output$cross_model_perf_country <- plotly::renderPlotly({
         req(
           input$bug_cross_model_comparison_id,
