@@ -106,6 +106,43 @@ launchAMRDashboard <- function(results_root = NULL,
                         height: 60px;
                         border-radius: 50%;
                       }
+
+                      /* Navbar (tabs row) - dark theme matching app header */
+                      .navbar {
+                        background-color: #1a1a1a !important;
+                        border: none !important;
+                        margin-bottom: 0 !important;
+                        min-height: 44px !important;
+                        border-radius: 0 !important;
+                      }
+                      .navbar-default {
+                        background-color: #1a1a1a !important;
+                        border-color: #1a1a1a !important;
+                      }
+                      /* hide the empty brand spacer */
+                      .navbar-brand {
+                        display: none !important;
+                      }
+                      .navbar-nav > li > a {
+                        color: #cccccc !important;
+                        font-size: 14px !important;
+                        padding: 13px 18px !important;
+                        transition: background-color 0.2s, color 0.2s;
+                      }
+                      .navbar-nav > li > a:hover {
+                        color: #ffffff !important;
+                        background-color: #333333 !important;
+                      }
+                      .navbar-nav > li.active > a,
+                      .navbar-nav > li.active > a:focus,
+                      .navbar-nav > li.active > a:hover {
+                        color: #ffffff !important;
+                        background-color: #2b2b2b !important;
+                        border-bottom: 3px solid #5b9bd5 !important;
+                      }
+                      .home-tab-icon {
+                        font-size: 16px;
+                      }
                     "))
     ),
     # App header: title row separate from the nav tabs
@@ -276,7 +313,7 @@ launchAMRDashboard <- function(results_root = NULL,
     )
 
     # Derive species choices from loaded ML perf data (excludes pseudo-species like "cross").
-    # names = human-readable label (underscores → spaces, e.g. "Shigella flexneri")
+    # names = human-readable label (underscores -> spaces, e.g. "Shigella flexneri")
     # values = 3-letter species code (e.g. "Sfl")
     available_species <- reactive({
       df <- queryData()
@@ -599,7 +636,7 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
 
-    # Header above the Isolation sources / Hosts tabset — title swaps with tab.
+    # Header above the Isolation sources / Hosts tabset - title swaps with tab.
     output$isolation_source_header <- renderUI({
       title <- if (!is.null(input$isolation_source_tabset) &&
         input$isolation_source_tabset == "Hosts") {
@@ -617,7 +654,7 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
 
-    # Shared metadata reactive — used by the new sankey output below.
+    # Shared metadata reactive - used by the new sankey output below.
     metadata_for_bug <- reactive({
       req(input$bug_metadata_id)
       fp <- get_metadata_path(input$bug_metadata_id, results_root)
@@ -856,6 +893,21 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
 
+    # Performance overview tab
+    output$nmcc_strip_plot <- plotly::renderPlotly({
+      makeNmccStripPlot(
+        queryData(),
+        selected_drug_class = input$drug_class_ml_perf_id,
+        selected_drug       = input$drug_ml_perf_id
+      )
+    })
+    output$nmcc_heatmap <- plotly::renderPlotly({
+      makeNmccHeatmap(
+        queryData(),
+        selected_drug_class = input$drug_class_ml_perf_id
+      )
+    })
+
     observe({
       output$across_bug_feature_importance_plot <- plotly::renderPlotly({
         if (is.null(input$across_bug_id)) {
@@ -993,7 +1045,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeFeatureImportTable(tf)
     })
 
-    # COG bar charts — top COGs across the currently displayed features
+    # COG bar charts - top COGs across the currently displayed features
     output$across_bug_cog_barplot <- plotly::renderPlotly({
       makeCogBarChart(enriched_across_bug())
     })
@@ -1001,7 +1053,7 @@ launchAMRDashboard <- function(results_root = NULL,
       makeCogBarChart(enriched_across_drug())
     })
 
-    # Ego networks — reacts to selected row in each table
+    # Ego networks - reacts to selected row in each table
     output$across_bug_ego_network <- networkD3::renderForceNetwork({
       tf <- enriched_across_bug()
       sel <- input$across_bug_feature_importance_table_rows_selected
@@ -1051,7 +1103,7 @@ launchAMRDashboard <- function(results_root = NULL,
     )
 
     observe({
-      # Ridge plots — always show both country and time side by side
+      # Ridge plots - always show both country and time side by side
       output$cross_model_ridge_country <- plotly::renderPlotly({
         req(input$bug_cross_model_comparison_id)
         makeCrossModelRidgePlot(
@@ -1069,7 +1121,7 @@ launchAMRDashboard <- function(results_root = NULL,
         )
       })
 
-      # Heatmaps — country and time side by side
+      # Heatmaps - country and time side by side
       output$cross_model_perf_country <- plotly::renderPlotly({
         req(
           input$bug_cross_model_comparison_id,
