@@ -45,6 +45,7 @@ Imports:
     tibble,
     tidyr
 Suggests:
+    BiocStyle,
     knitr,
     processx,
     rmarkdown,
@@ -52,10 +53,9 @@ Suggests:
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
 biocViews:
-    AMR,
-    GUI,
-    MicrobialGenomics,
-    Pathogen,
+    Software,
+    FunctionalGenomics,
+    Genetics,
     Visualization
 URL: https://github.com/jravilab/amRviz
 BugReports: https://github.com/jravilab/amRviz/issues

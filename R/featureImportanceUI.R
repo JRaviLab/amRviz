@@ -15,7 +15,7 @@ featureImportanceUI <- function() {
           "bug_drug_comp_model_scale",
           label = tags$label("Model scale", style = "font-size: 15px;"),
           choices = c("genes", "domains", "proteins"),
-          multiple = F,
+          multiple = FALSE,
           selectize = TRUE,
           selected = "genes"
         )
@@ -27,7 +27,7 @@ featureImportanceUI <- function() {
           "data_type",
           label = tags$label("Data type", style = "font-size: 15px;"),
           choices = c("count" = "counts", "binary" = "binary"),
-          multiple = F,
+          multiple = FALSE,
           selectize = TRUE,
           selected = c("counts", "binary")
         )
