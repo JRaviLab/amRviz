@@ -49,7 +49,7 @@ Install the package and launch the app with a single call:
 
 ```{r, eval = FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
+  install.packages("BiocManager")
 }
 
 BiocManager::install("amRviz")
