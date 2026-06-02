@@ -42,12 +42,14 @@ The package is currently available via GitHub and will be submitted to Bioconduc
 
 ```{r, eval = FALSE}
 # Install BiocManager if needed
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
 
 # Install amRviz from GitHub
-if (!requireNamespace("devtools", quietly = TRUE))
-    install.packages("devtools")
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
 
 devtools::install_github("JRaviLab/amRviz")
 ```
