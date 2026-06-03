@@ -46,11 +46,13 @@ Imports:
     tidyr
 Suggests:
     BiocStyle,
+    chromote,
     knitr,
     rmarkdown,
     shinytest2,
     spelling,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 VignetteBuilder: knitr
 biocViews:
     Software,
