@@ -5,15 +5,21 @@
 # flexneri demo data, with no errors. The other test files check the helper
 # functions on their own; these check the whole app running together.
 #
-# These tests only run on a developer's machine. They are skipped on CRAN, on
-# continuous integration (GitHub Actions), and whenever shinytest2 or a Chrome
-# browser isn't installed. Skipping on CI matters because the browser leaves
-# temporary files behind that make R CMD check fail with a "detritus in the
-# temp directory" warning.
+# By default these run only on a developer's machine. They are skipped on CRAN,
+# and whenever shinytest2 or a Chrome browser isn't installed.
+#
+# On CI they are skipped too, UNLESS the job sets the environment variable
+# RUN_APP_TESTS=true. This lets a dedicated app-test job run them (using
+# devtools::test() on their own), while the regular R CMD check workflow leaves
+# the variable unset and skips them -- otherwise the browser leaves temporary
+# files behind that make R CMD check fail with a "detritus in the temp
+# directory" warning.
 
 skip_if_no_shinytest2 <- function() {
   testthat::skip_on_cran()
-  testthat::skip_on_ci()
+  if (!identical(Sys.getenv("RUN_APP_TESTS"), "true")) {
+    testthat::skip_on_ci()
+  }
   testthat::skip_if_not_installed("shinytest2")
   chrome <- tryCatch(chromote::find_chrome(), error = function(e) NA_character_)
   if (length(chrome) != 1 || is.na(chrome) || !nzchar(chrome)) {
