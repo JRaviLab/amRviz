@@ -1501,7 +1501,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   # Split the comma-separated COG cells and count occurrences per Variable.
   cog_df <- enriched_tbl |>
     dplyr::filter(!is.na(.data$COG), nzchar(.data$COG)) |>
-    dplyr::select(.data$Variable, .data$COG, dplyr::any_of("COG_name")) |>
+    dplyr::select("Variable", "COG", dplyr::any_of("COG_name")) |>
     dplyr::distinct()
 
   if (!nrow(cog_df)) {
@@ -2018,7 +2018,7 @@ enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
 
   tbl |>
     dplyr::left_join(ann_collapsed, by = c(".join_key" = "feature")) |>
-    dplyr::select(-.data$.join_key)
+    dplyr::select(-".join_key")
 }
 
 makeFeatureImportTable <- function(feature_import_table) {
