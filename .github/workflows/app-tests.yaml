@@ -1,0 +1,64 @@
+# Runs the shinytest2 app tests on their own (with devtools::test(), NOT inside
+# R CMD check) across Windows, macOS, and Ubuntu. Running them outside R CMD
+# check means the browser's leftover temp files don't trip the "detritus in the
+# temp directory" warning, while still confirming the dashboard launches on every
+# platform. RUN_APP_TESTS=true opts the tests in (see tests/testthat/test-shinytest2.R).
+name: app-tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions: read-all
+
+jobs:
+  app-tests:
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (app tests)
+
+    # Use bash on every OS so `R CMD INSTALL .` works on Windows too -- in
+    # PowerShell, `R` is an alias for Invoke-History, which breaks the command.
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest}
+          - {os: macos-latest}
+          - {os: windows-latest}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      NOT_CRAN: true
+      RUN_APP_TESTS: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: browser-actions/setup-chrome@v1
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::shinytest2
+          needs: check
+
+      # Install the package itself: shinytest2 launches the app in a separate R
+      # process that must be able to load amRviz, which it can't do from a
+      # load_all() dev session (e.g. devtools::test()).
+      - name: Install amRviz
+        run: R CMD INSTALL .
+
+      - name: Run app tests
+        run: Rscript -e 'library(amRviz); res <- as.data.frame(testthat::test_file("tests/testthat/test-shinytest2.R", reporter = "progress")); if (sum(res$failed) > 0 || any(res$error)) quit(status = 1)'
