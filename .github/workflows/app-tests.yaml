@@ -17,6 +17,13 @@ jobs:
   app-tests:
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (app tests)
+
+    # Use bash on every OS so `R CMD INSTALL .` works on Windows too -- in
+    # PowerShell, `R` is an alias for Invoke-History, which breaks the command.
+    defaults:
+      run:
+        shell: bash
+
     strategy:
       fail-fast: false
       matrix:
