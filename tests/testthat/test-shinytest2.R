@@ -27,16 +27,29 @@ skip_if_no_shinytest2 <- function() {
   }
 }
 
-# Start the demo app for testing. We allow long wait times because the app
-# loads several data files and draws interactive plots when it first opens.
+# Start the demo app for testing. The app loads several data files
+# and draws interactive plots when it first opens.
 # Setting a fixed seed makes the results the same each time the test is run.
+#
+# When it starts the app, shinytest2 scans the server function for global
+# variables and warns that it cannot resolve the bare column names used in
+# dplyr (non-standard evaluation). This is a harmless false positive -- the app
+# runs correctly -- so we quietly drop just that one warning and let any other
+# warning through.
 new_demo_app <- function(name) {
-  shinytest2::AppDriver$new(
-    launchAMRDashboard(),
-    name = name,
-    seed = 1234,
-    timeout = 60 * 1000,
-    load_timeout = 60 * 1000
+  withCallingHandlers(
+    shinytest2::AppDriver$new(
+      launchAMRDashboard(),
+      name = name,
+      seed = 1234,
+      timeout = 60 * 1000,
+      load_timeout = 60 * 1000
+    ),
+    warning = function(w) {
+      if (grepl("locate globals|globalsByName", conditionMessage(w))) {
+        invokeRestart("muffleWarning")
+      }
+    }
   )
 }
 
@@ -53,6 +66,25 @@ expect_output_ok <- function(app, output_id) {
     info = sprintf("output '%s' rendered a Shiny error", output_id)
   )
 }
+
+# Give the browser its own temp directory for the duration of this test file, so
+# the scratch files Chrome creates land there and are deleted when the file
+# finishes, instead of lingering in the shared session temp dir (which would
+# clutter a reviewer's session and can trip R CMD check's "detritus in the temp
+# directory" check). Chrome chooses where to write from these OS temp env vars,
+# and withr both creates the directory and removes it at teardown.
+#
+# NOTE: on Windows, deleting these files can fail if the (shared) Chrome process
+# still holds them open when teardown runs. Confirming that across Win/Mac/Ubuntu
+# is the main purpose of the dedicated app-tests workflow.
+.chrome_tmp <- withr::local_tempdir(
+  "amrviz-chrome-",
+  .local_envir = testthat::teardown_env()
+)
+withr::local_envvar(
+  c(TMPDIR = .chrome_tmp, TMP = .chrome_tmp, TEMP = .chrome_tmp),
+  .local_envir = testthat::teardown_env()
+)
 
 test_that("dashboard launches on the home tab with no output errors", {
   skip_if_no_shinytest2()

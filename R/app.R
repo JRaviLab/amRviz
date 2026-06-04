@@ -444,7 +444,7 @@ launchAMRDashboard <- function(results_root = NULL,
       )
     })
 
-    observeEvent(c(input$bug_search_amr_across_bug, input$across_bug_id, input$bug_drug_comp_model_scale, input$data_type), {
+    observeEvent(c(input$bug_search_amr_across_bug, input$across_bug_id, input$bug_drug_comp_model_scale, input$feature_data_type), {
       req(input$bug_search_amr_across_bug)
       message("Across bug feature comparison: ")
 
@@ -453,7 +453,7 @@ launchAMRDashboard <- function(results_root = NULL,
       base_tf <- topFeatures() |>
         dplyr::filter(normalize_species(.data$species) %in% bn) |>
         dplyr::filter(.data$feature_type %in% input$bug_drug_comp_model_scale) |>
-        dplyr::filter(.data$feature_subtype %in% input$data_type) |>
+        dplyr::filter(.data$feature_subtype %in% input$feature_data_type) |>
         dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
       if (identical(input$across_bug_id, "drug")) {
@@ -478,7 +478,7 @@ launchAMRDashboard <- function(results_root = NULL,
 
 
     # For drug/drug class (across drug) | filter by scale/data type
-    observeEvent(c(input$bug_search_amr_across_drug, input$across_drug_id, input$bug_drug_comp_model_scale, input$data_type), {
+    observeEvent(c(input$bug_search_amr_across_drug, input$across_drug_id, input$bug_drug_comp_model_scale, input$feature_data_type), {
       req(input$bug_search_amr_across_drug)
       message("Across drug feature comparison: ")
 
@@ -487,7 +487,7 @@ launchAMRDashboard <- function(results_root = NULL,
       base_tf <- topFeatures() |>
         dplyr::filter(normalize_species(.data$species) %in% bn) |>
         dplyr::filter(.data$feature_type %in% input$bug_drug_comp_model_scale) |>
-        dplyr::filter(.data$feature_subtype %in% input$data_type) |>
+        dplyr::filter(.data$feature_subtype %in% input$feature_data_type) |>
         dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
       if (identical(input$across_drug_id, "drug")) {
@@ -923,7 +923,7 @@ launchAMRDashboard <- function(results_root = NULL,
           input$bug_search_amr_across_bug,
           amr_drug,
           input$bug_drug_comp_model_scale,
-          input$data_type,
+          input$feature_data_type,
           input$top_n_features,
           input$feature_importance_tabset,
           amrdata_root = amrdata_root,
@@ -947,7 +947,7 @@ launchAMRDashboard <- function(results_root = NULL,
           input$bug_search_amr_across_drug,
           amr_drug,
           input$bug_drug_comp_model_scale,
-          input$data_type,
+          input$feature_data_type,
           input$top_n_features,
           input$feature_importance_tabset,
           amrdata_root = amrdata_root,
@@ -963,7 +963,7 @@ launchAMRDashboard <- function(results_root = NULL,
           input$bug_ml_perf_id,
           input$amr_drug_ml_across_bug,
           input$model_scale,
-          input$data_type,
+          input$feature_data_type,
           input$top_n_features,
           input$feature_importance_tabset,
           amrdata_root = amrdata_root,

@@ -24,7 +24,7 @@ featureImportanceUI <- function() {
         width = 4,
         style = "height: 80px; display: flex; align-items: center;",
         selectInput(
-          "data_type",
+          "feature_data_type",
           label = tags$label("Data type", style = "font-size: 15px;"),
           choices = c("count" = "counts", "binary" = "binary"),
           multiple = FALSE,
@@ -71,12 +71,14 @@ featureImportanceUI <- function() {
                 )
               ),
               fluidRow(
+                # Bug selector is the same in both modes, so define it once
+                # outside the conditional panels (avoids a duplicate input id).
+                column(
+                  width = 6, style = "padding: 0;",
+                  amr_select("bug_search_amr_across_bug", "Bug (multi-select)", character(0), selected = NULL)
+                ),
                 conditionalPanel(
                   condition = "input.across_bug_id == 'drug'",
-                  column(
-                    width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_bug", "Bug (multi-select)", character(0), selected = NULL)
-                  ),
                   column(
                     width = 6, style = "padding: 0;",
                     amr_select("amr_drug_ml_across_bug", "Drug", NULL, FALSE)
@@ -84,10 +86,6 @@ featureImportanceUI <- function() {
                 ),
                 conditionalPanel(
                   condition = "input.across_bug_id == 'drug_class'",
-                  column(
-                    width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_bug", "Bug (multi-select)", character(0), selected = NULL)
-                  ),
                   column(
                     width = 6, style = "padding: 0;",
                     amr_select("amr_drug_class_ml_across_bug", "Drug class", NULL, FALSE)
@@ -142,12 +140,14 @@ featureImportanceUI <- function() {
                 )
               ),
               fluidRow(
+                # Bug selector is the same in both modes, so define it once
+                # outside the conditional panels (avoids a duplicate input id).
+                column(
+                  width = 6, style = "padding: 0;",
+                  amr_select("bug_search_amr_across_drug", "Bug", character(0), selected = NULL, multiple = FALSE)
+                ),
                 conditionalPanel(
                   condition = "input.across_drug_id == 'drug'",
-                  column(
-                    width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_drug", "Bug", character(0), selected = NULL, multiple = FALSE)
-                  ),
                   column(
                     width = 6, style = "padding: 0;",
                     amr_select("amr_drug_ml_across_drug", "Drug (multi-select)", NULL)
@@ -155,10 +155,6 @@ featureImportanceUI <- function() {
                 ),
                 conditionalPanel(
                   condition = "input.across_drug_id == 'drug_class'",
-                  column(
-                    width = 6, style = "padding: 0;",
-                    amr_select("bug_search_amr_across_drug", "Bug", character(0), selected = NULL, multiple = FALSE)
-                  ),
                   column(
                     width = 6, style = "padding: 0;",
                     amr_select("amr_drug_class_ml_across_drug", "Drug class (multi-select)", NULL)
