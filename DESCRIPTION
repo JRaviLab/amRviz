@@ -11,7 +11,6 @@ Authors@R: c(
     person("Evan", "Brenner", , "evan.brenner@cuanschutz.edu", role = "ctb"),
     person("Charmie", "Vang", , "charmie.vang@cuanschutz.edu", role = "ctb")
   )
-Maintainer: Janani Ravi <janani.ravi@cuanschutz.edu>
 Description: Interactive Shiny dashboard for exploring antimicrobial resistance
     (AMR) data and machine learning model results from the AMR package suite.
     Provides intuitive visualization of metadata (e.g., geographic, temporal, host),
