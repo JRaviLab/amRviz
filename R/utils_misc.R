@@ -5,7 +5,6 @@
 SPECIES_PATTERN <- "(Efa|Sau|Kpn|Aba|Pae|Esp\\.?)"
 
 
-
 # normalize_species helper: make "Esp." and "Esp" equivalent by removing
 # a single trailing dot for comparisons (preserves NA).
 normalize_species <- function(x) {
@@ -45,4 +44,3 @@ getHoldoutsDrugChoices <- function(perf_data, bug = NULL) {
     unique() |>
     sort()
 }
-

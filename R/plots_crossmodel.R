@@ -1,7 +1,6 @@
 # Cross-model holdout visualisations.
 
 
-
 # makeCrossModelFeatureImportancePlot: heatmap of top features for holdout models.
 # top_data: pre-loaded top-features tibble (country or year stratified rows).
 # amRml column mapping:
@@ -251,4 +250,3 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
       margin = list(l = 100, b = 60, t = 50)
     )
 }
-

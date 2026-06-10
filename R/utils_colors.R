@@ -42,4 +42,3 @@ meta_palette <- function(n = length(META_COLORS)) {
   }
   grDevices::colorRampPalette(META_COLORS)(n)
 }
-

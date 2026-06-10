@@ -474,4 +474,3 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
       legend = list(orientation = "h", y = -0.15)
     )
 }
-

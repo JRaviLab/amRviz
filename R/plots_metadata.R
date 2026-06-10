@@ -510,4 +510,3 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     sinksRight = FALSE
   )
 }
-

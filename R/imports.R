@@ -25,4 +25,3 @@
 #' @importFrom stats median setNames
 #' @importFrom utils packageVersion
 NULL
-

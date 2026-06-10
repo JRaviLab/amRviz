@@ -434,4 +434,3 @@ makeFeatureImportTable <- function(feature_import_table) {
     selection = "single"
   )
 }
-

@@ -153,4 +153,3 @@ enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
     dplyr::left_join(ann_collapsed, by = c(".join_key" = "feature")) |>
     dplyr::select(-".join_key")
 }
-

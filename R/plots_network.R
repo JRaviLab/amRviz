@@ -254,4 +254,3 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     legend = TRUE
   )
 }
-

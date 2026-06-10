@@ -163,4 +163,3 @@ get_metadata_path <- function(species_code, results_root = NULL) {
   }
   NULL
 }
-

@@ -1,7 +1,6 @@
 # Small reusable UI input/control builders.
 
 
-
 amr_button <- function(id, label, icon_name, class_name) {
   div(
     style = "padding: 5px; text-align: center;",
@@ -39,4 +38,3 @@ amr_select <- function(id, label, choices, multiple = TRUE, selected = NULL) {
     )
   )
 }
-
