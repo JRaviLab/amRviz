@@ -71,6 +71,7 @@ networkUI <- function() {
       fluidRow(
         column(
           width = 12,
+          .exportBtn("drug_feature_network"),
           shinycssloaders::withSpinner(
             networkD3::forceNetworkOutput(
               "drug_feature_network",

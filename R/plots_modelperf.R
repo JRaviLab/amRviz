@@ -474,3 +474,45 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
       legend = list(orientation = "h", y = -0.15)
     )
 }
+
+
+# makeMDRPerformancePlot: nMCC distribution of multi-drug-resistance (MDR) models
+# by feature type, points coloured by encoding (binary/counts). Ported from the
+# performance panel of amRml::plotMDR() (the prediction-proportion tile needs an
+# MDR_pred file amRviz does not ship, so it is omitted) and adapted to nMCC.
+# mdr_perf: tibble from loadMDRResults().
+# Returns a plotly object, or NULL when there are no MDR rows.
+makeMDRPerformancePlot <- function(mdr_perf) {
+  if (is.null(mdr_perf) || !is.data.frame(mdr_perf) || !nrow(mdr_perf)) {
+    return(NULL)
+  }
+  if (!all(c("feature_type", "feature_subtype", "nmcc") %in% names(mdr_perf))) {
+    return(NULL)
+  }
+  df <- mdr_perf |> dplyr::filter(!is.na(.data$nmcc))
+  if (!nrow(df)) {
+    return(NULL)
+  }
+
+  subtype_colors <- c("binary" = "#7B9CB5", "counts" = "#CC8644")
+  plotly::plot_ly(
+    df,
+    x = ~feature_type,
+    y = ~nmcc,
+    color = ~feature_subtype,
+    colors = subtype_colors,
+    type = "box",
+    boxpoints = "all",
+    jitter = 0.3,
+    pointpos = 0,
+    hovertemplate = paste0(
+      "<b>%{x}</b><br>nMCC: %{y:.3f}<extra></extra>"
+    )
+  ) |>
+    plotly::layout(
+      boxmode = "group",
+      xaxis = list(title = "Feature type"),
+      yaxis = list(title = "nMCC", range = c(0, 1)),
+      legend = list(title = list(text = "Encoding"))
+    )
+}

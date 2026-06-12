@@ -29,7 +29,7 @@ featureImportanceUI <- function() {
           choices = c("count" = "counts", "binary" = "binary"),
           multiple = FALSE,
           selectize = TRUE,
-          selected = c("counts", "binary")
+          selected = "counts"
         )
       ),
       column(
@@ -95,7 +95,14 @@ featureImportanceUI <- function() {
               column(
                 width = 6,
                 style = "padding: 0; height: 600px; border: 1px solid lightgray;",
-                plotly::plotlyOutput("across_bug_feature_importance_plot", height = "100%", width = "100%")
+                div(
+                  style = "text-align: right; padding: 4px;",
+                  downloadButton(
+                    "across_bug_fi_download", "Export (PDF)",
+                    class = "btn btn-export"
+                  )
+                ),
+                plotly::plotlyOutput("across_bug_feature_importance_plot", height = "92%", width = "100%")
               ),
               column(
                 width = 6,
@@ -107,11 +114,33 @@ featureImportanceUI <- function() {
                 column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
-                  plotly::plotlyOutput("across_bug_cog_barplot", height = "100%")
+                  .exportBtn("across_bug_cog_barplot"),
+                  plotly::plotlyOutput("across_bug_cog_barplot", height = "90%")
                 ),
                 column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
+                  .exportBtn("across_bug_ego_network"),
+                  conditionalPanel(
+                    condition = paste0(
+                      "!input.across_bug_feature_importance_table_rows_selected",
+                      " || input.across_bug_feature_importance_table",
+                      "_rows_selected.length === 0"
+                    ),
+                    div(
+                      class = "ego-network-hint",
+                      style = paste0(
+                        "padding: 14px; margin: 10px; border-radius: 5px;",
+                        " background-color: #eef4fb; color: #2b5a87;",
+                        " font-size: 13px; text-align: center;"
+                      ),
+                      icon("circle-info"),
+                      paste0(
+                        " Select a feature (row) from the table above to",
+                        " generate its interaction network here."
+                      )
+                    )
+                  ),
                   networkD3::forceNetworkOutput("across_bug_ego_network", height = "100%")
                 )
               )
@@ -162,9 +191,16 @@ featureImportanceUI <- function() {
                 )
               ),
               column(
-                width = 6, style = "padding: 0;",
-                plotly::plotlyOutput("across_drug_feature_importance_plot", height = "100%"),
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;"
+                width = 6,
+                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                div(
+                  style = "text-align: right; padding: 4px;",
+                  downloadButton(
+                    "across_drug_fi_download", "Export (PDF)",
+                    class = "btn btn-export"
+                  )
+                ),
+                plotly::plotlyOutput("across_drug_feature_importance_plot", height = "92%")
               ),
               column(
                 width = 6,
@@ -176,12 +212,43 @@ featureImportanceUI <- function() {
                 column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
-                  plotly::plotlyOutput("across_drug_cog_barplot", height = "100%")
+                  .exportBtn("across_drug_cog_barplot"),
+                  plotly::plotlyOutput("across_drug_cog_barplot", height = "90%")
                 ),
                 column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
+                  .exportBtn("across_drug_ego_network"),
+                  conditionalPanel(
+                    condition = paste0(
+                      "!input.across_drug_feature_importance_table_rows_selected",
+                      " || input.across_drug_feature_importance_table",
+                      "_rows_selected.length === 0"
+                    ),
+                    div(
+                      class = "ego-network-hint",
+                      style = paste0(
+                        "padding: 14px; margin: 10px; border-radius: 5px;",
+                        " background-color: #eef4fb; color: #2b5a87;",
+                        " font-size: 13px; text-align: center;"
+                      ),
+                      icon("circle-info"),
+                      paste0(
+                        " Select a feature (row) from the table above to",
+                        " generate its interaction network here."
+                      )
+                    )
+                  ),
                   networkD3::forceNetworkOutput("across_drug_ego_network", height = "100%")
+                )
+              ),
+              fluidRow(
+                style = "padding: 10px 0;",
+                column(
+                  width = 12,
+                  style = "padding: 0; border: 1px solid lightgray; height: 400px;",
+                  .exportBtn("across_drug_vi_plot"),
+                  plotly::plotlyOutput("across_drug_vi_plot", height = "92%")
                 )
               )
             )

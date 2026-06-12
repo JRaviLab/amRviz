@@ -198,7 +198,7 @@ https://github.com/JRaviLab/amR
 
 This package is being prepared for Bioconductor submission. It includes:
 
-- **biocViews**: AMR, GUI, MicrobialGenomics, Pathogen, Visualization
+- **biocViews**: Software, FunctionalGenomics, Genetics, GUI, Visualization
 - **R version requirement**: R >= 4.5.0
 - **Documentation**: Function documentation with examples, plus a usage vignette
 - **Data**: Pre-computed amRml results for *Shigella flexneri* included in `inst/extdata/`

@@ -143,6 +143,22 @@ launchAMRDashboard <- function(results_root = NULL,
                       .home-tab-icon {
                         font-size: 16px;
                       }
+                      /* Small blue export buttons matching the navbar accent */
+                      .btn-export {
+                        background-color: #5b9bd5;
+                        border-color: #5b9bd5;
+                        color: #ffffff;
+                        font-size: 11px;
+                        padding: 2px 9px;
+                        border-radius: 3px;
+                      }
+                      .btn-export:hover,
+                      .btn-export:focus,
+                      .btn-export:active {
+                        background-color: #4a89c4 !important;
+                        border-color: #4a89c4 !important;
+                        color: #ffffff !important;
+                      }
                     "))
     ),
     # App header: title row separate from the nav tabs
@@ -288,6 +304,36 @@ launchAMRDashboard <- function(results_root = NULL,
     # Load performance metrics + top features based on selected species folders
     queryData <- reactiveVal(tibble::tibble())
     topFeatures <- reactiveVal(tibble::tibble())
+    mdrData <- reactiveVal(tibble::tibble())
+
+    # Static-export capture: each interactive panel stashes its latest rendered
+    # widget here (a plain env, so no reactive invalidation) so the per-panel
+    # "Export (PDF)" download can snapshot exactly what is on screen.
+    exportWidgets <- new.env(parent = emptyenv())
+    stashWidget <- function(w, id) {
+      exportWidgets[[id]] <- w
+      w
+    }
+
+    # One static-PDF download handler per interactive panel: snapshots the
+    # stashed widget (plotly / networkD3 / Sankey) to PDF via .writeWidgetStatic.
+    # Output id is "<plot id>_static_download" (paired with a button in the UI).
+    lapply(c(
+      "metadata_sankey", "resistance_vs_susceptible_plot", "geo_isolate_plot",
+      "r_s_across_time_plot", "host_isolate_plot", "isolation_source_plot",
+      "model_perfomance_plot", "nmcc_strip_plot", "nmcc_heatmap",
+      "mdr_performance_plot", "across_drug_vi_plot", "across_bug_cog_barplot",
+      "across_drug_cog_barplot", "across_bug_ego_network",
+      "across_drug_ego_network", "cross_model_ridge_country",
+      "cross_model_ridge_time", "drug_feature_network"
+    ), function(id) {
+      output[[paste0(id, "_static_download")]] <- downloadHandler(
+        filename = function() paste0(id, "_", Sys.Date(), ".pdf"),
+        content = function(file) {
+          .writeWidgetStatic(file, exportWidgets[[id]])
+        }
+      )
+    })
 
     observeEvent(
       list(results_root, input$results_species_dirs),
@@ -308,6 +354,10 @@ launchAMRDashboard <- function(results_root = NULL,
 
         queryData(perf)
         topFeatures(top)
+        mdrData(loadMDRResults(
+          results_root = results_root,
+          species_dirs = input$results_species_dirs
+        ))
       },
       ignoreInit = FALSE
     )
@@ -691,7 +741,10 @@ launchAMRDashboard <- function(results_root = NULL,
       if (is.null(meta) || !nrow(meta)) {
         return(NULL)
       }
-      makeMetadataSankey(meta, drug_classes = input$metadata_sankey_classes)
+      stashWidget(
+        makeMetadataSankey(meta, drug_classes = input$metadata_sankey_classes),
+        "metadata_sankey"
+      )
     })
 
     ## get a quick summary plot;
@@ -728,7 +781,10 @@ launchAMRDashboard <- function(results_root = NULL,
             }
           }
         )
-        makeDatAvailabilityPlot(metadata)
+        stashWidget(
+          makeDatAvailabilityPlot(metadata),
+          "resistance_vs_susceptible_plot"
+        )
       })
     })
 
@@ -767,7 +823,7 @@ launchAMRDashboard <- function(results_root = NULL,
         dplyr::summarise(count = sum(count), .groups = "drop") |>
         dplyr::collect()
 
-      makeGeoChloroPlot(data)
+      stashWidget(makeGeoChloroPlot(data), "geo_isolate_plot")
     })
 
     output$r_s_across_time_plot <- plotly::renderPlotly({
@@ -808,7 +864,10 @@ launchAMRDashboard <- function(results_root = NULL,
         summarize(n = n()) |>
         dplyr::collect()
       # print(data)
-      makeTimeSeriesAMRPlot(data, input$amr_drug_search)
+      stashWidget(
+        makeTimeSeriesAMRPlot(data, input$amr_drug_search),
+        "r_s_across_time_plot"
+      )
     })
 
     output$host_isolate_plot <- plotly::renderPlotly({
@@ -842,7 +901,7 @@ launchAMRDashboard <- function(results_root = NULL,
         ) |>
         dplyr::collect()
 
-      makeHostIsolatePlot(data)
+      stashWidget(makeHostIsolatePlot(data), "host_isolate_plot")
     })
 
     output$isolation_source_plot <- plotly::renderPlotly({
@@ -875,37 +934,51 @@ launchAMRDashboard <- function(results_root = NULL,
           )
         ) |>
         dplyr::collect()
-      makeIsolationSourcesPlot(data)
+      stashWidget(makeIsolationSourcesPlot(data), "isolation_source_plot")
     })
 
 
     ## ML Metrics
     # plotly::renderPlotly
     output$model_perfomance_plot <- plotly::renderPlotly({
-      makeModelPerformancePlot(
-        queryData(),
-        input$bug_ml_perf_id,
-        input$model_scale,
-        input$data_type,
-        input$model_metrics,
-        input$drug_class_ml_perf_id,
-        input$drug_ml_perf_id
+      stashWidget(
+        makeModelPerformancePlot(
+          queryData(),
+          input$bug_ml_perf_id,
+          input$model_scale,
+          input$data_type,
+          input$model_metrics,
+          input$drug_class_ml_perf_id,
+          input$drug_ml_perf_id
+        ),
+        "model_perfomance_plot"
       )
     })
 
     # Performance overview tab
     output$nmcc_strip_plot <- plotly::renderPlotly({
-      makeNmccStripPlot(
-        queryData(),
-        selected_drug_class = input$drug_class_ml_perf_id,
-        selected_drug       = input$drug_ml_perf_id
+      stashWidget(
+        makeNmccStripPlot(
+          queryData(),
+          selected_drug_class = input$drug_class_ml_perf_id,
+          selected_drug       = input$drug_ml_perf_id
+        ),
+        "nmcc_strip_plot"
       )
     })
     output$nmcc_heatmap <- plotly::renderPlotly({
-      makeNmccHeatmap(
-        queryData(),
-        selected_drug_class = input$drug_class_ml_perf_id
+      stashWidget(
+        makeNmccHeatmap(
+          queryData(),
+          selected_drug_class = input$drug_class_ml_perf_id
+        ),
+        "nmcc_heatmap"
       )
+    })
+
+    # MDR models tab: nMCC distribution of multi-drug-resistance models.
+    output$mdr_performance_plot <- plotly::renderPlotly({
+      stashWidget(makeMDRPerformancePlot(mdrData()), "mdr_performance_plot")
     })
 
     observe({
@@ -952,6 +1025,31 @@ launchAMRDashboard <- function(results_root = NULL,
           input$feature_importance_tabset,
           amrdata_root = amrdata_root,
           results_root = results_root
+        )
+      })
+    })
+
+    # Signed top-feature importance bar for the across-drug selection.
+    observe({
+      output$across_drug_vi_plot <- plotly::renderPlotly({
+        if (is.null(input$across_drug_id)) {
+          return(NULL)
+        }
+        amr_drug <- if (input$across_drug_id == "drug") {
+          input$amr_drug_ml_across_drug
+        } else {
+          input$amr_drug_class_ml_across_drug
+        }
+        stashWidget(
+          makeTopFeatsVIPlot(
+            topFeatures(),
+            input$bug_search_amr_across_drug,
+            amr_drug,
+            input$bug_drug_comp_model_scale,
+            input$feature_data_type,
+            input$top_n_features
+          ),
+          "across_drug_vi_plot"
         )
       })
     })
@@ -1047,10 +1145,14 @@ launchAMRDashboard <- function(results_root = NULL,
 
     # COG bar charts - top COGs across the currently displayed features
     output$across_bug_cog_barplot <- plotly::renderPlotly({
-      makeCogBarChart(enriched_across_bug())
+      stashWidget(
+        makeCogBarChart(enriched_across_bug()), "across_bug_cog_barplot"
+      )
     })
     output$across_drug_cog_barplot <- plotly::renderPlotly({
-      makeCogBarChart(enriched_across_drug())
+      stashWidget(
+        makeCogBarChart(enriched_across_drug()), "across_drug_cog_barplot"
+      )
     })
 
     # Ego networks - reacts to selected row in each table
@@ -1058,17 +1160,21 @@ launchAMRDashboard <- function(results_root = NULL,
       tf <- enriched_across_bug()
       sel <- input$across_bug_feature_importance_table_rows_selected
       if (is.null(tf) || !nrow(tf) || is.null(sel) || !length(sel)) {
-        return(NULL)
+        return(stashWidget(NULL, "across_bug_ego_network"))
       }
-      makeFeatureEgoNetwork(tf, tf$Variable[sel])
+      stashWidget(
+        makeFeatureEgoNetwork(tf, tf$Variable[sel]), "across_bug_ego_network"
+      )
     })
     output$across_drug_ego_network <- networkD3::renderForceNetwork({
       tf <- enriched_across_drug()
       sel <- input$across_drug_feature_importance_table_rows_selected
       if (is.null(tf) || !nrow(tf) || is.null(sel) || !length(sel)) {
-        return(NULL)
+        return(stashWidget(NULL, "across_drug_ego_network"))
       }
-      makeFeatureEgoNetwork(tf, tf$Variable[sel])
+      stashWidget(
+        makeFeatureEgoNetwork(tf, tf$Variable[sel]), "across_drug_ego_network"
+      )
     })
 
     # Cross model feature importance table
@@ -1102,22 +1208,49 @@ launchAMRDashboard <- function(results_root = NULL,
       ignoreInit = FALSE
     )
 
+    # Drug -> class map for the selected species, shared by the cross-drug
+    # plotly panel and the ComplexHeatmap export so the parquet is read once.
+    cross_drug_meta <- reactive({
+      req(input$bug_cross_model_comparison_id)
+      load_drug_class_map(
+        input$bug_cross_model_comparison_id,
+        results_root = results_root
+      )
+    })
+
+    # Cross-drug heatmap as a static ComplexHeatmap, used for the
+    # publication-quality PDF export (the dashboard panel renders plotly).
+    cross_drug_hm <- reactive({
+      req(input$bug_cross_model_comparison_id)
+      makeCrossDrugHeatmap(
+        queryData(),
+        meta = cross_drug_meta(),
+        bug = input$bug_cross_model_comparison_id
+      )
+    })
+
     observe({
       # Ridge plots - always show both country and time side by side
       output$cross_model_ridge_country <- plotly::renderPlotly({
         req(input$bug_cross_model_comparison_id)
-        makeCrossModelRidgePlot(
-          queryData(),
-          input$bug_cross_model_comparison_id,
-          "country"
+        stashWidget(
+          makeCrossModelRidgePlot(
+            queryData(),
+            input$bug_cross_model_comparison_id,
+            "country"
+          ),
+          "cross_model_ridge_country"
         )
       })
       output$cross_model_ridge_time <- plotly::renderPlotly({
         req(input$bug_cross_model_comparison_id)
-        makeCrossModelRidgePlot(
-          queryData(),
-          input$bug_cross_model_comparison_id,
-          "time"
+        stashWidget(
+          makeCrossModelRidgePlot(
+            queryData(),
+            input$bug_cross_model_comparison_id,
+            "time"
+          ),
+          "cross_model_ridge_time"
         )
       })
 
@@ -1161,16 +1294,30 @@ launchAMRDashboard <- function(results_root = NULL,
         )
       })
 
+      # Cross-drug heatmap: interactive plotly in the dashboard (the static
+      # ComplexHeatmap is reserved for the PDF export below).
+      output$cross_drug_heatmap <- plotly::renderPlotly({
+        req(input$bug_cross_model_comparison_id)
+        makeCrossDrugHeatmapPlotly(
+          queryData(),
+          meta = cross_drug_meta(),
+          bug = input$bug_cross_model_comparison_id
+        )
+      })
+
       # Drug-feature network
       output$drug_feature_network <- networkD3::renderForceNetwork({
         req(input$network_bug_id, input$network_top_n)
-        makeDrugFeatureNetwork(
-          topFeatures(),
-          input$network_bug_id,
-          top_n = input$network_top_n,
-          include_clusters = isTRUE(input$network_include_clusters),
-          include_cogs = isTRUE(input$network_include_cogs),
-          results_root = results_root
+        stashWidget(
+          makeDrugFeatureNetwork(
+            topFeatures(),
+            input$network_bug_id,
+            top_n = input$network_top_n,
+            include_clusters = isTRUE(input$network_include_clusters),
+            include_cogs = isTRUE(input$network_include_cogs),
+            results_root = results_root
+          ),
+          "drug_feature_network"
         )
       })
 
@@ -1268,6 +1415,103 @@ launchAMRDashboard <- function(results_root = NULL,
           } else {
             write.csv(data[, selected_columns, drop = FALSE], file, row.names = FALSE) # Filter columns in downloaded file
           }
+        }
+      )
+
+      # Publication-quality export of the cross-drug generalization heatmap
+      output$cross_drug_heatmap_download <- downloadHandler(
+        filename = function() {
+          paste0(
+            "cross_drug_",
+            input$bug_cross_model_comparison_id, "_", Sys.Date(), ".pdf"
+          )
+        },
+        content = function(file) {
+          .writeHeatmapPdf(
+            file, cross_drug_hm(),
+            width = 8, height = 7,
+            empty_msg =
+              "No cross-drug generalization data available for this selection."
+          )
+        }
+      )
+
+      # Publication-quality ComplexHeatmap PDF exports for the dashboard's
+      # heatmap panels. Each re-derives the plotly heatmap for the current
+      # selection and converts it via makeHeatmapExport().
+      output$across_bug_fi_download <- downloadHandler(
+        filename = function() paste0("feature_importance_across_bug_", Sys.Date(), ".pdf"),
+        content = function(file) {
+          amr_drug <- if (identical(input$across_bug_id, "drug")) {
+            input$amr_drug_ml_across_bug
+          } else {
+            input$amr_drug_class_ml_across_bug
+          }
+          p <- makeFeatureImportancePlot(
+            topFeatures(), input$bug_search_amr_across_bug, amr_drug,
+            input$bug_drug_comp_model_scale, input$feature_data_type,
+            input$top_n_features, "across_bug",
+            amrdata_root = amrdata_root, results_root = results_root
+          )
+          .writeHeatmapPdf(file, makeHeatmapExport(
+            p,
+            name = "Importance", row_title = "Feature", column_title = "Bug"
+          ))
+        }
+      )
+
+      output$across_drug_fi_download <- downloadHandler(
+        filename = function() paste0("feature_importance_across_drug_", Sys.Date(), ".pdf"),
+        content = function(file) {
+          amr_drug <- if (identical(input$across_drug_id, "drug")) {
+            input$amr_drug_ml_across_drug
+          } else {
+            input$amr_drug_class_ml_across_drug
+          }
+          p <- makeFeatureImportancePlot(
+            topFeatures(), input$bug_search_amr_across_drug, amr_drug,
+            input$bug_drug_comp_model_scale, input$feature_data_type,
+            input$top_n_features, "across_drug",
+            amrdata_root = amrdata_root, results_root = results_root
+          )
+          .writeHeatmapPdf(file, makeHeatmapExport(
+            p,
+            name = "Importance", row_title = "Feature", column_title = "Drug"
+          ))
+        }
+      )
+
+      output$cross_model_fi_download <- downloadHandler(
+        filename = function() paste0("cross_model_feature_importance_", Sys.Date(), ".pdf"),
+        content = function(file) {
+          p <- makeCrossModelFeatureImportancePlot(
+            topFeatures(), input$bug_cross_model_comparison_id,
+            input$drug_cross_model_comparison_id, input$cross_model_comparison,
+            input$cross_model_top_n_features
+          )
+          .writeHeatmapPdf(file, makeHeatmapExport(p, name = "Importance"))
+        }
+      )
+
+      output$cross_model_perf_country_download <- downloadHandler(
+        filename = function() paste0("cross_model_perf_country_", Sys.Date(), ".pdf"),
+        content = function(file) {
+          p <- makeCrossModelPerformancePlot(
+            queryData(), input$bug_cross_model_comparison_id,
+            input$drug_cross_model_comparison_id, "country"
+          )
+          .writeHeatmapPdf(file, makeHeatmapExport(p, name = "nMCC"))
+        }
+      )
+
+      output$cross_model_perf_time_download <- downloadHandler(
+        filename = function() paste0("cross_model_perf_time_", Sys.Date(), ".pdf"),
+        content = function(file) {
+          p <- makeCrossModelPerformancePlot(
+            queryData(), input$bug_cross_model_comparison_id,
+            input$drug_cross_model_comparison_id, "time"
+          )
+          .writeHeatmapPdf(file, makeHeatmapExport(p, name = "nMCC"))
         }
       )
     })

@@ -163,3 +163,60 @@ get_metadata_path <- function(species_code, results_root = NULL) {
   }
   NULL
 }
+
+
+# Load the MDR (multi-drug-resistance) performance parquet from a species
+# directory. The baseline/cross loaders deliberately exclude *_MDR_ML_perf
+# files; this one keeps only them so MDR models can be surfaced separately.
+.load_one_species_mdr <- function(species_dir, verbose = TRUE) {
+  fps <- list.files(
+    species_dir,
+    pattern = "_MDR_ML_perf\\.parquet$", full.names = TRUE
+  )
+  if (!length(fps)) {
+    return(tibble::tibble())
+  }
+  df <- dplyr::bind_rows(lapply(fps, .read_parquet_safe, verbose = verbose))
+  if (nrow(df)) df$species_label <- basename(species_dir)
+  df
+}
+
+# Public loader for MDR performance, mirroring loadMLResults().
+loadMDRResults <- function(results_root = NULL, species_dirs = NULL,
+                           verbose = TRUE) {
+  rr <- .normalize_results_root(results_root)
+
+  if (!is.null(rr) && !is.null(species_dirs) && length(species_dirs) > 0) {
+    dfs <- lapply(species_dirs, .load_one_species_mdr, verbose = verbose)
+    return(dplyr::bind_rows(dfs))
+  }
+
+  if (!is.null(rr) && is.null(species_dirs)) {
+    return(tibble::tibble())
+  }
+
+  # Demo fallback: scan extdata subdirectories for *_MDR_ML_perf.parquet
+  extdata <- system.file("extdata", package = "amRviz")
+  if (!nzchar(extdata)) {
+    return(tibble::tibble())
+  }
+  subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
+  if (isTRUE(verbose)) message("loadMDRResults(): using packaged demo parquets")
+  dplyr::bind_rows(lapply(subdirs, .load_one_species_mdr, verbose = verbose))
+}
+
+
+# Load the drug -> class abbreviation map for a species from its metadata
+# parquet. Returns a tibble with distinct drug_abbr / class_abbr rows used to
+# annotate the cross-drug heatmap, or NULL if no metadata is found.
+load_drug_class_map <- function(species_code, results_root = NULL) {
+  fp <- get_metadata_path(species_code, results_root = results_root)
+  if (is.null(fp) || !file.exists(fp)) {
+    return(NULL)
+  }
+  md <- tryCatch(arrow::read_parquet(fp), error = function(e) NULL)
+  if (is.null(md) || !all(c("drug_abbr", "class_abbr") %in% names(md))) {
+    return(NULL)
+  }
+  dplyr::distinct(md, .data$drug_abbr, .data$class_abbr)
+}

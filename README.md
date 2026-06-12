@@ -206,7 +206,7 @@ If you use `amRviz` in your research, please cite:
 
 This package is being prepared for Bioconductor submission. It includes:
 
--   **biocViews**: AMR, GUI, MicrobialGenomics, Pathogen, Visualization
+-   **biocViews**: Software, FunctionalGenomics, Genetics, GUI, Visualization
 -   **R version requirement**: R &gt;= 4.5.0
 -   **Documentation**: Function documentation with examples, plus a
     usage vignette

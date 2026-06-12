@@ -26,6 +26,26 @@ test_that("makeDrugFeatureNetwork returns a forceNetwork for demo data", {
   expect_s3_class(result, "htmlwidget")
 })
 
+test_that("network visualisations carry the shared font + node-shape hook", {
+  skip_if_not_installed("networkD3")
+
+  top_data <- suppressMessages(loadTopFeat(verbose = FALSE))
+  skip_if(nrow(top_data) == 0, "No demo top-features data")
+
+  net <- makeDrugFeatureNetwork(
+    top_data,
+    bug = unique(top_data$species)[1], top_n = 5
+  )
+  # Font matches the plotly/ggplot panels.
+  expect_equal(net$x$options$fontFamily, "Arial, sans-serif")
+  # Per-group node shapes are applied via an onRender hook.
+  expect_false(is.null(net$jsHooks$render))
+  expect_match(net$jsHooks$render[[1]]$code, "d3.symbol")
+  # Shapes are mirrored in both the nodes and the legend.
+  expect_match(net$jsHooks$render[[1]]$code, "node-shape")
+  expect_match(net$jsHooks$render[[1]]$code, "legend-shape")
+})
+
 # ── makeFeatureEgoNetwork ───────────────────────────────────────────────────
 
 test_that("makeFeatureEgoNetwork returns NULL for NULL input", {

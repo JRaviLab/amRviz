@@ -81,6 +81,7 @@ modelPerfUI <- function() {
               ),
               column(
                 width = 12,
+                .exportBtn("model_perfomance_plot"),
                 div(
                   style = "height: 600px;",
                   plotly::plotlyOutput("model_perfomance_plot", height = "100%")
@@ -99,14 +100,32 @@ modelPerfUI <- function() {
                 "molecular scale, and data encoding."
               ),
               fluidRow(
-                column(4, plotly::plotlyOutput(
-                  "nmcc_strip_plot",
-                  height = "420px"
-                )),
-                column(8, plotly::plotlyOutput(
-                  "nmcc_heatmap",
-                  height = "420px"
-                ))
+                column(
+                  4,
+                  .exportBtn("nmcc_strip_plot"),
+                  plotly::plotlyOutput("nmcc_strip_plot", height = "390px")
+                ),
+                column(
+                  8,
+                  .exportBtn("nmcc_heatmap"),
+                  plotly::plotlyOutput("nmcc_heatmap", height = "390px")
+                )
+              )
+            )
+          ),
+          tabPanel(
+            "MDR models",
+            fluidPage(
+              tags$p(
+                style = "color: #555; font-size: 10px; padding-top: 10px;",
+                "Multi-drug-resistance (MDR) model performance (nMCC) by ",
+                "molecular scale; points coloured by data encoding. Shows all ",
+                "loaded MDR models."
+              ),
+              .exportBtn("mdr_performance_plot"),
+              div(
+                style = "height: 560px;",
+                plotly::plotlyOutput("mdr_performance_plot", height = "100%")
               )
             )
           )

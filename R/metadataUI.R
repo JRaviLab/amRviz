@@ -38,6 +38,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes"
             ),
+            .exportBtn("resistance_vs_susceptible_plot"),
             styledBox("resistance_vs_susceptible_ui")
           )
         ),
@@ -50,6 +51,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Global distribution of resistant phenotypes"
             ),
+            .exportBtn("geo_isolate_plot"),
             styledBox("geo_isolate_plot_ui")
           )
         )
@@ -64,6 +66,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes by year"
             ),
+            .exportBtn("r_s_across_time_plot"),
             styledBox("r_s_across_time_ui")
           )
         ),
@@ -77,10 +80,12 @@ metadataUI <- function() {
               width = 12,
               tabPanel(
                 "Isolation sources",
+                .exportBtn("isolation_source_plot"),
                 styledBox("isolation_source_ui")
               ),
               tabPanel(
                 "Hosts",
+                .exportBtn("host_isolate_plot"),
                 styledBox("host_isolate_plot_ui")
               )
             )
@@ -119,6 +124,7 @@ metadataUI <- function() {
                 width = "100%"
               )
             ),
+            .exportBtn("metadata_sankey"),
             shinycssloaders::withSpinner(
               networkD3::sankeyNetworkOutput(
                 "metadata_sankey",

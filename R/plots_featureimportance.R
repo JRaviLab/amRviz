@@ -434,3 +434,80 @@ makeFeatureImportTable <- function(feature_import_table) {
     selection = "single"
   )
 }
+
+
+# makeTopFeatsVIPlot: horizontal bar of the top-N signed feature importances for
+# a single model selection (bug x drug x scale x encoding). Ported from
+# amRml::plotTopFeatsVI() and adapted to amRviz's top-features schema; rendered
+# with plotly for the dashboard. Unlike makeFeatureImportancePlot (a heatmap
+# across bugs/drugs), this shows per-feature effect direction via Sign.
+# data: top-features tibble from loadTopFeat() / topFeatures().
+# Returns a plotly object, or NULL when no features match the selection.
+makeTopFeatsVIPlot <- function(data, bug, amr_drug, model_scale, data_type_,
+                               top_n_features = 10) {
+  if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
+    return(NULL)
+  }
+  if (!all(c(
+    "species", "drug_or_class", "feature_type", "feature_subtype",
+    "Variable", "Importance", "Sign", "strat_label"
+  ) %in% names(data))) {
+    return(NULL)
+  }
+
+  top_n <- suppressWarnings(as.numeric(top_n_features))
+  if (!is.finite(top_n) || top_n < 1) {
+    top_n <- 10
+  }
+
+  # Same baseline-model filter as makeFeatureImportancePlot.
+  df <- data |>
+    dplyr::mutate(species = normalize_species(.data$species)) |>
+    dplyr::filter(.data$species %in% normalize_species(bug)) |>
+    dplyr::filter(.data$drug_or_class %in% amr_drug) |>
+    dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) |>
+    dplyr::filter(.data$feature_subtype %in% data_type_) |>
+    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
+    dplyr::filter(!is.na(.data$Importance))
+  if (!nrow(df)) {
+    return(NULL)
+  }
+
+  # Collapse repeated rows (e.g. multiple seeds) to one value per feature:
+  # median importance, with the majority sign for the colour.
+  vip <- df |>
+    dplyr::group_by(.data$Variable) |>
+    dplyr::summarise(
+      Importance = stats::median(.data$Importance, na.rm = TRUE),
+      Sign = {
+        tb <- table(.data$Sign)
+        if (length(tb)) names(tb)[which.max(tb)] else NA_character_
+      },
+      .groups = "drop"
+    ) |>
+    dplyr::slice_max(order_by = .data$Importance, n = top_n, with_ties = FALSE) |>
+    dplyr::arrange(.data$Importance) |>
+    dplyr::mutate(
+      Variable = factor(.data$Variable, levels = .data$Variable),
+      Sign = factor(.data$Sign, levels = c("POS", "NEG"))
+    )
+
+  sign_colors <- c("POS" = "#c6d8d3", "NEG" = "#f6c9a1")
+  plotly::plot_ly(
+    vip,
+    x = ~Importance,
+    y = ~Variable,
+    color = ~Sign,
+    colors = sign_colors,
+    type = "bar",
+    orientation = "h",
+    hovertemplate = paste0(
+      "<b>%{y}</b><br>Importance: %{x:.3g}<extra></extra>"
+    )
+  ) |>
+    plotly::layout(
+      xaxis = list(title = "Importance"),
+      yaxis = list(title = "Features"),
+      legend = list(title = list(text = "Sign"))
+    )
+}

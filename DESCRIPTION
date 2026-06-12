@@ -25,15 +25,21 @@ Depends:
     R (>= 4.5.0)
 Imports:
     arrow,
+    circlize,
+    ComplexHeatmap,
     countrycode,
     dplyr,
     DT,
     ggplot2,
     glue,
+    grDevices,
+    grid,
     here,
+    htmlwidgets,
     networkD3,
     plotly,
     purrr,
+    RColorBrewer,
     readr,
     rlang,
     shiny,
@@ -51,12 +57,14 @@ Suggests:
     shinytest2,
     spelling,
     testthat (>= 3.0.0),
+    webshot2,
     withr
 VignetteBuilder: knitr
 biocViews:
     Software,
     FunctionalGenomics,
     Genetics,
+    GUI,
     Visualization
 URL: https://github.com/jravilab/amRviz
 BugReports: https://github.com/jravilab/amRviz/issues

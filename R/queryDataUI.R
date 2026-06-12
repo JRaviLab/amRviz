@@ -42,7 +42,7 @@ queryDataUI <- function() {
               downloadButton(
                 outputId = "query_data_download",
                 label = "Download Selected Data (CSV)",
-                class = "btn btn-success"
+                class = "btn btn-export"
               )
             )
           ),
@@ -84,7 +84,7 @@ queryDataUI <- function() {
               downloadButton(
                 outputId = "top_features_download",
                 label = "Download Selected Data (CSV)",
-                class = "btn btn-success"
+                class = "btn btn-export"
               )
             )
           ),
