@@ -1,11 +1,24 @@
 # Model performance tab visualisations.
 
 
-# makeModelPerformancePlot: plot baseline ML model performance metrics.
-# data: pre-loaded performance tibble from loadMLResults() / queryData()
-# Columns used from amRml parquet schema:
-#   species, feature_type (scale), feature_subtype (data type),
-#   drug_or_class (drug/class abbrev), drug_label ("drug"/"drug_class"), nmcc/bal_acc/f1
+#' Baseline ML model performance plot
+#'
+#' Grouped box plots of a performance metric by species and molecular scale,
+#' restricted to baseline (non-stratified) models. Uses the amRml parquet
+#' columns species, feature_type (scale), feature_subtype (data type),
+#' drug_or_class, drug_label, and the metric columns (nmcc/bal_acc/f1).
+#'
+#' @param data Performance tibble from loadMLResults() / queryData().
+#' @param bug Species code(s) to include.
+#' @param model_scale Molecular scale(s) (feature_type) to include.
+#' @param data_type Data encoding(s) (feature_subtype) to include.
+#' @param metrics Name of the metric column to plot on the y-axis.
+#' @param amr_drug_class Selected drug class(es), or "all" for no filter.
+#' @param amr_drug Selected drug(s); points for these are overlaid.
+#' @return A plotly box-plot figure (an empty placeholder when there is no
+#'   matching data).
+#' @keywords internal
+#' @noRd
 makeModelPerformancePlot <- function(
   data, bug, model_scale, data_type, metrics,
   amr_drug_class, amr_drug
@@ -123,9 +136,35 @@ makeModelPerformancePlot <- function(
 }
 
 
-# .prep_nmcc_data: shared filter used by the Performance Overview plots.
-# Drops stratified / cross-test rows so we only show baseline models, and
-# adds a species_display column (uses species_label when present).
+#' Shared scale-label display map and matching colors
+#'
+#' @return A list with `labels` (feature_type -> display label), `order` (the
+#'   feature_type keys in display order), and `colors` (SCALE_COLORS keyed by
+#'   display label).
+#' @keywords internal
+#' @noRd
+.scale_label_map <- function() {
+  labels <- c(
+    domains = "Domain", genes = "Gene",
+    proteins = "Protein", struct = "Struct"
+  )
+  list(
+    labels = labels,
+    order = names(labels),
+    colors = setNames(unname(SCALE_COLORS[names(labels)]), labels)
+  )
+}
+
+
+#' Prepare baseline nMCC data for the Performance overview plots
+#'
+#' Drops stratified / cross-test rows so only baseline models remain, and adds a
+#' `species_display` column (from `species_label` when present).
+#'
+#' @param data Performance tibble from loadMLResults().
+#' @return A filtered tibble with `species_display`, or NULL when empty.
+#' @keywords internal
+#' @noRd
 .prep_nmcc_data <- function(data) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
     return(NULL)
@@ -147,25 +186,29 @@ makeModelPerformancePlot <- function(
 }
 
 
-# makeNmccStripPlot: facetted nMCC distribution per species and molecular
-# scale on the Performance overview tab. Highlights the user's selected
-# drug or drug class via point alpha + size; baseline (non-stratified,
-# non-cross-test) rows only via .prep_nmcc_data().
-makeNmccStripPlot <- function(data, selected_drug_class = NULL, selected_drug = NULL) {
+#' Facetted nMCC strip plot (Performance overview)
+#'
+#' nMCC distribution per species and molecular scale, highlighting the selected
+#' drug or drug class via point alpha + size. Baseline rows only (via
+#' .prep_nmcc_data()).
+#'
+#' @param data Performance tibble from loadMLResults().
+#' @param selected_drug_class Drug class to highlight, "all"/NULL for none.
+#' @param selected_drug Drug to highlight (takes priority over the class).
+#' @return A plotly figure (empty placeholder when there is no matching data).
+#' @keywords internal
+#' @noRd
+makeNmccStripPlot <- function(data, selected_drug_class = NULL,
+                              selected_drug = NULL) {
   df <- .prep_nmcc_data(data)
   if (is.null(df)) {
     return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
   }
 
-  scale_labels <- c(
-    domains = "Domain", genes = "Gene",
-    proteins = "Protein", struct = "Struct"
-  )
-  scale_order <- names(scale_labels)
-  scale_colors <- setNames(
-    unname(SCALE_COLORS[scale_order]),
-    scale_labels
-  )
+  sl <- .scale_label_map()
+  scale_labels <- sl$labels
+  scale_order <- sl$order
+  scale_colors <- sl$colors
 
   df <- df |>
     dplyr::filter(.data$feature_type %in% scale_order) |>
@@ -263,10 +306,18 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL, selected_drug = 
 }
 
 
-# makeNmccHeatmap: three-panel heatmap on the Performance overview tab.
-# Sections share the drug_class y-axis and show median nMCC by (species),
-# (molecular scale), and (data encoding). Highlights the selected drug
-# class row across all three sections.
+#' Three-panel nMCC heatmap (Performance overview)
+#'
+#' Three sections sharing the drug-class y-axis, showing median nMCC by species,
+#' molecular scale, and data encoding. Highlights the selected drug-class row
+#' across all three sections.
+#'
+#' @param data Performance tibble from loadMLResults().
+#' @param selected_drug_class Drug class row to highlight, "all"/NULL for none.
+#' @return A 3-panel plotly subplot (empty placeholder when there is no
+#'   drug-class data).
+#' @keywords internal
+#' @noRd
 makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
   df <- .prep_nmcc_data(data)
   if (is.null(df)) {
@@ -331,15 +382,10 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
     )
 
   # Section 2: molecular scale x drug_class (alpha-modulated scale color)
-  scale_labels <- c(
-    domains = "Domain", genes = "Gene",
-    proteins = "Protein", struct = "Struct"
-  )
-  scale_order <- names(scale_labels)
-  scale_colors <- setNames(
-    unname(SCALE_COLORS[scale_order]),
-    scale_labels
-  )
+  sl <- .scale_label_map()
+  scale_labels <- sl$labels
+  scale_order <- sl$order
+  scale_colors <- sl$colors
 
   sc_summ <- df |>
     dplyr::filter(.data$feature_type %in% scale_order) |>

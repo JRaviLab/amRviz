@@ -29,10 +29,16 @@ META_COLORS <- c(
 )
 
 
-# Return a vector of `n` muted categorical colors. For n <= length(META_COLORS)
-# returns the first n curated colors verbatim; for n above that, interpolates
-# via colorRampPalette() so callers get a full palette no matter how many
-# unique values their data has.
+#' Categorical palette of `n` muted colors
+#'
+#' For `n <= length(META_COLORS)` returns the first `n` curated colors verbatim;
+#' above that, interpolates via `grDevices::colorRampPalette()` so callers get a
+#' full palette regardless of how many unique values their data has.
+#'
+#' @param n Number of colors to return.
+#' @return A character vector of `n` hex colors (empty when `n <= 0`).
+#' @keywords internal
+#' @noRd
 meta_palette <- function(n = length(META_COLORS)) {
   if (n <= 0) {
     return(character(0))

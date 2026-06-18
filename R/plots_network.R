@@ -1,14 +1,20 @@
 # Force-directed network visualisations.
 
 
-# makeDrugFeatureNetwork: interactive force-directed graph linking drugs (or
-# drug classes) to their top features (Variables). Optionally extends to
-# cluster and COG tiers when an annotations parquet is available.
-# top_data: pre-loaded top-features tibble from loadTopFeat().
-# bug: 3-letter species code.
-# top_n: number of top features per drug to include as edges.
-# include_clusters / include_cogs: add annotation tiers when TRUE.
-# results_root: path for annotation lookup (falls back to extdata).
+#' Interactive force-directed drug -> feature network
+#'
+#' Links drugs (or drug classes) to their top features (Variables), optionally
+#' extending to cluster and COG tiers when an annotations parquet is available.
+#'
+#' @param top_data Pre-loaded top-features tibble from loadTopFeat().
+#' @param bug 3-letter species code.
+#' @param top_n Number of top features per drug to include as edges.
+#' @param include_clusters,include_cogs Add annotation tiers when TRUE.
+#' @param results_root Path for annotation lookup (falls back to extdata).
+#' @return A `networkD3` forceNetwork widget, or NULL when there is nothing to
+#'   plot.
+#' @keywords internal
+#' @noRd
 makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
                                    include_clusters = FALSE,
                                    include_cogs = FALSE,
@@ -165,8 +171,18 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
 }
 
 
-# makeFeatureEgoNetwork: small force-directed graph for a single selected
-# feature, showing feature -> cluster -> COG links.
+#' Ego network for a single feature
+#'
+#' Small force-directed graph for one selected feature, showing its
+#' feature -> cluster -> COG links.
+#'
+#' @param enriched_tbl Annotation-enriched top-features tibble (see
+#'   enrich_with_annotations()).
+#' @param variable The Variable (feature id) to centre the graph on.
+#' @return A `networkD3` forceNetwork widget, or NULL when the feature has no
+#'   cluster/COG links to show.
+#' @keywords internal
+#' @noRd
 makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
   if (!requireNamespace("networkD3", quietly = TRUE)) {
     return(NULL)

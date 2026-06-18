@@ -1,15 +1,51 @@
 # Feature importance visualisations.
 
 
-# makeFeatureImportancePlot: heatmap of top features across bugs or drugs.
-# data: pre-loaded top-features tibble from loadTopFeat() / topFeatures()
-# amRml column mapping (new -> expected here):
-#   drug_or_class  -> drug/class abbreviation identifier
-#   feature_subtype -> data encoding (binary/counts)
-#   feature_type    -> molecular scale for baseline (genes/domains/proteins/struct)
-#   strat_label     -> NA for baseline models
-# Annotation join is attempted from results_root/Annotated/ or extdata/Annotated/;
-# if no annotated files found, Variable name is used directly as feature label.
+#' Rank wide importance rows and convert to a labelled matrix
+#'
+#' Orders rows by coverage (number of non-NA groups) then peak importance, drops
+#' the scratch ranking columns, and returns a feature x group numeric matrix.
+#'
+#' @param vi_wider Wide importance tibble with a `COG_name` column.
+#' @param group_cols Names of the group (value) columns.
+#' @return A numeric matrix with features as row names and groups as columns.
+#' @keywords internal
+#' @noRd
+.vi_matrix <- function(vi_wider, group_cols) {
+  vi_wider |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      .n = sum(!is.na(c_across(all_of(group_cols)))),
+      .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
+    dplyr::select(-c(".n", ".mx")) |>
+    tibble::column_to_rownames("COG_name") |>
+    as.matrix()
+}
+
+
+#' Feature-importance heatmap across species or drugs
+#'
+#' Heatmap of top features across bugs (across_bug) or drugs (across_drug),
+#' min-max normalised within each group. Feature labels come from an annotation
+#' join when available, otherwise the raw Variable id. Uses the amRml columns
+#' drug_or_class, feature_subtype (encoding), feature_type (scale), and
+#' strat_label (NA for baseline).
+#'
+#' @param data Top-features tibble from loadTopFeat() / topFeatures().
+#' @param bug Species code(s) to include.
+#' @param amr_drug Drug/class identifier(s) to include.
+#' @param model_scale Molecular scale (feature_type) to include.
+#' @param data_type_ Data encoding(s) (feature_subtype) to include.
+#' @param top_n_features Number of features per group, or "all".
+#' @param feature_importance_tabset "across_bug" or "across_drug".
+#' @param annotated_dir Optional directory of annotated parquet files.
+#' @param amrdata_root,results_root Optional roots for the name-map lookup.
+#' @return A plotly heatmap, or NULL when there is nothing to plot.
+#' @keywords internal
+#' @noRd
 makeFeatureImportancePlot <- function(
   data, bug, amr_drug, model_scale, data_type_,
   top_n_features, feature_importance_tabset,
@@ -183,7 +219,7 @@ makeFeatureImportancePlot <- function(
   # Build wide matrix
   if (feature_importance_tabset == "across_bug") {
     vi_wider <- top_features_df |>
-      dplyr::select(.data$COG_name, .data$Importance, .data$species) |>
+      dplyr::select("COG_name", "Importance", "species") |>
       dplyr::distinct() |>
       tidyr::pivot_wider(names_from = "species", values_from = "Importance")
 
@@ -192,19 +228,7 @@ makeFeatureImportancePlot <- function(
       return(NULL)
     }
 
-    vi_wider <- vi_wider |>
-      dplyr::rowwise() |>
-      dplyr::mutate(
-        .n = sum(!is.na(c_across(all_of(group_cols)))),
-        .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
-      ) |>
-      dplyr::ungroup() |>
-      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
-      dplyr::select(-.data$.n, -.data$.mx)
-
-    vi_mat <- vi_wider |>
-      tibble::column_to_rownames("COG_name") |>
-      as.matrix()
+    vi_mat <- .vi_matrix(vi_wider, group_cols)
 
     eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
     col_ord <- intersect(eskape_order, colnames(vi_mat))
@@ -213,40 +237,31 @@ makeFeatureImportancePlot <- function(
 
   if (feature_importance_tabset == "across_drug") {
     top_features_df <- top_features_df |>
-      dplyr::mutate(drug_or_class = stringr::str_trim(as.character(.data$drug_or_class)))
+      dplyr::mutate(
+        drug_or_class = stringr::str_trim(as.character(.data$drug_or_class))
+      )
 
     vi_wider <- top_features_df |>
-      dplyr::select(.data$COG_name, .data$Importance, .data$drug_or_class) |>
+      dplyr::select("COG_name", "Importance", "drug_or_class") |>
       dplyr::group_by(.data$COG_name, .data$drug_or_class) |>
-      dplyr::summarise(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop") |>
-      tidyr::pivot_wider(names_from = "drug_or_class", values_from = "Importance")
+      dplyr::summarise(
+        Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop"
+      ) |>
+      tidyr::pivot_wider(
+        names_from = "drug_or_class", values_from = "Importance"
+      )
 
     group_cols <- setdiff(colnames(vi_wider), "COG_name")
     if (!length(group_cols)) {
       return(NULL)
     }
 
-    vi_wider <- vi_wider |>
-      dplyr::rowwise() |>
-      dplyr::mutate(
-        .n = sum(!is.na(c_across(all_of(group_cols)))),
-        .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
-      ) |>
-      dplyr::ungroup() |>
-      dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
-      dplyr::select(-.data$.n, -.data$.mx)
-
-    vi_mat <- vi_wider |>
-      tibble::column_to_rownames("COG_name") |>
-      as.matrix()
+    vi_mat <- .vi_matrix(vi_wider, group_cols)
   }
 
   if (!exists("vi_mat") || !length(vi_mat)) {
     return(NULL)
   }
-
-  max_val <- max(vi_mat, na.rm = TRUE)
-  min_val <- min(vi_mat, na.rm = TRUE)
 
   plotly::plot_ly(
     x = colnames(vi_mat),
@@ -269,9 +284,18 @@ makeFeatureImportancePlot <- function(
 }
 
 
-# makeCogBarChart: horizontal bar chart of the most common COGs across the
-# features in a top-features tibble (already enriched with annotations).
-# top_n: number of COGs to display.
+#' Horizontal bar chart of the most common COGs
+#'
+#' Counts COG occurrences across the features in an annotation-enriched
+#' top-features tibble and shows the `top_n` most frequent.
+#'
+#' @param enriched_tbl Annotation-enriched top-features tibble (needs a `COG`
+#'   column; see enrich_with_annotations()).
+#' @param top_n Number of COGs to display.
+#' @return A horizontal plotly bar chart (empty placeholder when there are no
+#'   annotations).
+#' @keywords internal
+#' @noRd
 makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
     !"COG" %in% names(enriched_tbl)) {
@@ -343,6 +367,40 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
 }
 
 
+#' Render comma-separated ids as HTML links
+#'
+#' @param ids A single string of comma-separated ids (or NA).
+#' @param make_url Function mapping one id to its URL.
+#' @return The ids rendered as comma-separated `<a>` links, or `ids` unchanged
+#'   when empty/NA.
+#' @keywords internal
+#' @noRd
+.link_ids <- function(ids, make_url) {
+  if (is.na(ids) || !nzchar(ids)) {
+    return(ids)
+  }
+  parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
+  linked <- vapply(parts, function(id) {
+    paste0(
+      "<a href='", make_url(id), "' target='_blank' ",
+      "style='color:#1a73e8; text-decoration: underline;'>",
+      id, "</a>"
+    )
+  }, character(1))
+  paste(linked, collapse = ", ")
+}
+
+
+#' Build an interactive feature-importance table
+#'
+#' Formats numeric columns, reorders to a preferred column order, and renders
+#' clickable links (accession -> NCBI, cluster -> BV-BRC, COG -> NCBI COG) as a
+#' DT datatable.
+#'
+#' @param feature_import_table Feature-importance tibble to display.
+#' @return A `DT::datatable` HTML widget.
+#' @keywords internal
+#' @noRd
 makeFeatureImportTable <- function(feature_import_table) {
   # Early exit for empty/zero-column data
   if (is.null(feature_import_table) || ncol(feature_import_table) == 0) {
@@ -382,46 +440,24 @@ makeFeatureImportTable <- function(feature_import_table) {
         TRUE ~ .data$accession
       ))
   }
-  # Link cluster (fig IDs) to BVBRC, one <a> per unique id (comma-sep cells).
+  # Link cluster (fig IDs) to BV-BRC, one <a> per unique id (comma-sep cells).
   if ("cluster" %in% names(tbl)) {
-    link_fig <- function(ids) {
-      if (is.na(ids) || !nzchar(ids)) {
-        return(ids)
-      }
-      parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
-      linked <- vapply(parts, function(id) {
-        url <- paste0(
+    tbl$cluster <- vapply(tbl$cluster, function(ids) {
+      .link_ids(ids, function(id) {
+        paste0(
           "https://www.bv-brc.org/view/Feature/",
           utils::URLencode(id, reserved = TRUE)
         )
-        paste0(
-          "<a href='", url, "' target='_blank' ",
-          "style='color:#1a73e8; text-decoration: underline;'>",
-          id, "</a>"
-        )
-      }, character(1))
-      paste(linked, collapse = ", ")
-    }
-    tbl$cluster <- vapply(tbl$cluster, link_fig, character(1))
+      })
+    }, character(1))
   }
-  # Link COG ids (comma-separated) to NCBI COG page.
+  # Link COG ids (comma-separated) to the NCBI COG page.
   if ("COG" %in% names(tbl)) {
-    link_cog <- function(ids) {
-      if (is.na(ids) || !nzchar(ids)) {
-        return(ids)
-      }
-      parts <- trimws(strsplit(ids, ",", fixed = TRUE)[[1]])
-      linked <- vapply(parts, function(id) {
-        paste0(
-          "<a href='https://www.ncbi.nlm.nih.gov/research/cog/cog/",
-          id, "' target='_blank' ",
-          "style='color:#1a73e8; text-decoration: underline;'>",
-          id, "</a>"
-        )
-      }, character(1))
-      paste(linked, collapse = ", ")
-    }
-    tbl$COG <- vapply(tbl$COG, link_cog, character(1))
+    tbl$COG <- vapply(tbl$COG, function(ids) {
+      .link_ids(ids, function(id) {
+        paste0("https://www.ncbi.nlm.nih.gov/research/cog/cog/", id)
+      })
+    }, character(1))
   }
 
   DT::datatable(
