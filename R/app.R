@@ -256,13 +256,13 @@ launchAMRDashboard <- function(results_root = NULL,
     # Shared reactives, data loaders, and cross-tab UI-update observers used
     # by every tab module below. `core` is a named list of reactive accessors.
     core <- setupServerCore(input, output, session, results_root)
-    queryData                  <- core$queryData
-    topFeatures                <- core$topFeatures
-    available_species          <- core$available_species
+    queryData <- core$queryData
+    topFeatures <- core$topFeatures
+    available_species <- core$available_species
     available_metadata_species <- core$available_metadata_species
-    filtered_top_features      <- core$filtered_top_features
-    loadDrugClassMapRec        <- core$loadDrugClassMapRec
-    bug_norm_input             <- core$bug_norm_input
+    filtered_top_features <- core$filtered_top_features
+    loadDrugClassMapRec <- core$loadDrugClassMapRec
+    bug_norm_input <- core$bug_norm_input
 
     # Metadata tab
     serverMetadata(input, output, session, results_root)

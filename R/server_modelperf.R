@@ -60,8 +60,8 @@ serverModelPerf <- function(input, output, session, core, results_root) {
     } else {
       shiny::updateSelectInput(
         session,
-        inputId  = "drug_ml_perf_id",
-        choices  = drug_vec,
+        inputId = "drug_ml_perf_id",
+        choices = drug_vec,
         selected = if ("GEN" %in% drug_vec) {
           "GEN"
         } else if (length(drug_vec)) {
