@@ -41,7 +41,7 @@ serverModelPerf <- function(input, output, session, core, results_root) {
     if (input$drug_class_ml_perf_id != "all") {
       sp_codes <- normalize_species(input$bug_ml_perf_id)
       meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
-        fp <- get_metadata_path(sp, results_root)
+        fp <- get_metadata_path(results_root)
         if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
       }))
       if (nrow(meta) && all(c("class_abbr", "drug_abbr") %in% names(meta))) {
