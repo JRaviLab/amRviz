@@ -32,7 +32,6 @@ amr_button <- function(id, label, icon_name, class_name) {
 #' @noRd
 styledBox <- function(outputId) {
   uiOutput(outputId, container = function(...) {
-    div(style = "display:inline-block")
     div(style = "padding-top: 0px; padding-bottom: 10px; height: 80%", ...)
   })
 }
