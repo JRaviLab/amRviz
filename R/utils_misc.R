@@ -5,8 +5,15 @@
 SPECIES_PATTERN <- "(Efa|Sau|Kpn|Aba|Pae|Esp\\.?)"
 
 
-# normalize_species helper: make "Esp." and "Esp" equivalent by removing
-# a single trailing dot for comparisons (preserves NA).
+#' Normalise species codes for comparison
+#'
+#' Makes "Esp." and "Esp" equivalent by removing a single trailing dot, so
+#' species filters match regardless of the trailing-dot convention. NA-safe.
+#'
+#' @param x Character vector (or coercible) of species codes.
+#' @return A character vector with any single trailing dot removed.
+#' @keywords internal
+#' @noRd
 normalize_species <- function(x) {
   x_chr <- as.character(x)
   x_chr[is.na(x_chr)] <- NA_character_
@@ -14,9 +21,17 @@ normalize_species <- function(x) {
 }
 
 
-# getHoldoutsDrugChoices: derive drug/class choices for the holdouts tab
-# perf_data: combined performance tibble from loadMLResults()
-# bug: optional 3-letter species code to filter to
+#' Derive drug/class choices for the holdouts tab
+#'
+#' Restricts to stratified (country/year, non-baseline) models, optionally
+#' filters to one species, and returns the sorted unique drug/class labels.
+#'
+#' @param perf_data Combined performance tibble from loadMLResults().
+#' @param bug Optional 3-letter species code to filter to.
+#' @return A sorted character vector of unique drug/class choices (empty when
+#'   there are no matching rows).
+#' @keywords internal
+#' @noRd
 getHoldoutsDrugChoices <- function(perf_data, bug = NULL) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(character(0))
