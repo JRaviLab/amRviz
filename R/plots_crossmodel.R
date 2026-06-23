@@ -1,12 +1,21 @@
 # Cross-model holdout visualisations.
 
 
-# makeCrossModelFeatureImportancePlot: heatmap of top features for holdout models.
-# top_data: pre-loaded top-features tibble (country or year stratified rows).
-# amRml column mapping:
-#   drug_or_class -> drug/class abbreviation
-#   strat_label   -> "country" or "year"
-#   strat_value   -> trained-on country/year
+#' Holdout-model feature-importance heatmap
+#'
+#' Heatmap of top features across the stratified (country or year) holdout
+#' models, column-wise min-max normalised. Uses the amRml columns drug_or_class,
+#' strat_label ("country"/"year"), and strat_value (trained-on stratum).
+#'
+#' @param top_data Top-features tibble (country/year stratified rows).
+#' @param bug Species code(s) to include.
+#' @param drug Drug/class identifier(s) to include.
+#' @param cross_model "country" or "time".
+#' @param top_n_features Number of features per stratum, or "all".
+#' @param annotated_dir Currently unused; kept for call-site consistency.
+#' @return A plotly heatmap, or NULL when there is nothing to plot.
+#' @keywords internal
+#' @noRd
 makeCrossModelFeatureImportancePlot <- function(
   top_data, bug, drug, cross_model, top_n_features,
   annotated_dir = NULL
@@ -41,7 +50,7 @@ makeCrossModelFeatureImportancePlot <- function(
   }
 
   vi_wider <- features_df |>
-    dplyr::select(.data$Variable, .data$Importance, !!rlang::sym(strat_col)) |>
+    dplyr::select("Variable", "Importance", !!rlang::sym(strat_col)) |>
     tidyr::pivot_wider(
       names_from = strat_col,
       values_from = "Importance",
@@ -65,9 +74,6 @@ makeCrossModelFeatureImportancePlot <- function(
     (x - rng[1]) / diff(rng)
   })
 
-  max_val <- max(vi_mat, na.rm = TRUE)
-  min_val <- min(vi_mat, na.rm = TRUE)
-
   plotly::plot_ly(
     x = colnames(vi_mat),
     y = rownames(vi_mat),
@@ -89,9 +95,18 @@ makeCrossModelFeatureImportancePlot <- function(
 }
 
 
-# makeCrossModelRidgePlot: balanced accuracy by drug class for holdout models,
-# coloured by Same (self-eval) vs Different (cross-eval).
-# cross_model: "country" or "time"
+#' Balanced-accuracy box plot for holdout models
+#'
+#' Balanced accuracy by drug class, coloured by Same (self-evaluation) vs
+#' Different (cross-evaluation) test strata.
+#'
+#' @param perf_data Performance tibble (country/year stratified rows).
+#' @param bug Species code(s) to include.
+#' @param cross_model "country" or "time".
+#' @return A horizontal plotly box plot (empty placeholder when there is no
+#'   matching data).
+#' @keywords internal
+#' @noRd
 makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(plotly::plot_ly() |>
@@ -167,13 +182,20 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
 }
 
 
-# makeCrossModelPerformancePlot: heatmap of balanced accuracy for holdout models.
-# perf_data: pre-loaded performance tibble (country or year stratified rows).
-# amRml column mapping:
-#   drug_or_class   -> drug/class abbreviation
-#   strat_label     -> "country" or "year"
-#   strat_value     -> trained-on country/year
-#   strat_value_test -> tested-on country/year (NA for self-evaluation)
+#' Cross-stratum balanced-accuracy heatmap
+#'
+#' Train-on vs test-on heatmap of mean balanced accuracy for the holdout models.
+#' Self-evaluation rows (strat_value_test is NA) are treated as tested on the
+#' trained stratum. Uses the amRml columns drug_or_class, strat_label, and
+#' strat_value / strat_value_test.
+#'
+#' @param perf_data Performance tibble (country/year stratified rows).
+#' @param bug Species code(s) to include.
+#' @param drug Drug/class identifier(s) to include.
+#' @param cross_model "country" or "time".
+#' @return A plotly heatmap, or NULL when there is nothing to plot.
+#' @keywords internal
+#' @noRd
 makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(NULL)
@@ -214,9 +236,6 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   if (!length(models_performance)) {
     return(NULL)
   }
-
-  min_val <- min(models_performance, na.rm = TRUE)
-  max_val <- max(models_performance, na.rm = TRUE)
 
   plotly::plot_ly(
     x = colnames(models_performance),

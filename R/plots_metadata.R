@@ -1,7 +1,18 @@
 # Metadata tab visualisations.
 
 
-quickStatBox <- function(title, value, icon_name, bg_color, text_color = "white") {
+#' Styled summary-statistic card
+#'
+#' @param title Caption shown beneath the value.
+#' @param value Value (string or tag) shown prominently.
+#' @param icon_name Font Awesome icon name.
+#' @param bg_color Background color.
+#' @param text_color Text color (default "white").
+#' @return A shiny `div` styled as a stat card.
+#' @keywords internal
+#' @noRd
+quickStatBox <- function(title, value, icon_name, bg_color,
+                         text_color = "white") {
   div(
     style = glue::glue("
       background-color: {bg_color};
@@ -34,7 +45,16 @@ quickStatBox <- function(title, value, icon_name, bg_color, text_color = "white"
 }
 
 
-makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
+#' Summary statistic cards for the metadata tab
+#'
+#' Builds the data-summary header: totals (records, genomes, drugs, classes,
+#' resistant/susceptible isolates) and the top-5 drugs, classes, and countries.
+#'
+#' @param data Metadata tibble (one row per genome-drug record).
+#' @return A shiny `tagList` of stat cards.
+#' @keywords internal
+#' @noRd
+makeQuickStats <- function(data) {
   data_with_drug_class <- data
   # Sample stat calculations
   total_genomes <- nrow(data_with_drug_class)
@@ -118,6 +138,12 @@ makeQuickStats <- function(data) { # , drug_class_df, spp_name, amr_drugs) {
 }
 
 
+#' Stacked bar of isolate counts by drug and phenotype
+#'
+#' @param data Metadata tibble.
+#' @return A plotly stacked bar chart.
+#' @keywords internal
+#' @noRd
 makeDatAvailabilityPlot <- function(data) {
   data <- data |>
     dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
@@ -158,6 +184,12 @@ makeDatAvailabilityPlot <- function(data) {
 }
 
 
+#' World choropleth of genome counts by country
+#'
+#' @param data Tibble with `genome.isolation_country` and `count` columns.
+#' @return A plotly choropleth map.
+#' @keywords internal
+#' @noRd
 makeGeoChloroPlot <- function(data) {
   data$iso3 <- countrycode::countrycode(data$genome.isolation_country, origin = "country.name", destination = "iso3c")
   plot_ly(
@@ -190,6 +222,13 @@ makeGeoChloroPlot <- function(data) {
 }
 
 
+#' Resistance trend over collection year
+#'
+#' @param data Tibble with collection year, phenotype, and isolate counts.
+#' @param amr_drug Drug to title the plot with, or "all".
+#' @return A plotly line/point time series.
+#' @keywords internal
+#' @noRd
 makeTimeSeriesAMRPlot <- function(data, amr_drug) {
   whole_data_title <- stringr::str_glue(
     "AMR resistance trend"
@@ -238,6 +277,12 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
 }
 
 
+#' Stacked bar of isolate counts by drug and host
+#'
+#' @param data Metadata tibble.
+#' @return A plotly stacked bar chart.
+#' @keywords internal
+#' @noRd
 makeHostIsolatePlot <- function(data) {
   data <- data |>
     dplyr::mutate(
@@ -284,6 +329,14 @@ makeHostIsolatePlot <- function(data) {
 }
 
 
+#' Stacked bar of isolate counts by drug and isolation source
+#'
+#' Keeps the top 10 isolation sources and groups the rest into "Other".
+#'
+#' @param data Metadata tibble.
+#' @return A plotly stacked bar chart.
+#' @keywords internal
+#' @noRd
 makeIsolationSourcesPlot <- function(data) {
   isolation_source <- data |>
     dplyr::mutate(genome.isolation_source = stringr::str_to_lower(genome.isolation_source)) |>
@@ -344,12 +397,20 @@ makeIsolationSourcesPlot <- function(data) {
 }
 
 
-# makeMetadataSankey: multi-tier sankey of resistance flow:
-# phenotype -> drug class -> antibiotic -> country -> host -> isolation source.
-# Filters to a chosen drug class (or top N classes) to keep the diagram
-# legible, since unfiltered metadata has too many flows.
-# data: metadata tibble (one row per genome-drug record)
-# drug_classes: vector of drug class names to keep (NULL = top 3 by count)
+#' Multi-tier resistance-flow Sankey
+#'
+#' Sankey of resistance flow:
+#' phenotype -> drug class -> antibiotic -> country -> host -> isolation source.
+#' Filters to the chosen drug classes (or the top `max_classes` by count) to
+#' keep the diagram legible, since unfiltered metadata has too many flows.
+#'
+#' @param data Metadata tibble (one row per genome-drug record).
+#' @param drug_classes Drug classes to keep (NULL = top `max_classes` by count).
+#' @param max_classes Number of top drug classes to keep when none are given.
+#' @return A `networkD3` sankeyNetwork widget, or NULL when prerequisites are
+#'   missing.
+#' @keywords internal
+#' @noRd
 makeMetadataSankey <- function(data, drug_classes = NULL,
                                max_classes = 3) {
   if (!requireNamespace("networkD3", quietly = TRUE)) {
