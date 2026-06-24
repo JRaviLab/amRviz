@@ -152,7 +152,8 @@ makeModelPerformancePlot <- function(
 .scale_label_map <- function() {
   labels <- c(
     domains = "Domain", genes = "Gene",
-    proteins = "Protein", struct = "Struct"
+    proteins = "Protein", struct = "Struct",
+    args = "ARG", cogs = "COG"
   )
   list(
     labels = labels,
