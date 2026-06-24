@@ -205,7 +205,7 @@ makeModelPerformancePlot <- function(
 #' @keywords internal
 #' @noRd
 makeMCCStripPlot <- function(data, selected_drug_class = NULL,
-                              selected_drug = NULL) {
+                             selected_drug = NULL) {
   df <- .prep_mcc_data(data)
   if (is.null(df)) {
     return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
