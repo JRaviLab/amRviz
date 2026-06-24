@@ -9,13 +9,14 @@
 #   struct   = "#a52a2a"
 # )
 
- SCALE_COLORS <- c("args"     = "#E69F00", # orange
-   "cogs"     = "#56B4E9", # skyblue
-   "genes"    = "#009E73", # bluish green
-   "domains"  = "#0072B2", # deepblue
-   "proteins" = "#CC79A7", # reddish purple
-   "struct"   = "#D55E00" # vermillion
- )
+SCALE_COLORS <- c(
+  "args" = "#E69F00", # orange
+  "cogs" = "#56B4E9", # skyblue
+  "genes" = "#009E73", # bluish green
+  "domains" = "#0072B2", # deepblue
+  "proteins" = "#CC79A7", # reddish purple
+  "struct" = "#D55E00" # vermillion
+)
 # AMR phenotype palette (R/S/I plus full-word + lowercase variants so it works
 # regardless of how the column is encoded). Susceptible is intentionally
 # neutral grey so Resistant amber stands out as the signal of interest.
