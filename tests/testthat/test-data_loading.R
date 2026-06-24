@@ -103,16 +103,16 @@ test_that("loadTopFeat loads demo data in fallback mode", {
 
 # ── get_metadata_path ────────────────────────────────────────────────────────
 
-# test_that("get_metadata_path returns NULL for nonexistent species code", {
-#   result <- get_metadata_path("Zzz")
-#   expect_null(result)
-# })
+test_that("get_metadata_path returns NULL for nonexistent species dir", {
+  result <- get_metadata_path("Zzz_nonexistent")
+  expect_null(result)
+})
 
 test_that("get_metadata_path finds demo metadata parquet", {
   extdata <- system.file("extdata", package = "amRviz")
   skip_if(!nzchar(extdata), "No extdata directory found")
 
-  result <- get_metadata_path("Sfl")
+  result <- get_metadata_path("Shigella_flexneri")
   if (!is.null(result)) {
     expect_true(file.exists(result))
     expect_true(grepl("metadata\\.parquet$", result))

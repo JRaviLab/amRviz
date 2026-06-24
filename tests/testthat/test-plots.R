@@ -77,7 +77,7 @@ test_that("makeIsolationSourcesPlot returns a plotly object", {
 test_that("makeModelPerformancePlot returns plotly for NULL data", {
   result <- makeModelPerformancePlot(
     data = NULL, bug = "Sau", model_scale = "genes",
-    data_type = "binary", metrics = "nmcc",
+    data_type = "binary", metrics = "mcc",
     amr_drug_class = NULL, amr_drug = NULL
   )
   expect_s3_class(result, "plotly")
@@ -86,7 +86,7 @@ test_that("makeModelPerformancePlot returns plotly for NULL data", {
 test_that("makeModelPerformancePlot returns plotly for zero-row data", {
   result <- makeModelPerformancePlot(
     data = data.frame(), bug = "Sau", model_scale = "genes",
-    data_type = "binary", metrics = "nmcc",
+    data_type = "binary", metrics = "mcc",
     amr_drug_class = NULL, amr_drug = NULL
   )
   expect_s3_class(result, "plotly")
@@ -105,7 +105,7 @@ test_that("makeModelPerformancePlot generates valid plot with demo data", {
     bug = species,
     model_scale = scales,
     data_type = subtypes,
-    metrics = "nmcc",
+    metrics = "mcc",
     amr_drug_class = "all",
     amr_drug = NULL
   )

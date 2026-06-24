@@ -71,7 +71,7 @@ modelPerfUI <- function() {
                     selectInput(
                       "model_metrics",
                       label = tags$label("Performance metric", style = "font-size: 15px;"),
-                      choices = c("Matthews Correlation Coefficient" = "nmcc"),
+                      choices = c("Matthews Correlation Coefficient" = "mcc"),
                       multiple = FALSE,
                       selectize = TRUE,
                       width = "100%"

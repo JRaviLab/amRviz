@@ -3,9 +3,9 @@
 # Read and row-bind metadata parquets for one or more bug ids.
 .read_metadata_for_bug <- function(bug_ids, results_root) {
   purrr::map_dfr(bug_ids, function(x) {
-    fp <- get_metadata_path(results_root)
+    fp <- get_metadata_path(x, results_root)
     if (!is.null(fp) && file.exists(fp)) {
-      arrow::read_parquet(fp) |> dplyr::mutate(species = bug_ids)
+      arrow::read_parquet(fp) |> dplyr::mutate(species = x)
     } else {
       tibble::tibble()
     }
@@ -83,8 +83,8 @@ serverMetadata <- function(input, output, session, results_root) {
 
   # Single-bug metadata used by the sankey and its drug-class selector.
   metadata_for_bug <- shiny::reactive({
-    # shiny::req(input$bug_metadata_id)
-    fp <- get_metadata_path(results_root)
+    shiny::req(input$bug_metadata_id)
+    fp <- get_metadata_path(input$bug_metadata_id, results_root)
     if (is.null(fp) || !file.exists(fp)) {
       return(NULL)
     }

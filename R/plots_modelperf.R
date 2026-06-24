@@ -6,7 +6,7 @@
 #' Grouped box plots of a performance metric by species and molecular scale,
 #' restricted to baseline (non-stratified) models. Uses the amRml parquet
 #' columns species, feature_type (scale), feature_subtype (data type),
-#' drug_or_class, drug_label, and the metric columns (nmcc/bal_acc/f1).
+#' drug_or_class, drug_label, and the metric columns (mcc/bal_acc/f1).
 #'
 #' @param data Performance tibble from loadMLResults() / queryData().
 #' @param bug Species code(s) to include.
@@ -20,20 +20,23 @@
 #' @keywords internal
 #' @noRd
 makeModelPerformancePlot <- function(
-  data, bug, model_scale, data_type, metrics,
-  amr_drug_class, amr_drug
-) {
+    data, bug, model_scale, data_type, metrics,
+    amr_drug_class, amr_drug) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
     return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No data available", x = 0)))
   }
 
-  # Filter to baseline models (strat_label is NA = no country/year stratification)
+  # Filter to baseline models (strat_label is NA = no country/year
+  # stratification); drop cross-tested rows, which ship in their own files.
   df <- data |>
     dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
     dplyr::filter(.data$feature_type %in% model_scale) |>
     dplyr::filter(.data$feature_subtype %in% data_type) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+  if ("cross_test" %in% names(df)) {
+    df <- dplyr::filter(df, !.data$cross_test)
+  }
 
   # Filter by drug class or drug if not "all"
   if (!is.null(amr_drug_class) && length(amr_drug_class) > 0 &&
@@ -80,7 +83,9 @@ makeModelPerformancePlot <- function(
       ),
       yaxis = list(
         title = list(text = metrics, font = list(size = 10)),
-        tickfont = list(size = 10), range = c(0, 1.03)
+        tickfont = list(size = 10),
+        # MCC spans [-1, 1] (0 = random); bal_acc / f1 stay in [0, 1].
+        range = if (identical(metrics, "mcc")) c(-1.03, 1.03) else c(0, 1.03)
       ),
       legend = list(
         title = list(text = "Scale", font = list(size = 12)),
@@ -156,7 +161,7 @@ makeModelPerformancePlot <- function(
 }
 
 
-#' Prepare baseline nMCC data for the Performance overview plots
+#' Prepare baseline MCC data for the Performance overview plots
 #'
 #' Drops stratified / cross-test rows so only baseline models remain, and adds a
 #' `species_display` column (from `species_label` when present).
@@ -171,7 +176,7 @@ makeModelPerformancePlot <- function(
   }
   df <- data |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
-    dplyr::filter(!.data$cross_test, !is.na(.data$nmcc))
+    dplyr::filter(!.data$cross_test, !is.na(.data$mcc))
   if (!nrow(df)) {
     return(NULL)
   }
@@ -186,9 +191,9 @@ makeModelPerformancePlot <- function(
 }
 
 
-#' Facetted nMCC strip plot (Performance overview)
+#' Facetted MCC strip plot (Performance overview)
 #'
-#' nMCC distribution per species and molecular scale, highlighting the selected
+#' MCC distribution per species and molecular scale, highlighting the selected
 #' drug or drug class via point alpha + size. Baseline rows only (via
 #' .prep_nmcc_data()).
 #'
@@ -259,14 +264,14 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL,
     df,
     ggplot2::aes(
       x = .data$species_display,
-      y = .data$nmcc,
+      y = .data$mcc,
       color = .data$scale_label,
       fill = .data$scale_label,
       alpha = .data$pt_alpha,
       size = .data$pt_size,
       text = paste0(
         "Drug/class: ", .data$drug_or_class,
-        "\nnMCC: ", round(.data$nmcc, 3),
+        "\nMCC: ", round(.data$mcc, 3),
         "\nEncoding: ", .data$feature_subtype
       )
     )
@@ -277,7 +282,7 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL,
     ) +
     ggplot2::geom_jitter(width = 0.15) +
     ggplot2::geom_hline(
-      yintercept = 0.5, linetype = "dashed",
+      yintercept = 0, linetype = "dashed",
       color = "gray50", linewidth = 0.4
     ) +
     ggplot2::facet_grid(scale_label ~ ., switch = "y") +
@@ -285,8 +290,8 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL,
     ggplot2::scale_fill_manual(values = scale_colors) +
     ggplot2::scale_alpha_identity() +
     ggplot2::scale_size_identity() +
-    ggplot2::coord_cartesian(ylim = c(0.35, 1.05)) +
-    ggplot2::labs(x = NULL, y = "nMCC") +
+    ggplot2::coord_cartesian(ylim = c(-1.05, 1.05)) +
+    ggplot2::labs(x = NULL, y = "MCC") +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
       legend.position   = "none",
@@ -298,7 +303,7 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL,
   plotly::ggplotly(g, tooltip = "text") |>
     plotly::layout(
       title = list(
-        text = "nMCC per species and molecular scale", x = 0,
+        text = "MCC per species and molecular scale", x = 0,
         font = list(size = 13, color = "#333333", family = "Arial, sans-serif")
       ),
       margin = list(t = 50)
@@ -306,9 +311,9 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL,
 }
 
 
-#' Three-panel nMCC heatmap (Performance overview)
+#' Three-panel MCC heatmap (Performance overview)
 #'
-#' Three sections sharing the drug-class y-axis, showing median nMCC by species,
+#' Three sections sharing the drug-class y-axis, showing median MCC by species,
 #' molecular scale, and data encoding. Highlights the selected drug-class row
 #' across all three sections.
 #'
@@ -341,11 +346,11 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
       drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev)
     )
 
-  # Section 1: species x drug_class (grayscale median nMCC)
+  # Section 1: species x drug_class (grayscale median MCC)
   spp_summ <- df |>
     dplyr::group_by(.data$drug_or_class, .data$species_display) |>
     dplyr::summarise(
-      med_nmcc = median(.data$nmcc, na.rm = TRUE),
+      med_mcc = median(.data$mcc, na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::mutate(
@@ -357,18 +362,18 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
     ggplot2::aes(
       x = .data$species_display,
       y = .data$drug_or_class,
-      fill = .data$med_nmcc,
+      fill = .data$med_mcc,
       text = paste0(
         "Species: ", .data$species_display,
         "\nDrug class: ", .data$drug_or_class,
-        "\nMedian nMCC: ", round(.data$med_nmcc, 3)
+        "\nMedian MCC: ", round(.data$med_mcc, 3)
       )
     )
   ) +
     ggplot2::geom_tile(color = "white") +
     ggplot2::scale_fill_gradient(
       low = "#f7fbff", high = "#08306b",
-      limits = c(0.5, 1.0), name = "nMCC", na.value = "white"
+      limits = c(0, 1.0), name = "MCC", na.value = "white"
     ) +
     ggplot2::labs(x = NULL, y = "Drug class", title = "Species") +
     ggplot2::theme_minimal(base_size = 11) +
@@ -391,7 +396,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
     dplyr::filter(.data$feature_type %in% scale_order) |>
     dplyr::group_by(.data$drug_or_class, .data$feature_type) |>
     dplyr::summarise(
-      med_nmcc = median(.data$nmcc, na.rm = TRUE),
+      med_mcc = median(.data$mcc, na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::mutate(
@@ -400,7 +405,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
         levels = unname(scale_labels)
       ),
       drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
-      alpha_val = (.data$med_nmcc - 0.5) / 0.5
+      alpha_val = pmax(0, pmin(1, .data$med_mcc))
     )
 
   g2 <- ggplot2::ggplot(
@@ -413,7 +418,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
       text = paste0(
         "Scale: ", .data$scale_label,
         "\nDrug class: ", .data$drug_or_class,
-        "\nMedian nMCC: ", round(.data$med_nmcc, 3)
+        "\nMedian MCC: ", round(.data$med_mcc, 3)
       )
     )
   ) +
@@ -437,7 +442,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
   st_summ <- df |>
     dplyr::group_by(.data$drug_or_class, .data$feature_subtype) |>
     dplyr::summarise(
-      med_nmcc = median(.data$nmcc, na.rm = TRUE),
+      med_mcc = median(.data$mcc, na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::mutate(
@@ -447,7 +452,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
         TRUE ~ .data$feature_subtype
       ),
       drug_or_class = factor(.data$drug_or_class, levels = drug_order_rev),
-      alpha_val = (.data$med_nmcc - 0.5) / 0.5
+      alpha_val = pmax(0, pmin(1, .data$med_mcc))
     )
 
   g3 <- ggplot2::ggplot(
@@ -460,7 +465,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
       text = paste0(
         "Encoding: ", .data$subtype_label,
         "\nDrug class: ", .data$drug_or_class,
-        "\nMedian nMCC: ", round(.data$med_nmcc, 3)
+        "\nMedian MCC: ", round(.data$med_mcc, 3)
       )
     )
   ) +
@@ -513,7 +518,7 @@ makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
   ) |>
     plotly::layout(
       title = list(
-        text = "nMCC by drug class, species, molecular scale, and data type",
+        text = "MCC by drug class, species, molecular scale, and data type",
         x = 0,
         font = list(size = 13, color = "#333333", family = "Arial, sans-serif")
       ),
