@@ -20,8 +20,9 @@
 #' @keywords internal
 #' @noRd
 makeModelPerformancePlot <- function(
-    data, bug, model_scale, data_type, metrics,
-    amr_drug_class, amr_drug) {
+  data, bug, model_scale, data_type, metrics,
+  amr_drug_class, amr_drug
+) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
     return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No data available", x = 0)))
