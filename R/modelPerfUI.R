@@ -45,10 +45,10 @@ modelPerfUI <- function() {
                   selectInput(
                     "model_scale",
                     label = tags$label("Model scale", style = "font-size: 15px;"),
-                    choices = c("genes", "domains", "proteins"),
+                    choices = c("genes", "domains", "proteins", "cogs", "args"),
                     multiple = TRUE,
                     selectize = TRUE,
-                    selected = c("genes", "proteins", "domains"),
+                    selected = c("genes", "proteins", "domains", "cogs", "args"),
                     width = "80%"
                   )
                 ),
