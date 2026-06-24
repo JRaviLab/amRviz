@@ -58,7 +58,7 @@ makeQuickStats <- function(data) {
   data_with_drug_class <- data
   # Sample stat calculations
   total_genomes <- nrow(data_with_drug_class)
-  total_uniques_genomes <- length(unique(data_with_drug_class$genome_drug.genome_id))
+  total_uniques_genomes <- length(unique(data_with_drug_class$genome.genome_id))
   n_amr_drugs <- length(unique(data_with_drug_class$genome_drug.antibiotic))
   n_amr_drug_class <- length(unique(data_with_drug_class$drug_class[!is.na(data_with_drug_class$drug_class)]))
   total_strains <- data_with_drug_class[

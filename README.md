@@ -160,7 +160,7 @@ organized into per-species subdirectories:
 
 | Column                            | Description                                 |
 |-----------------------------------|---------------------------------------------|
-| `genome_drug.genome_id`           | Unique genome identifier                    |
+| `genome.genome_id`                | Unique genome identifier                    |
 | `genome_drug.antibiotic`          | Antibiotic tested                           |
 | `genome_drug.resistant_phenotype` | `"Resistant"` or `"Susceptible"`            |
 | `genome.isolation_country`        | Country of isolation                        |
