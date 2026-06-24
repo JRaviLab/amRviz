@@ -171,7 +171,7 @@ makeModelPerformancePlot <- function(
 #' @return A filtered tibble with `species_display`, or NULL when empty.
 #' @keywords internal
 #' @noRd
-.prep_nmcc_data <- function(data) {
+.prep_mcc_data <- function(data) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
     return(NULL)
   }
@@ -196,7 +196,7 @@ makeModelPerformancePlot <- function(
 #'
 #' MCC distribution per species and molecular scale, highlighting the selected
 #' drug or drug class via point alpha + size. Baseline rows only (via
-#' .prep_nmcc_data()).
+#' .prep_mcc_data()).
 #'
 #' @param data Performance tibble from loadMLResults().
 #' @param selected_drug_class Drug class to highlight, "all"/NULL for none.
@@ -204,9 +204,9 @@ makeModelPerformancePlot <- function(
 #' @return A plotly figure (empty placeholder when there is no matching data).
 #' @keywords internal
 #' @noRd
-makeNmccStripPlot <- function(data, selected_drug_class = NULL,
+makeMCCStripPlot <- function(data, selected_drug_class = NULL,
                               selected_drug = NULL) {
-  df <- .prep_nmcc_data(data)
+  df <- .prep_mcc_data(data)
   if (is.null(df)) {
     return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
   }
@@ -324,8 +324,8 @@ makeNmccStripPlot <- function(data, selected_drug_class = NULL,
 #'   drug-class data).
 #' @keywords internal
 #' @noRd
-makeNmccHeatmap <- function(data, selected_drug_class = NULL) {
-  df <- .prep_nmcc_data(data)
+makeMCCHeatmap <- function(data, selected_drug_class = NULL) {
+  df <- .prep_mcc_data(data)
   if (is.null(df)) {
     return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
   }

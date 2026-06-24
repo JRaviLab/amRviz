@@ -141,7 +141,7 @@ organized into per-species subdirectories:
 | `feature_subtype`                       | Data encoding: `binary`, `counts`                                |
 | `strat_label`                           | Stratification: blank (baseline), `"country"`, or `"year"`       |
 | `strat_value` / `strat_value_test`      | Trained-on / tested-on country or year (stratified/cross models) |
-| `nmcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics                                              |
+| `mcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics                                              |
 
 ### Top features (`*_ML_top_features.parquet`)
 

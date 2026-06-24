@@ -89,16 +89,16 @@ serverModelPerf <- function(input, output, session, core, results_root) {
     )
   })
 
-  output$nmcc_strip_plot <- plotly::renderPlotly({
-    makeNmccStripPlot(
+  output$mcc_strip_plot <- plotly::renderPlotly({
+    makeMCCStripPlot(
       core$queryData(),
       selected_drug_class = input$drug_class_ml_perf_id,
       selected_drug       = input$drug_ml_perf_id
     )
   })
 
-  output$nmcc_heatmap <- plotly::renderPlotly({
-    makeNmccHeatmap(
+  output$mcc_heatmap <- plotly::renderPlotly({
+    makeMCCHeatmap(
       core$queryData(),
       selected_drug_class = input$drug_class_ml_perf_id
     )
