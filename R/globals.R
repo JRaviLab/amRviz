@@ -31,7 +31,7 @@ utils::globalVariables(c(
   "genome_drug.resistant_phenotype",
   "group",
   "max_imp",
-  "nmcc",
+  "mcc",
   "predicted_drug",
   "proteinID",
   "source_file",

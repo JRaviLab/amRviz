@@ -1,4 +1,4 @@
-antibiotic	num_obs	res_prop	lab_derived_prop	train_prop	val_prop	n_fold	fit_penalty	fit_mixture	f1_score	log2_apop	bal_acc	nmcc	date	bug	model	model_scale	model_drug	model_data	model_colors	model_shapes
+antibiotic	num_obs	res_prop	lab_derived_prop	train_prop	val_prop	n_fold	fit_penalty	fit_mixture	f1_score	log2_apop	bal_acc	mcc	date	bug	model	model_scale	model_drug	model_data	model_colors	model_shapes
 amikacin	670	0.66	1	0.6	0.2	NA	1.00E-04	0	0.88	0.53	0.79	0.81	2025-05-20	Aba	gene_all_struct	gene	drug	all_genomic_context	#e6ab02	23
 ampicillin/sulbactam	464	0.56	1	0.6	0.2	NA	1.00E-04	0	0.95	0.79	0.93	0.94	2025-05-20	Aba	gene_all_struct	gene	drug	all_genomic_context	#e6ab02	23
 cefepime	201	0.94	1	0.6	0.2	NA	0.1	0.6	0.99	0.09	NA	NA	2025-05-20	Aba	gene_all_struct	gene	drug	all_genomic_context	#e6ab02	23

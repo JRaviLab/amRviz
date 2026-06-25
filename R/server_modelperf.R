@@ -40,8 +40,12 @@ serverModelPerf <- function(input, output, session, core, results_root) {
 
     if (input$drug_class_ml_perf_id != "all") {
       sp_codes <- normalize_species(input$bug_ml_perf_id)
-      meta <- dplyr::bind_rows(lapply(sp_codes, function(sp) {
-        fp <- get_metadata_path(sp, results_root)
+      sp_dirs <- core$queryData() |>
+        dplyr::filter(normalize_species(.data$species) %in% sp_codes) |>
+        dplyr::pull(.data$species_label) |>
+        unique()
+      meta <- dplyr::bind_rows(lapply(sp_dirs, function(sp_dir) {
+        fp <- get_metadata_path(sp_dir, results_root)
         if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
       }))
       if (nrow(meta) && all(c("class_abbr", "drug_abbr") %in% names(meta))) {
@@ -85,16 +89,16 @@ serverModelPerf <- function(input, output, session, core, results_root) {
     )
   })
 
-  output$nmcc_strip_plot <- plotly::renderPlotly({
-    makeNmccStripPlot(
+  output$mcc_strip_plot <- plotly::renderPlotly({
+    makeMCCStripPlot(
       core$queryData(),
       selected_drug_class = input$drug_class_ml_perf_id,
       selected_drug       = input$drug_ml_perf_id
     )
   })
 
-  output$nmcc_heatmap <- plotly::renderPlotly({
-    makeNmccHeatmap(
+  output$mcc_heatmap <- plotly::renderPlotly({
+    makeMCCHeatmap(
       core$queryData(),
       selected_drug_class = input$drug_class_ml_perf_id
     )

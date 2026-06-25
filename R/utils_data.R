@@ -45,8 +45,8 @@
 #' Discover species subdirectories that contain amRml output
 #'
 #' Files live in per-species subdirectories as
-#' `{root}/{SpeciesDir}/{code}_ML_perf.parquet`. Only directories holding at
-#' least one baseline `*_ML_perf.parquet` (not a country/year/MDR/cross variant)
+#' `{root}/{SpeciesDir}/{code}_perf.parquet`. Only directories holding at
+#' least one baseline `all_perf.parquet` (not a country/year/MDR/cross variant)
 #' are kept.
 #'
 #' @param results_root Root directory to scan.
@@ -67,10 +67,11 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
     return(character(0))
   }
 
-  # Keep subdirs with at least one baseline *_ML_perf.parquet file
+  # Keep subdirs holding at least one baseline `all_perf.parquet` file, i.e. a
+  # `*_perf.parquet` that is not a country/year/MDR/cross_drug variant.
   has_perf <- vapply(subdirs, function(d) {
-    fps <- list.files(d, pattern = "_ML_perf\\.parquet$", full.names = FALSE)
-    any(!grepl("_(country|year|MDR|cross)_ML_perf\\.parquet$", fps))
+    fps <- list.files(d, pattern = "_perf\\.parquet$", full.names = FALSE)
+    any(!grepl("(country|year|MDR|cross_drug)_perf\\.parquet$", fps))
   }, logical(1))
 
   ok <- subdirs[has_perf]
@@ -83,8 +84,11 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
 
 #' Load all performance parquets from one species directory
 #'
-#' Reads baseline + country + year + cross `*_ML_perf.parquet` files (excluding
-#' MDR) and tags rows with `species_label = basename(species_dir)`.
+#' Reads baseline (`all_perf`), stratified (`country_perf`/`year_perf`), and
+#' cross-tested (`cross_*_perf`) parquet files, excluding the MDR and
+#' leave-one-out summaries. Cross-tested rows come in their own files in the
+#' amRml schema, so each row is tagged with `cross_test` from its source
+#' filename. Also tags `species_label = basename(species_dir)`.
 #'
 #' @param species_dir Full path to a species subdirectory.
 #' @param verbose Passed through to .read_parquet_safe().
@@ -94,22 +98,36 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
 .load_one_species_perf <- function(species_dir, verbose = TRUE) {
   fps <- list.files(
     species_dir,
-    pattern = "_ML_perf\\.parquet$", full.names = TRUE
+    pattern = "_perf\\.parquet$", full.names = TRUE
   )
-  fps <- fps[!grepl("_MDR_ML_perf\\.parquet$", fps)]
+  fps <- fps[!grepl("(MDR|LOO)_perf\\.parquet$", basename(fps))]
   if (!length(fps)) {
     return(tibble::tibble())
   }
-  df <- dplyr::bind_rows(lapply(fps, .read_parquet_safe, verbose = verbose))
-  if (nrow(df)) df$species_label <- basename(species_dir)
+  df <- dplyr::bind_rows(lapply(fps, function(fp) {
+    d <- .read_parquet_safe(fp, verbose = verbose)
+    if (nrow(d)) d$cross_test <- grepl("^cross", basename(fp))
+    d
+  }))
+  if (!nrow(df)) {
+    return(df)
+  }
+  # Guarantee the columns the cross-model views read, even when a species ships
+  # only baseline / self-evaluation files (no cross_* parquets).
+  if (!"cross_test" %in% names(df)) df$cross_test <- FALSE
+  df$cross_test[is.na(df$cross_test)] <- FALSE
+  if (!"strat_value_test" %in% names(df)) df$strat_value_test <- NA
+  df$species_label <- basename(species_dir)
   df
 }
 
 
 #' Load all top-feature parquets from one species directory
 #'
-#' Reads baseline + country + year `*_ML_top_features.parquet` files (excluding
-#' MDR) and tags rows with `species_label = basename(species_dir)`.
+#' Reads baseline (`all_top_features`), stratified (`country`/`year`), and
+#' cross-tested (`cross_*`) `*_top_features.parquet` files, excluding the MDR
+#' and leave-one-out summaries. Each row is tagged with `cross_test` from its
+#' filename and with `species_label = basename(species_dir)`.
 #'
 #' @param species_dir Full path to a species subdirectory.
 #' @param verbose Passed through to .read_parquet_safe().
@@ -119,14 +137,23 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
 .load_one_species_top <- function(species_dir, verbose = TRUE) {
   fps <- list.files(
     species_dir,
-    pattern = "_ML_top_features\\.parquet$", full.names = TRUE
+    pattern = "_top_features\\.parquet$", full.names = TRUE
   )
-  fps <- fps[!grepl("_MDR_ML_top_features\\.parquet$", fps)]
+  fps <- fps[!grepl("(MDR|LOO)_top_features\\.parquet$", basename(fps))]
   if (!length(fps)) {
     return(tibble::tibble())
   }
-  df <- dplyr::bind_rows(lapply(fps, .read_parquet_safe, verbose = verbose))
-  if (nrow(df)) df$species_label <- basename(species_dir)
+  df <- dplyr::bind_rows(lapply(fps, function(fp) {
+    d <- .read_parquet_safe(fp, verbose = verbose)
+    if (nrow(d)) d$cross_test <- grepl("^cross", basename(fp))
+    d
+  }))
+  if (!nrow(df)) {
+    return(df)
+  }
+  if (!"cross_test" %in% names(df)) df$cross_test <- FALSE
+  df$cross_test[is.na(df$cross_test)] <- FALSE
+  df$species_label <- basename(species_dir)
   df
 }
 
@@ -230,16 +257,33 @@ loadTopFeat <- function(results_root = NULL, species_dirs = NULL,
 
 #' Locate a species metadata parquet
 #'
-#' Searches the species subdirectories under `results_root` (user mode) and then
-#' under the packaged extdata (demo mode) for `{species_code}_metadata.parquet`.
+#' Each species subdirectory holds a single `metadata.parquet`, so a species is
+#' addressed by its subdirectory name. Looks for
+#' `{results_root}/{species_dir}/metadata.parquet` (user mode) and then
+#' `{extdata}/{species_dir}/metadata.parquet` (demo mode). When `species_dir` is
+#' NULL, falls back to the first `metadata.parquet` found under any subdir.
 #'
-#' @param species_code Species code prefix of the metadata file.
+#' @param species_dir Species subdirectory basename (e.g. "Shigella_flexneri"),
+#'   or NULL to return the first metadata parquet found.
 #' @param results_root User results root, or NULL to search demo data only.
 #' @return The full path to the metadata parquet, or NULL when not found.
 #' @keywords internal
 #' @noRd
-get_metadata_path <- function(species_code, results_root = NULL) {
-  fname <- paste0(species_code, "_metadata.parquet")
+get_metadata_path <- function(species_dir = NULL, results_root = NULL) {
+  fname <- "metadata.parquet"
+
+  if (!is.null(species_dir) && nzchar(species_dir)) {
+    roots <- c(results_root, system.file("extdata", package = "amRviz"))
+    for (root in roots) {
+      if (is.null(root) || !nzchar(root)) next
+      fp <- file.path(root, species_dir, fname)
+      if (file.exists(fp)) {
+        return(fp)
+      }
+    }
+    return(NULL)
+  }
+
   fp <- .find_file_in_subdirs(results_root, fname)
   if (!is.null(fp)) {
     return(fp)

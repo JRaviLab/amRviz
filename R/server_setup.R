@@ -80,15 +80,13 @@ setupServerCore <- function(input, output, session, results_root) {
         character(0)
       }
     }
+    # Each species subdirectory holds a single metadata.parquet; identify the
+    # species by its subdirectory name.
     choices <- character(0)
     for (d in scan_dirs) {
-      fps <- list.files(d, pattern = "_metadata\\.parquet$", full.names = FALSE)
-      if (!length(fps)) next
-      for (f in fps) {
-        code <- sub("_metadata\\.parquet$", "", f)
-        label <- gsub("_", " ", basename(d))
-        choices <- c(choices, stats::setNames(code, label))
-      }
+      if (!file.exists(file.path(d, "metadata.parquet"))) next
+      label <- gsub("_", " ", basename(d))
+      choices <- c(choices, stats::setNames(basename(d), label))
     }
     sort(choices)
   })

@@ -14,7 +14,7 @@ featureImportanceUI <- function() {
         selectInput(
           "bug_drug_comp_model_scale",
           label = tags$label("Model scale", style = "font-size: 15px;"),
-          choices = c("genes", "domains", "proteins"),
+          choices = c("genes", "domains", "proteins", "cogs", "args"),
           multiple = FALSE,
           selectize = TRUE,
           selected = "genes"

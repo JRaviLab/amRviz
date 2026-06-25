@@ -5,7 +5,7 @@
   purrr::map_dfr(bug_ids, function(x) {
     fp <- get_metadata_path(x, results_root)
     if (!is.null(fp) && file.exists(fp)) {
-      arrow::read_parquet(fp) |> dplyr::mutate(species = bug_ids)
+      arrow::read_parquet(fp) |> dplyr::mutate(species = x)
     } else {
       tibble::tibble()
     }

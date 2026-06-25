@@ -45,10 +45,10 @@ modelPerfUI <- function() {
                   selectInput(
                     "model_scale",
                     label = tags$label("Model scale", style = "font-size: 15px;"),
-                    choices = c("genes", "domains", "proteins"),
+                    choices = c("genes", "domains", "proteins", "cogs", "args"),
                     multiple = TRUE,
                     selectize = TRUE,
-                    selected = c("genes", "proteins", "domains"),
+                    selected = c("genes", "proteins", "domains", "cogs", "args"),
                     width = "80%"
                   )
                 ),
@@ -71,7 +71,7 @@ modelPerfUI <- function() {
                     selectInput(
                       "model_metrics",
                       label = tags$label("Performance metric", style = "font-size: 15px;"),
-                      choices = c("Matthews Correlation Coefficient" = "nmcc"),
+                      choices = c("Matthews Correlation Coefficient" = "mcc"),
                       multiple = FALSE,
                       selectize = TRUE,
                       width = "100%"
@@ -100,11 +100,11 @@ modelPerfUI <- function() {
               ),
               fluidRow(
                 column(4, plotly::plotlyOutput(
-                  "nmcc_strip_plot",
+                  "mcc_strip_plot",
                   height = "420px"
                 )),
                 column(8, plotly::plotlyOutput(
-                  "nmcc_heatmap",
+                  "mcc_heatmap",
                   height = "420px"
                 ))
               )
