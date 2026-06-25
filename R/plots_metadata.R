@@ -146,6 +146,7 @@ makeQuickStats <- function(data) {
 #' @noRd
 makeDatAvailabilityPlot <- function(data) {
   data <- data |>
+    dplyr::distinct(genome.genome_id, genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
     dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
     count() |>
     ungroup()
