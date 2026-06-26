@@ -272,6 +272,7 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
       legend.title = element_text(size = 12),
       legend.text = element_text(size = 10),
       axis.text = element_text(size = 10),
+      axis.text.x = element_text(angle = 45),
       axis.title = element_text(size = 10)
     )
   plotly::ggplotly(g, tooltip = "text")
