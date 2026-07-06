@@ -86,7 +86,7 @@ The dashboard is organized into tabs:
     -   Filter by species, drug/drug class, molecular scale, and data
         encoding
     -   Per-model metric distributions, plus a Performance overview
-        (nMCC strip plot and drug-class heatmaps)
+        (MCC strip plot and drug-class heatmaps)
 4.  **Bug/Drug feature comparison**: Analyze predictive features
     -   Top features across species or across drugs
     -   Annotated feature tables (COG/ARG), category barplots, and ego

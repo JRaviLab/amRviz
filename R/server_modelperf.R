@@ -1,4 +1,4 @@
-# Model Performance tab: cascading selectors, boxplots, and nMCC overview heatmaps.
+# Model Performance tab: cascading selectors, boxplots, and MCC overview heatmaps.
 
 serverModelPerf <- function(input, output, session, core, results_root) {
   # Refresh the drug-class dropdown to classes present for the selected bug.

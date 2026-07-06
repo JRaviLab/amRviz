@@ -94,8 +94,8 @@ modelPerfUI <- function() {
               tags$p(
                 style = "color: #555; font-size: 10px; padding-top: 10px;",
                 "Baseline models only (non-stratified, non-cross-test). ",
-                "Left: nMCC distribution per species and molecular scale. ",
-                "Right: median nMCC by drug class across species, ",
+                "Left: MCC distribution per species and molecular scale. ",
+                "Right: median MCC by drug class across species, ",
                 "molecular scale, and data encoding."
               ),
               fluidRow(

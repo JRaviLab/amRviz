@@ -156,9 +156,9 @@ knitr::include_graphics("figures/tour-metadata.png")
 Compare model performance across drugs and molecular scales. Pick a bug, drug
 class, and drug; the **Model performance** sub-tab shows per-model metric
 distributions, while the **Performance overview** sub-tab (below) gives a
-bird's-eye summary of baseline models: a strip plot of nMCC by molecular scale
-(left) and heatmaps of median nMCC by drug class across scale and data encoding
-(right). Here, domain- and gene-scale models reach the highest nMCC for most
+bird's-eye summary of baseline models: a strip plot of MCC by molecular scale
+(left) and heatmaps of median MCC by drug class across scale and data encoding
+(right). Here, domain- and gene-scale models reach the highest MCC for most
 drug classes.
 
 ```{r, echo = FALSE, out.width = "100%"}
