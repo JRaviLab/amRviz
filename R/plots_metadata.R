@@ -98,17 +98,17 @@ makeQuickStats <- function(data) {
   )
   tagList(
     summary_paragraph,
-    fluidRow(
+    shiny::fluidRow(
       column(4, quickStatBox("Isolate-drug records", total_genomes, "database", "#3c5a6f")),
       column(4, quickStatBox("Unique genomes", total_uniques_genomes, "dna", "#7aab6e")),
       column(4, quickStatBox("Drugs tested", n_amr_drugs, "pills", "#9b7fba"))
     ),
-    fluidRow(
+    shiny::fluidRow(
       column(4, quickStatBox("Resistant isolates", n_genomes_resistant, "virus", "#d4872a")),
       column(4, quickStatBox("Susceptible isolates", n_genomes_susceptible, "shield-halved", "#8a8a8a")),
       column(4, quickStatBox("Drug classes", n_amr_drug_class, "layer-group", "#8b6b7a"))
     ),
-    fluidRow(
+    shiny::fluidRow(
       column(4, quickStatBox(
         "Top 5 drugs",
         tags$span(
@@ -117,7 +117,7 @@ makeQuickStats <- function(data) {
         ),
         "star", "#4e9a9a"
       )),
-      column(4, quickStatBox(
+      shiny::column(4, quickStatBox(
         "Top 5 drug classes",
         tags$span(
           style = "font-size:11px; line-height:1.5;",
@@ -125,7 +125,7 @@ makeQuickStats <- function(data) {
         ),
         "list", "#6a6f4e"
       )),
-      column(4, quickStatBox(
+      shiny::column(4, quickStatBox(
         "Top 5 countries",
         tags$span(
           style = "font-size:11px; line-height:1.5;",
@@ -148,11 +148,11 @@ makeDatAvailabilityPlot <- function(data) {
   data <- data |>
     dplyr::distinct(genome.genome_id, genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
     dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
-    count() |>
-    ungroup()
-  g <- ggplot(
+    dplyr::count() |>
+    dplyr::ungroup()
+  g <- ggplot2::ggplot(
     data,
-    aes(
+    ggplot2::aes(
       x = genome_drug.antibiotic,
       y = n,
       color = genome_drug.resistant_phenotype,
@@ -164,18 +164,18 @@ makeDatAvailabilityPlot <- function(data) {
       )
     )
   ) +
-    geom_col() +
-    scale_fill_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
-    scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 10),
-      axis.text = element_text(size = 10),
-      axis.title = element_text(size = 10)
+    ggplot2::geom_col() +
+    ggplot2::scale_fill_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
+    ggplot2::scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 10),
+      legend.title = ggplot2::element_text(size = 12),
+      legend.text = ggplot2::element_text(size = 10),
+      axis.text = ggplot2::element_text(size = 10, colour = "#333333"),
+      axis.title = ggplot2::element_text(size = 10)
     ) +
-    labs(
+    ggplot2::labs(
       x = "Drug",
       y = "No. of isolates",
       color = "AMR phenotype",
@@ -193,7 +193,7 @@ makeDatAvailabilityPlot <- function(data) {
 #' @noRd
 makeGeoChloroPlot <- function(data) {
   data$iso3 <- countrycode::countrycode(data$genome.isolation_country, origin = "country.name", destination = "iso3c")
-  plot_ly(
+  plotly::plot_ly(
     data = data,
     type = "choropleth",
     locations = ~iso3,
@@ -209,8 +209,8 @@ makeGeoChloroPlot <- function(data) {
     ),
     marker = list(line = list(width = 0.5, color = "white"))
   ) |>
-    colorbar(title = list(text = "No. of isolates", font = list(size = 14))) |>
-    layout(
+    plotly::colorbar(title = list(text = "No. of isolates", font = list(size = 14))) |>
+    plotly::layout(
       # title = list(text = "Geographic distribution", font = list(size = 14)),
       geo = list(
         projection = list(type = "natural earth"),
@@ -245,9 +245,9 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
     title_amr_drug
   )
 
-  g <- ggplot(
+  g <- ggplot2::ggplot(
     data,
-    aes(
+    ggplot2::aes(
       x = genome.collection_year,
       y = n,
       colour = genome_drug.resistant_phenotype,
@@ -258,22 +258,22 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
       )
     )
   ) +
-    geom_line(aes(group = genome_drug.resistant_phenotype)) +
-    geom_point() +
-    scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
-    labs(
+    ggplot2::geom_line(ggplot2::aes(group = genome_drug.resistant_phenotype)) +
+    ggplot2::geom_point() +
+    ggplot2::scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
+    ggplot2::labs(
       title = title_amr_drug,
       x = "Year",
       y = "No. of isolates",
       colour = "AMR phenotype"
     ) +
-    theme_bw() +
-    theme(
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 10),
-      axis.text = element_text(size = 10),
-      axis.text.x = element_text(angle = 45),
-      axis.title = element_text(size = 10)
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      legend.title = ggplot2::element_text(size = 12),
+      legend.text = ggplot2::element_text(size = 10),
+      axis.text = ggplot2::element_text(size = 10, colour = "#333333"),
+      axis.text.x = ggplot2::element_text(angle = 40),
+      axis.title = ggplot2::element_text(size = 10)
     )
   plotly::ggplotly(g, tooltip = "text")
 }
@@ -299,9 +299,9 @@ makeHostIsolatePlot <- function(data) {
 
   n_hosts <- length(unique(host_df$genome.host_common_name))
 
-  g <- ggplot(
+  g <- ggplot2::ggplot(
     host_df,
-    aes(
+    ggplot2::aes(
       x = genome_drug.antibiotic,
       y = n,
       fill = genome.host_common_name,
@@ -312,17 +312,17 @@ makeHostIsolatePlot <- function(data) {
       )
     )
   ) +
-    geom_col(position = "stack") +
-    scale_fill_manual(values = meta_palette(n_hosts), na.value = "gray70") +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
-      axis.text.y = element_text(size = 10),
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 10),
-      axis.title = element_text(size = 10)
+    ggplot2::geom_col(position = "stack") +
+    ggplot2::scale_fill_manual(values = meta_palette(n_hosts), na.value = "gray70") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 10, colour = "#333333"),
+      axis.text.y = ggplot2::element_text(size = 10, colour = "#333333"),
+      legend.title = ggplot2::element_text(size = 12),
+      legend.text = ggplot2::element_text(size = 10),
+      axis.title = ggplot2::element_text(size = 10)
     ) +
-    labs(
+    ggplot2::labs(
       x = "Drug",
       y = "No. of isolates",
       fill = "Host"
@@ -343,7 +343,7 @@ makeIsolationSourcesPlot <- function(data) {
   isolation_source <- data |>
     dplyr::mutate(genome.isolation_source = stringr::str_to_lower(genome.isolation_source)) |>
     dplyr::group_by(genome_drug.antibiotic, genome.isolation_source) |>
-    dplyr::summarize(n = n()) |>
+    dplyr::summarize(n = dplyr::n()) |>
     dplyr::ungroup()
 
   top_isolate_source <- isolation_source |>
@@ -363,13 +363,13 @@ makeIsolationSourcesPlot <- function(data) {
       )
     )
   isolation_source <- isolation_source |>
-    mutate(genome.isolation_source_ = stringr::str_trunc(genome.isolation_source_, width = 20))
+    dplyr::mutate(genome.isolation_source_ = stringr::str_trunc(genome.isolation_source_, width = 20))
 
   n_sources <- length(unique(isolation_source$genome.isolation_source_))
 
-  isolation_source_plot <- ggplot(
+  isolation_source_plot <- ggplot2::ggplot(
     isolation_source,
-    aes(
+    ggplot2::aes(
       x = genome_drug.antibiotic,
       y = n,
       fill = genome.isolation_source_,
@@ -380,17 +380,17 @@ makeIsolationSourcesPlot <- function(data) {
       )
     )
   ) +
-    geom_col(position = "stack") +
-    scale_fill_manual(values = meta_palette(n_sources), na.value = "gray70") +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
-      axis.text.y = element_text(size = 10),
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 10),
-      axis.title = element_text(size = 10)
+    ggplot2::geom_col(position = "stack") +
+    ggplot2::scale_fill_manual(values = meta_palette(n_sources), na.value = "gray70") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 10, colour = "#333333"),
+      axis.text.y = ggplot2::element_text(size = 10, colour = "#333333"),
+      legend.title = ggplot2::element_text(size = 12),
+      legend.text = ggplot2::element_text(size = 10),
+      axis.title = ggplot2::element_text(size = 10)
     ) +
-    labs(
+    ggplot2::labs(
       x = "Drug",
       y = "No. of isolates",
       fill = "Isolation source"

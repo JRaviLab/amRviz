@@ -76,20 +76,20 @@ makeModelPerformancePlot <- function(
   # same offsetgroup so boxmode = "group" puts them in the same dodge slot.
   p <- plotly::plot_ly() |>
     plotly::layout(
-      title = list(text = "Performance metrics", x = 0, font = list(size = 14)),
+      title = list(text = "Performance metrics", x = 0, font = list(size = 14, color = "#333333")),
       boxmode = "group",
       xaxis = list(
-        title = list(text = "Species", font = list(size = 10)),
-        tickfont = list(size = 10), tickangle = -45
+        title = list(text = "Species", font = list(size = 14, color = "#333333")),
+        tickfont = list(size = 12, color = "#333333"), tickangle = -45
       ),
       yaxis = list(
-        title = list(text = metrics, font = list(size = 10)),
-        tickfont = list(size = 10),
+        title = list(text = metrics, font = list(size = 14, color = "#333333")),
+        tickfont = list(size = 12, color = "#333333"),
         # MCC spans [-1, 1] (0 = random); bal_acc / f1 stay in [0, 1].
         range = if (identical(metrics, "mcc")) c(-1.03, 1.03) else c(0, 1.03)
       ),
       legend = list(
-        title = list(text = "Scale", font = list(size = 12)),
+        title = list(text = "Scale", font = list(size = 12, color = "#333333")),
         font = list(size = 10)
       )
     )
@@ -298,8 +298,10 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     ggplot2::theme(
       legend.position   = "none",
       strip.placement   = "outside",
-      strip.text.y.left = ggplot2::element_text(angle = 0, hjust = 1),
-      panel.spacing     = ggplot2::unit(0.3, "lines")
+      strip.text.y.left = ggplot2::element_text(angle = 0, hjust = 1, color = "#333333"),
+      panel.spacing     = ggplot2::unit(0.3, "lines"), 
+      axis.text = ggplot2::element_text(size = 11, color = "#333333"),
+      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, face = "italic")
     )
 
   plotly::ggplotly(g, tooltip = "text") |>
@@ -378,13 +380,14 @@ makeMCCHeatmap <- function(data, selected_drug_class = NULL) {
       limits = c(0, 1.0), name = "MCC", na.value = "white"
     ) +
     ggplot2::labs(x = NULL, y = "Drug class", title = "Species") +
-    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
       plot.title = ggplot2::element_text(
         hjust = 0.5, size = 12,
         color = "#333333", family = "sans"
       ),
-      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1),
+      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, color = "#333333", face = "italic"),
+      axis.text.y = ggplot2::element_text(color = "#333333"),
       legend.position = "bottom"
     )
 
@@ -434,7 +437,7 @@ makeMCCHeatmap <- function(data, selected_drug_class = NULL) {
         hjust = 0.5, size = 12,
         color = "#333333", family = "sans"
       ),
-      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1),
+      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, colour = "#333333"),
       axis.text.y = ggplot2::element_blank()
     )
 
@@ -481,7 +484,7 @@ makeMCCHeatmap <- function(data, selected_drug_class = NULL) {
         hjust = 0.5, size = 12,
         color = "#333333", family = "sans"
       ),
-      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1),
+      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, colour = "#333333"),
       axis.text.y = ggplot2::element_blank()
     )
 
