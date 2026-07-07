@@ -296,10 +296,10 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     ggplot2::labs(x = NULL, y = "MCC") +
     ggplot2::theme_minimal(base_size = 10) +
     ggplot2::theme(
-      legend.position   = "none",
-      strip.placement   = "outside",
+      legend.position = "none",
+      strip.placement = "outside",
       strip.text.y.left = ggplot2::element_text(angle = 0, hjust = 1, color = "#333333"),
-      panel.spacing     = ggplot2::unit(0.3, "lines"), 
+      panel.spacing = ggplot2::unit(0.3, "lines"),
       axis.text = ggplot2::element_text(size = 11, color = "#333333"),
       axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, face = "italic")
     )
