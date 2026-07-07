@@ -294,7 +294,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     ggplot2::scale_size_identity() +
     ggplot2::coord_cartesian(ylim = c(-1.05, 1.05)) +
     ggplot2::labs(x = NULL, y = "MCC") +
-    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme_minimal(base_size = 10) +
     ggplot2::theme(
       legend.position   = "none",
       strip.placement   = "outside",

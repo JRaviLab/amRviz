@@ -15,8 +15,8 @@
   vi_wider |>
     dplyr::rowwise() |>
     dplyr::mutate(
-      .n = sum(!is.na(c_across(all_of(group_cols)))),
-      .mx = max(c_across(all_of(group_cols)), na.rm = TRUE)
+      .n = sum(!is.na(dplyr::c_across(all_of(group_cols)))),
+      .mx = max(dplyr::c_across(all_of(group_cols)), na.rm = TRUE)
     ) |>
     dplyr::ungroup() |>
     dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
@@ -124,12 +124,12 @@ makeFeatureImportancePlot <- function(
     })
 
     join_by_expr <- switch(paste(group_column, scale, sep = "_"),
-      "species_protein" = join_by(Variable == "proteinID", "species" == "species"),
-      "species_domain" = join_by(Variable == "PfamID", "species" == "species"),
-      "species_gene" = join_by(Variable == "Gene", "species" == "species"),
-      "drug_or_class_protein" = join_by(Variable == "proteinID"),
-      "drug_or_class_domain" = join_by(Variable == "PfamID"),
-      "drug_or_class_gene" = join_by(Variable == "Gene"),
+      "species_protein" = dplyr::join_by(Variable == "proteinID", "species" == "species"),
+      "species_domain" = dplyr::join_by(Variable == "PfamID", "species" == "species"),
+      "species_gene" = dplyr::join_by(Variable == "Gene", "species" == "species"),
+      "drug_or_class_protein" = dplyr::join_by(Variable == "proteinID"),
+      "drug_or_class_domain" = dplyr::join_by(Variable == "PfamID"),
+      "drug_or_class_gene" = dplyr::join_by(Variable == "Gene"),
       NULL
     )
 
@@ -231,7 +231,7 @@ makeFeatureImportancePlot <- function(
     vi_mat <- .vi_matrix(vi_wider, group_cols)
 
     eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-    col_ord <- intersect(eskape_order, colnames(vi_mat))
+    col_ord <- dplyr::intersect(eskape_order, colnames(vi_mat))
     if (length(col_ord)) vi_mat <- vi_mat[, col_ord, drop = FALSE]
   }
 
@@ -415,7 +415,7 @@ makeFeatureImportTable <- function(feature_import_table) {
     "Gene", "Annotation", "accession",
     "feature_type", "feature_subtype", "Importance"
   )
-  existing <- intersect(cols_priority, names(feature_import_table))
+  existing <- dplyr::intersect(cols_priority, names(feature_import_table))
 
   feature_import_table <- feature_import_table |>
     dplyr::mutate(
