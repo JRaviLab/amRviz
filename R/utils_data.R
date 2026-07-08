@@ -182,60 +182,52 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
   # }))
 
   dplyr::bind_rows(
-  lapply(ann_files, function(fp) {
+    lapply(ann_files, function(fp) {
+      d <- .read_parquet_safe(fp, verbose = verbose)
 
-    d <- .read_parquet_safe(fp, verbose = verbose)
+      ftype <- tools::file_path_sans_ext(basename(fp))
 
-    ftype <- tools::file_path_sans_ext(basename(fp))
+      d <- switch(ftype,
+        gene_names = dplyr::transmute(
+          d,
+          Variable = Gene,
+          description = Annotation,
+          feature_type = "genes"
+        ),
+        protein_names = dplyr::transmute(
+          d,
+          Variable = proteinID,
+          description = proteinName,
+          feature_type = "proteins"
+        ),
+        domain_names = dplyr::transmute(
+          d,
+          Variable = DB.ID,
+          description = SignDesc,
+          feature_type = "domains"
+        ),
+        protein_COG = dplyr::transmute(
+          d,
+          Variable = name,
+          description = description,
+          feature_type = "cogs"
+        ),
+        protein_ResFinder = dplyr::transmute(
+          d,
+          Variable = name,
+          description = description,
+          feature_type = "args"
+        ),
+        NULL
+      )
 
-    d <- switch(
-      ftype,
+      if (!is.null(d)) {
+        d$species_label <- basename(species_dir)
+      }
 
-      gene_names = dplyr::transmute(
-        d,
-        Variable = Gene,
-        description = Annotation,
-        feature_type = "genes"
-      ),
-
-      protein_names = dplyr::transmute(
-        d,
-        Variable = proteinID,
-        description = proteinName,
-        feature_type = "proteins"
-      ),
-
-      domain_names = dplyr::transmute(
-        d,
-        Variable = DB.ID,
-        description = SignDesc,
-        feature_type = "domains"
-      ),
-
-      protein_COG = dplyr::transmute(
-        d,
-        Variable = name,
-        description = description,
-        feature_type = "cogs"
-      ),
-
-      protein_ResFinder = dplyr::transmute(
-        d,
-        Variable = name,
-        description = description,
-        feature_type = "args"
-      ),
-
-      NULL
-    )
-
-    if (!is.null(d)) {
-      d$species_label <- basename(species_dir)
-    }
-
-    d
-  })
-)
+      d
+    })
+  )
 }
 
 #' Load cluster feature parquet from one species directory

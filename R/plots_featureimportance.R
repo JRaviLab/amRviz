@@ -99,7 +99,7 @@ makeFeatureImportancePlot <- function(
 
   # # Attempt to load annotated files for Variable name lookup and cluster mapping. Annotated files are expected to be named like:
   # #   <scale>_names.parquet where <scale> is the molecular scale (e.g., "genes", "proteins", "domains")
-  # #   or protein_<scale>.parquet where <scale> is the molecular scale (e.g., "COG", "ResFinder") 
+  # #   or protein_<scale>.parquet where <scale> is the molecular scale (e.g., "COG", "ResFinder")
   # # and cluster_feature.parquet for cluster mapping. The function will look for these files in the provided species_dir, as well as in the package's extdata.
   # ann_dirs <- c(
   #   species_dir,
@@ -199,20 +199,20 @@ makeFeatureImportancePlot <- function(
   top_features_df <- top_features_df |>
     dplyr::mutate(
       Variable = dplyr::case_when(
-        feature_type == "domains"  ~ sub("_.+$", "", Variable),
+        feature_type == "domains" ~ sub("_.+$", "", Variable),
         feature_type == "proteins" ~ sub("fig.", "fig|", Variable, fixed = TRUE),
-        feature_type == "args"     ~ sub(
+        feature_type == "args" ~ sub(
           "^X", "",
           gsub("\\.NCBIFAM", "", Variable)
         ),
         TRUE ~ Variable
-      ) 
+      )
     ) |>
     dplyr::left_join(
       name_map |> dplyr::select("Variable", "description"),
       by = "Variable"
-    ) 
-  # |> 
+    )
+  # |>
   #   dplyr::left_join(
   #     dplyr::select(
   #       .load_one_species_cluster_features(species_dir),
@@ -223,14 +223,14 @@ makeFeatureImportancePlot <- function(
 
   # Aggregate: max importance per group x Variable
 
-   top_features_df <- top_features_df |>
-  dplyr::group_by(
-    !!rlang::sym(group_column),
-    Variable
-  ) |>
-  dplyr::filter(dplyr::n_distinct(Sign) == 1) |>
-  dplyr::ungroup()
-  
+  top_features_df <- top_features_df |>
+    dplyr::group_by(
+      !!rlang::sym(group_column),
+      Variable
+    ) |>
+    dplyr::filter(dplyr::n_distinct(Sign) == 1) |>
+    dplyr::ungroup()
+
   top_features_df <- top_features_df |>
     dplyr::group_by(!!rlang::sym(group_column), Variable, description, species_label) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), Sign = unique(.data$Sign), .groups = "drop")
@@ -257,21 +257,21 @@ makeFeatureImportancePlot <- function(
   }
 
   top_features_df <- top_features_df |>
-  dplyr::mutate(
-    Importance = dplyr::case_when(
-      Sign == "NEG" ~ -Importance,
-      TRUE ~ Importance
+    dplyr::mutate(
+      Importance = dplyr::case_when(
+        Sign == "NEG" ~ -Importance,
+        TRUE ~ Importance
+      )
     )
-  )
 
   top_features_df <- top_features_df |>
-  dplyr::mutate(
-    feature_label = dplyr::if_else(
-      !is.na(description) & nzchar(description),
-      paste0(Variable, ": ", description),
-      Variable
+    dplyr::mutate(
+      feature_label = dplyr::if_else(
+        !is.na(description) & nzchar(description),
+        paste0(Variable, ": ", description),
+        Variable
+      )
     )
-  )
 
   # Build wide matrix
   if (feature_importance_tabset == "across_bug") {
@@ -320,19 +320,19 @@ makeFeatureImportancePlot <- function(
     return(NULL)
   }
 
-#  variable_lookup <- top_features_df |>
-#   dplyr::distinct(Variable, description)
+  #  variable_lookup <- top_features_df |>
+  #   dplyr::distinct(Variable, description)
 
-# variable_names <- variable_lookup$description[
-#   match(rownames(vi_mat), variable_lookup$Variable)
-# ]
+  # variable_names <- variable_lookup$description[
+  #   match(rownames(vi_mat), variable_lookup$Variable)
+  # ]
 
-# custom_mat <- matrix(
-#   rep(variable_names, times = ncol(vi_mat)),
-#   nrow = nrow(vi_mat),
-#   ncol = ncol(vi_mat)
-# )
-  
+  # custom_mat <- matrix(
+  #   rep(variable_names, times = ncol(vi_mat)),
+  #   nrow = nrow(vi_mat),
+  #   ncol = ncol(vi_mat)
+  # )
+
   plotly::plot_ly(
     x = colnames(vi_mat),
     y = rownames(vi_mat),
