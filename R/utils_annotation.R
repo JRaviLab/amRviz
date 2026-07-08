@@ -39,57 +39,66 @@ loadDrugClassMap <- function() {
 #'   matching parquet is found.
 #' @keywords internal
 #' @noRd
-load_feature_name_map <- function(species_code, model_scale,
+load_feature_name_map <- function(model_scale,
                                   amrdata_root = NULL,
-                                  results_root = NULL) {
+                                  results_root = NULL,
+                                  species_dir = NULL) {
   scale <- dplyr::case_when(
     model_scale == "proteins" ~ "protein",
     model_scale == "domains" ~ "domain",
     model_scale == "genes" ~ "gene",
     TRUE ~ model_scale
   )
-  fname <- paste0(scale, "_names.parquet")
+  # fname <- paste0(scale, "_names.parquet")
 
-  roots <- c(
-    amrdata_root, results_root,
-    system.file("extdata", package = "amRviz")
-  )
-  roots <- roots[!is.null(roots) & nzchar(roots) & dir.exists(roots)]
+  # roots <- c(
+  #   amrdata_root, results_root,
+  #   system.file("extdata", package = "amRviz")
+  # )
+  # roots <- roots[!is.null(roots) & nzchar(roots) & dir.exists(roots)]
 
-  fp <- NULL
-  for (r in roots) {
-    fp <- .find_file_in_subdirs(r, fname)
-    if (!is.null(fp)) break
-  }
-  if (is.null(fp)) {
+  # fp <- NULL
+  # for (r in roots) {
+  #   fp <- .find_file_in_subdirs(r, fname)
+  #   if (!is.null(fp)) break
+  # }
+  # if (is.null(fp)) {
+  #   return(NULL)
+  # }
+
+  # df <- tryCatch(arrow::read_parquet(fp), error = function(e) NULL)
+  # if (is.null(df) || !nrow(df)) {
+  #   return(NULL)
+  # }
+
+  # # Normalise to {Variable, label}
+  # if (scale == "gene" && all(c("Gene", "Annotation") %in% names(df))) {
+  #   return(tibble::tibble(Variable = df$Gene, label = df$Annotation))
+  # }
+  # if (scale == "protein" &&
+  #   all(c("proteinID", "proteinName") %in% names(df))) {
+  #   return(tibble::tibble(Variable = df$proteinID, label = df$proteinName))
+  # }
+  # if (scale == "domain" && all(c("DB.ID", "SignDesc") %in% names(df))) {
+  #   # domain ids need deduping since one Pfam can occur many times
+  #   agg <- df |>
+  #     dplyr::distinct(.data$DB.ID, .data$SignDesc) |>
+  #     dplyr::group_by(.data$DB.ID) |>
+  #     dplyr::summarise(
+  #       label = dplyr::first(.data$SignDesc),
+  #       .groups = "drop"
+  #     )
+  #   return(tibble::tibble(Variable = agg$DB.ID, label = agg$label))
+  # }
+  # NULL
+  df <- .load_one_species_annotations(species_dir) |>
+    dplyr::filter(.data$feature_type == model_scale) |>
+    dplyr::distinct()
+
+  if (!nrow(df)) {
     return(NULL)
-  }
-
-  df <- tryCatch(arrow::read_parquet(fp), error = function(e) NULL)
-  if (is.null(df) || !nrow(df)) {
-    return(NULL)
-  }
-
-  # Normalise to {Variable, label}
-  if (scale == "gene" && all(c("Gene", "Annotation") %in% names(df))) {
-    return(tibble::tibble(Variable = df$Gene, label = df$Annotation))
-  }
-  if (scale == "protein" &&
-    all(c("proteinID", "proteinName") %in% names(df))) {
-    return(tibble::tibble(Variable = df$proteinID, label = df$proteinName))
-  }
-  if (scale == "domain" && all(c("DB.ID", "SignDesc") %in% names(df))) {
-    # domain ids need deduping since one Pfam can occur many times
-    agg <- df |>
-      dplyr::distinct(.data$DB.ID, .data$SignDesc) |>
-      dplyr::group_by(.data$DB.ID) |>
-      dplyr::summarise(
-        label = dplyr::first(.data$SignDesc),
-        .groups = "drop"
-      )
-    return(tibble::tibble(Variable = agg$DB.ID, label = agg$label))
-  }
-  NULL
+}
+  return(df)
 }
 
 
@@ -104,66 +113,79 @@ load_feature_name_map <- function(species_code, model_scale,
 #' @return The annotations tibble, or NULL when no parquet is found.
 #' @keywords internal
 #' @noRd
-load_feature_annotations <- function(species_code, results_root = NULL) {
-  fname <- "cluster_feature_COG.parquet"
-  fp <- .find_file_in_subdirs(results_root, fname)
-  if (is.null(fp)) {
-    fp <- .find_file_in_subdirs(
-      system.file("extdata", package = "amRviz"), fname
-    )
-  }
-  if (is.null(fp)) {
-    return(NULL)
-  }
-  arrow::read_parquet(fp)
-}
+# load_feature_annotations <- function(species_code, results_root = NULL) {
+#   fname <- "cluster_feature_COG.parquet"
+#   fp <- .find_file_in_subdirs(results_root, fname)
+#   if (is.null(fp)) {
+#     fp <- .find_file_in_subdirs(
+#       system.file("extdata", package = "amRviz"), fname
+#     )
+#   }
+#   if (is.null(fp)) {
+#     return(NULL)
+#   }
+#   arrow::read_parquet(fp)
+# }
 
 
-#' Enrich a top-features tibble with cluster/COG annotations
+#' Enrich a top-features tibble with cluster annotations
 #'
 #' Joins annotations on the feature key extracted from `Variable` (the part
-#' before the first "_"), collapsing multiple COGs per feature into a single
+#' before the first "_"), collapsing multiple clusters per feature into a single
 #' comma-separated cell. Returns `tbl` unchanged when no annotations are found.
 #'
 #' @param tbl Top-features tibble (must contain a `Variable` column).
-#' @param species_code Species code passed to load_feature_annotations().
+#' @param species_dir Species directory passed to .load_one_species_cluster_features().
 #' @param results_root Optional user results root.
-#' @return `tbl` with cluster/COG columns joined on, or unchanged when no
+#' @return `tbl` with cluster columns joined on, or unchanged when no
 #'   annotations are available.
 #' @keywords internal
 #' @noRd
-enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
+enrich_with_annotations <- function(tbl, species_dir, results_root = NULL) {
   if (is.null(tbl) || !nrow(tbl) || !"Variable" %in% names(tbl)) {
     return(tbl)
   }
-  ann <- load_feature_annotations(species_code, results_root)
+  ann <- .load_one_species_cluster_features(species_dir = species_dir)
   if (is.null(ann) || !nrow(ann)) {
     return(tbl)
   }
 
   # Top features Variable can be "PF23840_IPR056912" (domains) or the raw
   # feature id (genes/proteins). Split on first "_" to extract the join key.
+  # tbl <- tbl |>
+  #   dplyr::mutate(
+  #     .join_key = stringr::str_split_i(.data$Variable, "_", 1)
+  #   )
+
   tbl <- tbl |>
     dplyr::mutate(
-      .join_key = stringr::str_split_i(.data$Variable, "_", 1)
+      Variable = dplyr::case_when(
+        feature_type == "domains"  ~ sub("_.+$", "", Variable),
+        feature_type == "proteins" ~ sub("fig.", "fig|", Variable, fixed = TRUE),
+        feature_type == "args"     ~ sub(
+          "^X", "",
+          gsub("\\.NCBIFAM", "", Variable)
+        ),
+        TRUE ~ Variable
+      ) 
     )
-
-  join_keys <- unique(tbl$.join_key)
+  # join_keys <- unique(tbl$.join_key)
 
   ann_collapsed <- ann |>
-    dplyr::filter(.data$feature %in% join_keys) |>
+    # dplyr::filter(.data$feature %in% join_keys) |>
     dplyr::group_by(.data$feature) |>
     dplyr::summarise(
-      cluster = dplyr::first(.data$cluster),
-      cluster_name = dplyr::first(.data$cluster_name),
-      COG = paste(unique(stats::na.omit(.data$COG)), collapse = ", "),
-      COG_name = paste(unique(stats::na.omit(.data$COG_name)),
+      # cluster = dplyr::first(.data$cluster),
+      # cluster_name = dplyr::first(.data$cluster_name),
+      cluster = paste(unique(stats::na.omit(.data$cluster)), collapse = ", "),
+      cluster_name = paste(unique(stats::na.omit(.data$cluster_name)),
         collapse = "; "
       ),
       .groups = "drop"
     )
 
   tbl |>
-    dplyr::left_join(ann_collapsed, by = c(".join_key" = "feature")) |>
-    dplyr::select(-".join_key")
+    dplyr::left_join(ann_collapsed, by = c("Variable" = "feature")) 
+  # |>
+  #   dplyr::select(-"Variable")
 }

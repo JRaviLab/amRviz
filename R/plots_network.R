@@ -18,7 +18,8 @@
 makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
                                    include_clusters = FALSE,
                                    include_cogs = FALSE,
-                                   results_root = NULL) {
+                                   results_root = NULL,
+                                   species_dir = NULL) {
   if (!requireNamespace("networkD3", quietly = TRUE)) {
     stop(
       "Package 'networkD3' is required. ",
@@ -70,7 +71,7 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   cluster_cog_edges <- NULL
 
   if ((include_clusters || include_cogs)) {
-    ann <- load_feature_annotations(bug, results_root)
+    ann <- .load_one_species_cluster_features(species_dir = species_dir)
     if (!is.null(ann) && nrow(ann)) {
       # Match Variable ("PF23840_IPR056912") against ann$feature ("PF23840")
       variables_key <- stringr::str_split_i(variables, "_", 1)

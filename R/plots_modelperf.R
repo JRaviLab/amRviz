@@ -80,11 +80,11 @@ makeModelPerformancePlot <- function(
       boxmode = "group",
       xaxis = list(
         title = list(text = "Species", font = list(size = 14, color = "#333333")),
-        tickfont = list(size = 12, color = "#333333"), tickangle = -45
+        tickfont = list(size = 14, color = "#333333"), tickangle = -45
       ),
       yaxis = list(
-        title = list(text = metrics, font = list(size = 14, color = "#333333")),
-        tickfont = list(size = 12, color = "#333333"),
+        title = list(text = "MCC", font = list(size = 14, color = "#333333")),
+        tickfont = list(size = 14, color = "#333333"),
         # MCC spans [-1, 1] (0 = random); bal_acc / f1 stay in [0, 1].
         range = if (identical(metrics, "mcc")) c(-1.03, 1.03) else c(0, 1.03)
       ),
@@ -282,7 +282,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       alpha = 0.3, outlier.shape = NA,
       width = 0.5, linewidth = 0.4
     ) +
-    ggplot2::geom_jitter(width = 0.15) +
+    ggplot2::geom_jitter(width = 0.15, size = 1.5) +
     ggplot2::geom_hline(
       yintercept = 0, linetype = "dashed",
       color = "gray50", linewidth = 0.4
@@ -299,9 +299,10 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       legend.position = "none",
       strip.placement = "outside",
       strip.text.y.left = ggplot2::element_text(angle = 0, hjust = 1, color = "#333333"),
-      panel.spacing = ggplot2::unit(0.3, "lines"),
-      axis.text = ggplot2::element_text(size = 11, color = "#333333"),
-      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, face = "italic")
+      panel.spacing = ggplot2::unit(0.5, "lines"),
+      axis.text = ggplot2::element_text(color = "#333333"),
+      axis.text.x = ggplot2::element_text(angle = 40, hjust = 1, face = "italic", size = 10),
+      axis.text.y = ggplot2::element_text(size = 10, color = "#333333")
     )
 
   plotly::ggplotly(g, tooltip = "text") |>

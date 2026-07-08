@@ -21,7 +21,7 @@
     dplyr::ungroup() |>
     dplyr::arrange(dplyr::desc(.data$.n), dplyr::desc(.data$.mx)) |>
     dplyr::select(-c(".n", ".mx")) |>
-    tibble::column_to_rownames("COG_name") |>
+    tibble::column_to_rownames("feature_label") |>
     as.matrix()
 }
 
@@ -38,7 +38,7 @@
 #' @param bug Species code(s) to include.
 #' @param amr_drug Drug/class identifier(s) to include.
 #' @param model_scale Molecular scale (feature_type) to include.
-#' @param data_type_ Data encoding(s) (feature_subtype) to include.
+#' @param data_type Data encoding(s) (feature_subtype) to include.
 #' @param top_n_features Number of features per group, or "all".
 #' @param feature_importance_tabset "across_bug" or "across_drug".
 #' @param annotated_dir Optional directory of annotated parquet files.
@@ -47,11 +47,12 @@
 #' @keywords internal
 #' @noRd
 makeFeatureImportancePlot <- function(
-  data, bug, amr_drug, model_scale, data_type_,
+  data, bug, amr_drug, model_scale, data_type,
   top_n_features, feature_importance_tabset,
-  annotated_dir = NULL,
+  # annotated_dir = NULL,
   amrdata_root = NULL,
-  results_root = NULL
+  results_root = NULL,
+  species_dir = NULL
 ) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
     return(NULL)
@@ -78,11 +79,12 @@ makeFeatureImportancePlot <- function(
   #   drug_or_class = drug/class abbreviation
   #   strat_label   = NA for baseline (no country/year stratification)
   top_features_df <- data |>
+    dplyr::filter(!shuffled) |>
     dplyr::mutate(species = normalize_species(.data$species)) |>
     dplyr::filter(.data$species %in% bug_norm) |>
     dplyr::filter(.data$drug_or_class %in% amr_drug) |>
     dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) |>
-    dplyr::filter(.data$feature_subtype %in% data_type_) |>
+    dplyr::filter(.data$feature_subtype %in% data_type) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
   if (!nrow(top_features_df)) {
@@ -95,105 +97,143 @@ makeFeatureImportancePlot <- function(
     feature_importance_tabset == "across_bug" ~ "species"
   )
 
-  # Attempt to load annotated files for COG name lookup
-  ann_dirs <- c(
-    annotated_dir,
-    system.file("extdata", "Annotated", package = "amRviz")
-  )
-  ann_dirs <- ann_dirs[!is.null(ann_dirs) & nzchar(ann_dirs) & dir.exists(ann_dirs)]
+  # # Attempt to load annotated files for Variable name lookup and cluster mapping. Annotated files are expected to be named like:
+  # #   <scale>_names.parquet where <scale> is the molecular scale (e.g., "genes", "proteins", "domains")
+  # #   or protein_<scale>.parquet where <scale> is the molecular scale (e.g., "COG", "ResFinder") 
+  # # and cluster_feature.parquet for cluster mapping. The function will look for these files in the provided species_dir, as well as in the package's extdata.
+  # ann_dirs <- c(
+  #   species_dir,
+  #   system.file("extdata", package = "amRviz")
+  # )
+  # ann_dirs <- ann_dirs[!is.null(ann_dirs) & nzchar(ann_dirs) & dir.exists(ann_dirs)]
 
-  annotated_files <- character(0)
-  if (length(ann_dirs) > 0) {
-    annotated_files <- unlist(lapply(ann_dirs, function(d) {
-      fls <- list.files(
-        d,
-        pattern = stringr::str_flatten(bug_norm, collapse = "|"),
-        full.names = TRUE
-      )
-      Filter(function(x) grepl(scale, x, fixed = TRUE), fls)
-    }))
-  }
+  # annotated_files <- character(0)
+  # if (length(ann_dirs) > 0) {
+  #   annotated_files <- unlist(lapply(ann_dirs, function(d) {
+  #     fls <- list.files(
+  #       d,
+  #       pattern = stringr::str_flatten(bug_norm, collapse = "|"),
+  #       full.names = TRUE
+  #     )
+  #     Filter(function(x) grepl(scale, x, fixed = TRUE), fls)
+  #   }))
+  # }
 
-  has_annotation <- length(annotated_files) > 0
+  # has_annotation <- length(annotated_files) > 0
 
-  if (has_annotation) {
-    annotated_table <- purrr::map_dfr(annotated_files, function(x) {
-      sp <- stringr::str_extract(basename(x), SPECIES_PATTERN)
-      arrow::read_parquet(x) |>
-        dplyr::mutate(species = normalize_species(sp))
-    })
+  # if (has_annotation) {
+  #   annotated_table <- purrr::map_dfr(annotated_files, function(x) {
+  #     sp <- stringr::str_extract(basename(x), SPECIES_PATTERN)
+  #     arrow::read_parquet(x) |>
+  #       dplyr::mutate(species = normalize_species(sp))
+  #   })
 
-    join_by_expr <- switch(paste(group_column, scale, sep = "_"),
-      "species_protein" = dplyr::join_by(Variable == "proteinID", "species" == "species"),
-      "species_domain" = dplyr::join_by(Variable == "PfamID", "species" == "species"),
-      "species_gene" = dplyr::join_by(Variable == "Gene", "species" == "species"),
-      "drug_or_class_protein" = dplyr::join_by(Variable == "proteinID"),
-      "drug_or_class_domain" = dplyr::join_by(Variable == "PfamID"),
-      "drug_or_class_gene" = dplyr::join_by(Variable == "Gene"),
-      NULL
-    )
+  #   join_by_expr <- switch(paste(group_column, scale, sep = "_"),
+  #     "species_protein" = dplyr::join_by(Variable == "proteinID", "species" == "species"),
+  #     "species_domain" = dplyr::join_by(Variable == "PfamID", "species" == "species"),
+  #     "species_gene" = dplyr::join_by(Variable == "Gene", "species" == "species"),
+  #     "drug_or_class_protein" = dplyr::join_by(Variable == "proteinID"),
+  #     "drug_or_class_domain" = dplyr::join_by(Variable == "PfamID"),
+  #     "drug_or_class_gene" = dplyr::join_by(Variable == "Gene"),
+  #     NULL
+  #   )
 
-    if (scale == "protein") {
-      annotated_table <- annotated_table |>
-        dplyr::mutate(proteinID = stringr::str_replace(.data$proteinID, "\\|", "."))
-    }
-    if (scale == "domain") {
-      top_features_df <- top_features_df |>
-        dplyr::mutate(Variable = stringr::str_split_i(.data$Variable, "_", 1))
-    }
 
-    if (!is.null(join_by_expr)) {
-      top_features_df <- tryCatch(
-        top_features_df |>
-          dplyr::inner_join(annotated_table, by = join_by_expr) |>
-          dplyr::filter(!is.na(.data$COG_name)),
-        error = function(e) {
-          message("Annotation join failed: ", conditionMessage(e))
-          top_features_df
-        }
-      )
-    }
-  }
+  #   if (scale == "protein") {
+  #     annotated_table <- annotated_table |>
+  #       dplyr::mutate(proteinID = stringr::str_replace(.data$proteinID, "\\|", "."))
+  #   }
+  #   if (scale == "domain") {
+  #     top_features_df <- top_features_df |>
+  #       dplyr::mutate(Variable = stringr::str_split_i(.data$Variable, "_", 1))
+  #   }
 
-  # If no annotation join produced COG_name, fall back to Variable
-  if (!"COG_name" %in% names(top_features_df)) {
-    top_features_df <- top_features_df |>
-      dplyr::mutate(COG_name = .data$Variable)
-  }
+  #   if (!is.null(join_by_expr)) {
+  #     top_features_df <- tryCatch(
+  #       top_features_df |>
+  #         dplyr::inner_join(annotated_table, by = join_by_expr) |>
+  #         dplyr::filter(!is.na(.data$COG_name)),
+  #       error = function(e) {
+  #         message("Annotation join failed: ", conditionMessage(e))
+  #         top_features_df
+  #       }
+  #     )
+  #   }
+  # }
+
+  # # If no annotation join produced COG_name, fall back to Variable
+  # if (!"COG_name" %in% names(top_features_df)) {
+  #   top_features_df <- top_features_df |>
+  #     dplyr::mutate(COG_name = .data$Variable)
+  # }
 
   # Replace opaque feature IDs (e.g. "group_6367") with human-readable names
   # from {scale}_names.parquet when available.
   name_map <- load_feature_name_map(
-    species_code = bug_norm[1],
     model_scale = model_scale,
     amrdata_root = amrdata_root,
-    results_root = results_root
+    results_root = results_root,
+    species_dir = species_dir
   )
-  if (!is.null(name_map) && nrow(name_map)) {
-    # Domain variables in top features look like "PF21279_IPR...": split
-    # on "_" to extract the join key.
-    join_key <- if (scale == "domain") {
-      stringr::str_split_i(top_features_df$COG_name, "_", 1)
-    } else {
-      top_features_df$COG_name
-    }
-    lookup <- stats::setNames(name_map$label, name_map$Variable)
-    new_label <- lookup[join_key]
-    # Keep original id only when no label is available or it's blank
-    replace <- !is.na(new_label) & nzchar(new_label)
-    top_features_df$COG_name[replace] <- paste0(
-      top_features_df$COG_name[replace],
-      " (", new_label[replace], ")"
-    )
-  }
-  if (!nrow(top_features_df)) {
-    return(NULL)
-  }
+  # if (!is.null(name_map) && nrow(name_map)) {
+  #   # Domain variables in top features look like "PF21279_IPR...": split
+  #   # on "_" to extract the join key.
+  #   join_key <- if (scale == "domain") {
+  #     stringr::str_split_i(top_features_df$COG_name, "_", 1)
+  #   } else {
+  #     top_features_df$COG_name
+  #   }
+  #   lookup <- stats::setNames(name_map$label, name_map$Variable)
+  #   new_label <- lookup[join_key]
+  #   # Keep original id only when no label is available or it's blank
+  #   replace <- !is.na(new_label) & nzchar(new_label)
+  #   top_features_df$COG_name[replace] <- paste0(
+  #     top_features_df$COG_name[replace],
+  #     " (", new_label[replace], ")"
+  #   )
+  # }
+  # if (!nrow(top_features_df)) {
+  #   return(NULL)
+  # }
 
-  # Aggregate: max importance per group x COG
   top_features_df <- top_features_df |>
-    dplyr::group_by(!!rlang::sym(group_column), .data$COG_name) |>
-    dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
+    dplyr::mutate(
+      Variable = dplyr::case_when(
+        feature_type == "domains"  ~ sub("_.+$", "", Variable),
+        feature_type == "proteins" ~ sub("fig.", "fig|", Variable, fixed = TRUE),
+        feature_type == "args"     ~ sub(
+          "^X", "",
+          gsub("\\.NCBIFAM", "", Variable)
+        ),
+        TRUE ~ Variable
+      ) 
+    ) |>
+    dplyr::left_join(
+      name_map |> dplyr::select("Variable", "description"),
+      by = "Variable"
+    ) 
+  # |> 
+  #   dplyr::left_join(
+  #     dplyr::select(
+  #       .load_one_species_cluster_features(species_dir),
+  #       "feature", "cluster", "cluster_name"
+  #     ),
+  #     by = c("Variable" = "feature")
+  #   )
+
+  # Aggregate: max importance per group x Variable
+
+   top_features_df <- top_features_df |>
+  dplyr::group_by(
+    !!rlang::sym(group_column),
+    Variable
+  ) |>
+  dplyr::filter(dplyr::n_distinct(Sign) == 1) |>
+  dplyr::ungroup()
+  
+  top_features_df <- top_features_df |>
+    dplyr::group_by(!!rlang::sym(group_column), Variable, description, species_label) |>
+    dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), Sign = unique(.data$Sign), .groups = "drop")
 
   # Min-max normalise within each group
   top_features_df <- top_features_df |>
@@ -216,14 +256,31 @@ makeFeatureImportancePlot <- function(
     return(NULL)
   }
 
+  top_features_df <- top_features_df |>
+  dplyr::mutate(
+    Importance = dplyr::case_when(
+      Sign == "NEG" ~ -Importance,
+      TRUE ~ Importance
+    )
+  )
+
+  top_features_df <- top_features_df |>
+  dplyr::mutate(
+    feature_label = dplyr::if_else(
+      !is.na(description) & nzchar(description),
+      paste0(Variable, ": ", description),
+      Variable
+    )
+  )
+
   # Build wide matrix
   if (feature_importance_tabset == "across_bug") {
     vi_wider <- top_features_df |>
-      dplyr::select("COG_name", "Importance", "species") |>
+      dplyr::select("feature_label", "Importance", "species_label") |>
       dplyr::distinct() |>
-      tidyr::pivot_wider(names_from = "species", values_from = "Importance")
+      tidyr::pivot_wider(names_from = "species_label", values_from = "Importance")
 
-    group_cols <- setdiff(colnames(vi_wider), "COG_name")
+    group_cols <- setdiff(colnames(vi_wider), "feature_label")
     if (!length(group_cols)) {
       return(NULL)
     }
@@ -242,8 +299,8 @@ makeFeatureImportancePlot <- function(
       )
 
     vi_wider <- top_features_df |>
-      dplyr::select("COG_name", "Importance", "drug_or_class") |>
-      dplyr::group_by(.data$COG_name, .data$drug_or_class) |>
+      dplyr::select("feature_label", "Importance", "drug_or_class") |>
+      dplyr::group_by(.data$feature_label, .data$drug_or_class) |>
       dplyr::summarise(
         Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop"
       ) |>
@@ -251,7 +308,7 @@ makeFeatureImportancePlot <- function(
         names_from = "drug_or_class", values_from = "Importance"
       )
 
-    group_cols <- setdiff(colnames(vi_wider), "COG_name")
+    group_cols <- setdiff(colnames(vi_wider), "feature_label")
     if (!length(group_cols)) {
       return(NULL)
     }
@@ -263,15 +320,30 @@ makeFeatureImportancePlot <- function(
     return(NULL)
   }
 
+#  variable_lookup <- top_features_df |>
+#   dplyr::distinct(Variable, description)
+
+# variable_names <- variable_lookup$description[
+#   match(rownames(vi_mat), variable_lookup$Variable)
+# ]
+
+# custom_mat <- matrix(
+#   rep(variable_names, times = ncol(vi_mat)),
+#   nrow = nrow(vi_mat),
+#   ncol = ncol(vi_mat)
+# )
+  
   plotly::plot_ly(
     x = colnames(vi_mat),
     y = rownames(vi_mat),
     z = vi_mat,
     type = "heatmap",
+    # text = custom_mat,
     colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
     colorbar = list(title = "Importance"),
     hovertemplate = paste0(
       "<b>Feature:</b> %{y}<br>",
+      # "<b>Cluster name:</b> %{text}<br>",
       "<b>Group:</b> %{x}<br>",
       "<b>Importance:</b> %{z:.3f}<extra></extra>"
     )
@@ -289,55 +361,55 @@ makeFeatureImportancePlot <- function(
 #' Counts COG occurrences across the features in an annotation-enriched
 #' top-features tibble and shows the `top_n` most frequent.
 #'
-#' @param enriched_tbl Annotation-enriched top-features tibble (needs a `COG`
+#' @param enriched_tbl Annotation-enriched top-features tibble (needs a `cluster`
 #'   column; see enrich_with_annotations()).
-#' @param top_n Number of COGs to display.
+#' @param top_n Number of clusters to display.
 #' @return A horizontal plotly bar chart (empty placeholder when there are no
 #'   annotations).
 #' @keywords internal
 #' @noRd
-makeCogBarChart <- function(enriched_tbl, top_n = 15) {
+makeClusterBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
-    !"COG" %in% names(enriched_tbl)) {
+    !"cluster" %in% names(enriched_tbl)) {
     return(plotly::plot_ly() |>
       plotly::layout(title = list(text = "No annotations available", x = 0)))
   }
 
-  # Split the comma-separated COG cells and count occurrences per Variable.
-  cog_df <- enriched_tbl |>
-    dplyr::filter(!is.na(.data$COG), nzchar(.data$COG)) |>
-    dplyr::select("Variable", "COG", dplyr::any_of("COG_name")) |>
+  # Split the comma-separated cluster cells and count occurrences per Variable.
+  cluster_df <- enriched_tbl |>
+    dplyr::filter(!is.na(.data$cluster), nzchar(.data$cluster)) |>
+    dplyr::select("Variable", "cluster", dplyr::any_of("cluster_name")) |>
     dplyr::distinct()
 
-  if (!nrow(cog_df)) {
+  if (!nrow(cluster_df)) {
     return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No COGs in selection", x = 0)))
+      plotly::layout(title = list(text = "No clusters in selection", x = 0)))
   }
 
-  rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
-    cogs <- trimws(strsplit(cog_df$COG[i], ",", fixed = TRUE)[[1]])
-    names <- if ("COG_name" %in% names(cog_df) &&
-      !is.na(cog_df$COG_name[i])) {
-      n <- trimws(strsplit(cog_df$COG_name[i], ";", fixed = TRUE)[[1]])
-      rep_len(n, length(cogs))
+  rows <- do.call(rbind, lapply(seq_len(nrow(cluster_df)), function(i) {
+    clusters <- trimws(strsplit(cluster_df$cluster[i], ",", fixed = TRUE)[[1]])
+    names <- if ("cluster_name" %in% names(cluster_df) &&
+      !is.na(cluster_df$cluster_name[i])) {
+      n <- trimws(strsplit(cluster_df$cluster_name[i], ";", fixed = TRUE)[[1]])
+      rep_len(n, length(clusters))
     } else {
-      rep(NA_character_, length(cogs))
+      rep(NA_character_, length(clusters))
     }
-    data.frame(COG = cogs, COG_name = names, stringsAsFactors = FALSE)
+    data.frame(cluster = clusters, cluster_name = names, stringsAsFactors = FALSE)
   }))
 
   counts <- rows |>
-    dplyr::filter(nzchar(.data$COG)) |>
-    dplyr::count(.data$COG, .data$COG_name, name = "n") |>
+    dplyr::filter(nzchar(.data$cluster)) |>
+    dplyr::count(.data$cluster, .data$cluster_name, name = "n") |>
     dplyr::arrange(dplyr::desc(.data$n)) |>
     dplyr::slice_head(n = top_n) |>
     dplyr::mutate(
       label = dplyr::if_else(
-        is.na(.data$COG_name) | !nzchar(.data$COG_name),
-        .data$COG,
+        is.na(.data$cluster_name) | !nzchar(.data$cluster_name),
+        .data$cluster,
         paste0(
-          .data$COG, ": ",
-          stringr::str_trunc(.data$COG_name, 40)
+          .data$cluster, ": ",
+          stringr::str_trunc(.data$cluster_name, width = 50)
         )
       )
     )
@@ -357,7 +429,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   ) |>
     plotly::layout(
       title = list(
-        text = "Top COGs among selected features",
+        text = "Top clusters among selected features",
         x = 0, font = list(size = 13)
       ),
       xaxis = list(title = "Features"),

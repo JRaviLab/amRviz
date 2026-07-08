@@ -157,6 +157,119 @@ listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
   df
 }
 
+#' Load all annotation parquets from one species directory
+#'
+#' Reads all `*_names.parquet`, `protein_*.parquet`
+#' @param species_dir
+#' @param verbose
+#'
+#' @return A tibble of combined annotation rows, or an empty tibble.
+#' @keywords internal
+#' @noRd
+.load_one_species_annotations <- function(species_dir, verbose = TRUE) {
+  ann_files <- list.files(
+    species_dir,
+    pattern = "_names\\.parquet$|^protein_.*\\.parquet$",
+    full.names = TRUE
+  )
+  if (!length(ann_files)) {
+    return(tibble::tibble())
+  }
+  # dplyr::bind_rows(lapply(ann_files, function(fp) {
+  #   d <- .read_parquet_safe(fp, verbose = verbose)
+  #   d$species_label <- basename(species_dir)
+  #   d
+  # }))
+
+  dplyr::bind_rows(
+  lapply(ann_files, function(fp) {
+
+    d <- .read_parquet_safe(fp, verbose = verbose)
+
+    ftype <- tools::file_path_sans_ext(basename(fp))
+
+    d <- switch(
+      ftype,
+
+      gene_names = dplyr::transmute(
+        d,
+        Variable = Gene,
+        description = Annotation,
+        feature_type = "genes"
+      ),
+
+      protein_names = dplyr::transmute(
+        d,
+        Variable = proteinID,
+        description = proteinName,
+        feature_type = "proteins"
+      ),
+
+      domain_names = dplyr::transmute(
+        d,
+        Variable = DB.ID,
+        description = SignDesc,
+        feature_type = "domains"
+      ),
+
+      protein_COG = dplyr::transmute(
+        d,
+        Variable = name,
+        description = description,
+        feature_type = "cogs"
+      ),
+
+      protein_ResFinder = dplyr::transmute(
+        d,
+        Variable = name,
+        description = description,
+        feature_type = "args"
+      ),
+
+      NULL
+    )
+
+    if (!is.null(d)) {
+      d$species_label <- basename(species_dir)
+    }
+
+    d
+  })
+)
+}
+
+#' Load cluster feature parquet from one species directory
+#'
+#' @param species_dir
+#' @param verbose
+#'
+#' @returns
+#'
+#' @keywords internal
+#' @noRd
+.load_one_species_cluster_features <- function(species_dir, verbose = TRUE) {
+  cluster_file <- file.path(species_dir, "cluster_feature.parquet")
+  cluster_annotation <- file.path(species_dir, "protein_names.parquet")
+  if (!file.exists(cluster_file)) {
+    if (isTRUE(verbose)) message("Cluster feature file not found: ", cluster_file)
+    return(tibble::tibble())
+  }
+  d <- .read_parquet_safe(cluster_file, verbose = verbose)
+  d$species_label <- basename(species_dir)
+  if (file.exists(cluster_annotation)) {
+    ann <- .read_parquet_safe(cluster_annotation, verbose = verbose)
+    d <- dplyr::left_join(
+      d,
+      dplyr::transmute(
+        ann,
+        cluster = proteinID,
+        cluster_name = proteinName
+      ),
+      by = c("cluster" = "cluster")
+    )
+  }
+  d
+}
 
 #' Resolve and load multi-species amRml results
 #'

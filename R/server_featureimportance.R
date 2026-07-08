@@ -232,10 +232,10 @@ serverFeatureImportance <- function(input, output, session, core,
   })
 
   output$across_bug_cog_barplot <- plotly::renderPlotly({
-    makeCogBarChart(enriched_across_bug())
+    makeClusterBarChart(enriched_across_bug())
   })
   output$across_drug_cog_barplot <- plotly::renderPlotly({
-    makeCogBarChart(enriched_across_drug())
+    makeClusterBarChart(enriched_across_drug())
   })
 
   output$across_bug_ego_network <- networkD3::renderForceNetwork({

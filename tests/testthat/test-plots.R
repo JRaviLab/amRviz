@@ -117,7 +117,7 @@ test_that("makeModelPerformancePlot generates valid plot with demo data", {
 test_that("makeFeatureImportancePlot returns NULL for empty data", {
   result <- makeFeatureImportancePlot(
     data = NULL, bug = "Sau", amr_drug = "ampicillin",
-    model_scale = "genes", data_type_ = "binary",
+    model_scale = "genes", data_type = "binary",
     top_n_features = 10,
     feature_importance_tabset = "across_bug"
   )
