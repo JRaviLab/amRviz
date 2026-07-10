@@ -76,7 +76,13 @@ load_feature_name_map <- function(species_code, model_scale,
   }
   if (scale == "protein" &&
     all(c("proteinID", "proteinName") %in% names(df))) {
-    return(tibble::tibble(Variable = df$proteinID, label = df$proteinName))
+    # proteinID uses "fig|624..." but the top-features Variable it is matched
+    # against uses "fig.624...", so normalise "|" -> "." (as the annotated-join
+    # path in makeFeatureImportancePlot() also does) or the lookup never hits.
+    return(tibble::tibble(
+      Variable = stringr::str_replace(df$proteinID, "\\|", "."),
+      label = df$proteinName
+    ))
   }
   if (scale == "domain" && all(c("DB.ID", "SignDesc") %in% names(df))) {
     # domain ids need deduping since one Pfam can occur many times

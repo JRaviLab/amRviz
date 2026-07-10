@@ -126,18 +126,18 @@ test_that("makeFeatureImportancePlot returns NULL for empty data", {
 
 # ── makeCrossModelPerformancePlot ────────────────────────────────────────────
 
-test_that("makeCrossModelPerformancePlot returns NULL for empty data", {
+test_that("makeCrossModelPerformancePlot returns placeholder for empty data", {
   result <- makeCrossModelPerformancePlot(
     perf_data = NULL, bug = "Sau",
     drug = "ampicillin", cross_model = "country"
   )
-  expect_null(result)
+  expect_s3_class(result, "plotly")
 })
 
-test_that("makeCrossModelPerformancePlot returns NULL for zero-row data", {
+test_that("makeCrossModelPerformancePlot returns placeholder for zero-row data", {
   result <- makeCrossModelPerformancePlot(
     perf_data = data.frame(), bug = "Sau",
     drug = "ampicillin", cross_model = "country"
   )
-  expect_null(result)
+  expect_s3_class(result, "plotly")
 })
