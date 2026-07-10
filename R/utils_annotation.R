@@ -97,7 +97,7 @@ load_feature_name_map <- function(model_scale,
 
   if (!nrow(df)) {
     return(NULL)
-}
+  }
   return(df)
 }
 
@@ -160,14 +160,14 @@ enrich_with_annotations <- function(tbl, species_dir, results_root = NULL) {
   tbl <- tbl |>
     dplyr::mutate(
       Variable = dplyr::case_when(
-        feature_type == "domains"  ~ sub("_.+$", "", Variable),
+        feature_type == "domains" ~ sub("_.+$", "", Variable),
         feature_type == "proteins" ~ sub("fig.", "fig|", Variable, fixed = TRUE),
-        feature_type == "args"     ~ sub(
+        feature_type == "args" ~ sub(
           "^X", "",
           gsub("\\.NCBIFAM", "", Variable)
         ),
         TRUE ~ Variable
-      ) 
+      )
     )
   # join_keys <- unique(tbl$.join_key)
 
@@ -185,7 +185,7 @@ enrich_with_annotations <- function(tbl, species_dir, results_root = NULL) {
     )
 
   tbl |>
-    dplyr::left_join(ann_collapsed, by = c("Variable" = "feature")) 
+    dplyr::left_join(ann_collapsed, by = c("Variable" = "feature"))
   # |>
   #   dplyr::select(-"Variable")
 }
