@@ -189,7 +189,7 @@ serverFeatureImportance <- function(input, output, session, core,
     dplyr::bind_rows(lapply(unique(tf$species), function(sp) {
       enrich_with_annotations(
         tf[tf$species == sp, ],
-        species_code = sp,
+        # species_code = sp,
         results_root = results_root
       )
     }))
@@ -211,7 +211,7 @@ serverFeatureImportance <- function(input, output, session, core,
     }
     enrich_with_annotations(
       tf,
-      species_code = bug, results_root = results_root
+      results_root = results_root
     )
   })
 
