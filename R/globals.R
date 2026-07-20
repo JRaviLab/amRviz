@@ -43,5 +43,9 @@ utils::globalVariables(c(
   "trained_year",
 
   # data.table operator
-  ":="
+  ":=",
+
+  # rlang pronoun used to disambiguate an argument from a same-named data
+  # column inside dplyr filters (see makeCrossModelPerformancePlot).
+  ".env"
 ))

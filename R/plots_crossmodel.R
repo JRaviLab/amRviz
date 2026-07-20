@@ -193,32 +193,52 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
 #' @param bug Species code(s) to include.
 #' @param drug Drug/class identifier(s) to include.
 #' @param cross_model "country" or "time".
-#' @return A plotly heatmap, or NULL when there is nothing to plot.
+#' @return A plotly heatmap, or an empty placeholder plot (with an explanatory
+#'   title) when there is nothing to compare.
 #' @keywords internal
 #' @noRd
 makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
+  placeholder <- function(msg) {
+    plotly::plot_ly() |>
+      plotly::layout(title = list(text = msg, x = 0))
+  }
+
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
-    return(NULL)
+    return(placeholder("No data available"))
   }
 
   strat <- if (cross_model == "country") "country" else "year"
 
+  # `.env$drug`: perf_data has a column literally named `drug`, which would
+  # otherwise shadow the `drug` argument inside the data mask and make this
+  # filter ignore the selected drug entirely.
   df <- perf_data |>
     dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
-    dplyr::filter(.data$drug_or_class %in% drug) |>
+    dplyr::filter(.data$drug_or_class %in% .env$drug) |>
     dplyr::filter(.data$strat_label == strat)
 
   if (!nrow(df)) {
-    return(NULL)
+    return(placeholder("No data for selection"))
   }
 
-  # For self-evaluation rows (strat_value_test is NA), set tested = trained
+  # A cross-stratum grid needs at least two trained-on strata to compare.
+  n_strata <- dplyr::n_distinct(df$strat_value)
+  if (n_strata < 2) {
+    unit <- if (cross_model == "country") "countries" else "time periods"
+    return(placeholder(paste0(
+      "Not enough data to compare: needs models trained on 2+ ", unit,
+      " (this selection has ", n_strata, ")."
+    )))
+  }
+
+  # For self-evaluation rows (strat_value_test is NA), set tested = trained.
+  # coalesce(as.character(...)) rather than if_else() so an all-NA logical
+  # strat_value_test column (no cross-tested rows) does not raise a type error.
   df <- df |>
     dplyr::mutate(
-      strat_value_test = dplyr::if_else(
-        is.na(.data$strat_value_test),
-        .data$strat_value,
-        .data$strat_value_test
+      strat_value_test = dplyr::coalesce(
+        as.character(.data$strat_value_test),
+        .data$strat_value
       )
     )
 
@@ -234,7 +254,7 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     as.matrix()
 
   if (!length(models_performance)) {
-    return(NULL)
+    return(placeholder("No data for selection"))
   }
 
   plotly::plot_ly(
