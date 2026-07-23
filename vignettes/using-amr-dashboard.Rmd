@@ -203,6 +203,64 @@ Browse and export the underlying tables. The **Performance Metrics** and **Top
 Features** tabs render the raw amRml output as searchable tables; add or remove
 columns and download the customized view as CSV for downstream analysis.
 
+## Exporting figures without the dashboard
+
+Sometimes you want the figures, not the interactive app — for a report, a
+manuscript, or an automated pipeline. `exportAMRVisualizations()` renders every
+visualization the dashboard produces to static image files, without launching
+Shiny:
+
+```{r, eval = FALSE}
+# Bundled demo data -> ./amRviz_exports/ as PNG + PDF
+exportAMRVisualizations()
+
+# Your own results, choosing formats, output location, and species
+exportAMRVisualizations(
+  output_dir   = "figures",
+  formats      = c("png", "pdf", "jpg"),
+  results_root = "/path/to/your/amRml/results",
+  species      = c("Shigella_flexneri", "Shigella_sonnei")
+)
+```
+
+The exporter produces one figure set per species, using the same default
+selections each tab opens with (all molecular scales, binary encoding,
+gentamicin where present, the top drug classes for the metadata Sankey, and so
+on). Files are laid out by species:
+
+```
+figures/
+├── _overview/                        # performance heatmaps (all species)
+│   ├── mcc_strip_by_species_scale.png
+│   └── mcc_heatmap_overview.png
+├── _across_species/                  # cross-species feature importance
+│   └── feature_importance_GEN.png
+└── Shigella_flexneri/
+    ├── model_performance.png
+    ├── feature_importance_across_drugs.png
+    ├── cog_categories.png
+    ├── holdout_ridge_country.png
+    ├── drug_feature_network.png
+    ├── metadata_geographic.png
+    └── ...
+```
+
+A few practical notes:
+
+- **Formats.** `png`, `pdf`, and `jpg` are fully supported. `svg` is a
+  best-effort extra: it relies on the plotly `kaleido` image engine and only
+  applies to plotly charts, so it is skipped silently where that engine is not
+  installed.
+- **How it works.** Every amRviz plot is an interactive `plotly` or `networkD3`
+  htmlwidget, so there is no server-side raster renderer. Export instead
+  photographs each widget with a headless Chrome through the `webshot2` and
+  `chromote` packages. Install Google Chrome or Chromium if you do not already
+  have one; `exportAMRVisualizations()` stops early with an informative message
+  if no browser is found.
+- **Return value.** The function invisibly returns a data frame summarizing each
+  attempted figure (its group, name, number of files written, and whether it
+  succeeded), which is useful for logging in batch runs.
+
 ## Session information
 
 ```{r}

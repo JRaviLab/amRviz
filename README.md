@@ -34,6 +34,9 @@ This is the final package in the **AMR package suite**,
     loaded data — no hardcoded species lists
 -   **Demo mode**: Ships with example *Shigella flexneri* data; swap in
     your own amRml output with one argument
+-   **Headless figure export**: Render every visualization to PNG/PDF/JPG
+    files without launching the dashboard, with one call to
+    `exportAMRVisualizations()`
 
 ## Installation
 
@@ -66,6 +69,44 @@ launchAMRDashboard(results_root = "/path/to/your/amRml/results")
 
 The dashboard will open in your default web browser. Species dropdowns
 will populate automatically from whichever data is loaded.
+
+## Export figures without the dashboard
+
+If you’d rather not run the interactive dashboard,
+`exportAMRVisualizations()` renders every visualization to static image
+files in a single call — handy for reports, batch pipelines, or a quick
+look at all the figures at once.
+
+``` r
+library(amRviz)
+
+# Export the bundled demo figures as PNG + PDF into ./amRviz_exports/
+exportAMRVisualizations()
+
+# Your own results, PNG + JPG, a single species
+exportAMRVisualizations(
+  output_dir   = "figures",
+  formats      = c("png", "jpg"),
+  results_root = "/path/to/your/amRml/results",
+  species      = "Shigella_flexneri"
+)
+```
+
+One figure set is produced per species using the same default selections
+the dashboard opens with, organized as
+`output_dir/<species>/<panel>.<ext>`. Cross-species overviews (the
+performance heatmaps and the across-species feature-importance panel)
+are written once under `_overview/` and `_across_species/`.
+
+-   **Formats**: `png`, `pdf`, and `jpg` are fully supported. `svg` is
+    best-effort — it requires the plotly `kaleido` image engine and
+    applies to plotly charts only, so it is skipped silently when
+    unavailable.
+-   **Requirements**: every plot is an interactive htmlwidget, so export
+    photographs each one with a headless Chrome via the `webshot2` and
+    `chromote` packages. Install Google Chrome or Chromium if you don’t
+    already have one; the function stops early with a clear message if no
+    browser is found.
 
 ## Usage
 

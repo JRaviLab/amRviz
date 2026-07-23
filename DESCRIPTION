@@ -46,11 +46,13 @@ Imports:
 Suggests:
     BiocStyle,
     chromote,
+    htmlwidgets,
     knitr,
     rmarkdown,
     shinytest2,
     spelling,
     testthat (>= 3.0.0),
+    webshot2,
     withr
 VignetteBuilder: knitr
 biocViews:
