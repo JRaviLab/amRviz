@@ -285,21 +285,24 @@
         makeCrossModelRidgePlot(perf_data, code, "time")
       })
       if (!is.null(holdout_drug)) {
-        add(folder, paste0("holdout_performance_country_", holdout_drug),
+        add(
+          folder, paste0("holdout_performance_country_", holdout_drug),
           function() {
             makeCrossModelPerformancePlot(
               perf_data, code, holdout_drug, "country"
             )
           }
         )
-        add(folder, paste0("holdout_performance_time_", holdout_drug),
+        add(
+          folder, paste0("holdout_performance_time_", holdout_drug),
           function() {
             makeCrossModelPerformancePlot(
               perf_data, code, holdout_drug, "time"
             )
           }
         )
-        add(folder, paste0("holdout_feature_importance_country_", holdout_drug),
+        add(
+          folder, paste0("holdout_feature_importance_country_", holdout_drug),
           function() {
             makeCrossModelFeatureImportancePlot(
               top_features, code, holdout_drug, "country", 10

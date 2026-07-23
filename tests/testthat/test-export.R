@@ -54,7 +54,8 @@ test_that("exportAMRVisualizations drops species with no code (no phantom folder
   skip_if(!nrow(perf), "No demo performance data available")
   # The demo Shigella_sonnei parquets carry some rows with a blank/NA species
   # code; those must not produce their own export iteration.
-  skip_if(!any(is.na(perf$species) | !nzchar(perf$species)),
+  skip_if(
+    !any(is.na(perf$species) | !nzchar(perf$species)),
     "Demo data has no blank species codes to exercise the guard"
   )
   top <- loadTopFeat(verbose = FALSE)
