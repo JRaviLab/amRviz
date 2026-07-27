@@ -9,7 +9,9 @@ Authors@R: c(
     person("Abhirupa", "Ghosh", , "abhirupa.ghosh@cuanschutz.edu", role = "ctb"),
     person("David", "Mayer", , "david.mayer@cuanschutz.edu", role = "ctb"),
     person("Evan", "Brenner", , "evan.brenner@cuanschutz.edu", role = "ctb"),
-    person("Charmie", "Vang", , "charmie.vang@cuanschutz.edu", role = "ctb")
+    person("Charmie", "Vang", , "charmie.vang@cuanschutz.edu", role = "ctb"),
+    person("Alexander", "McKim", , "alexander.mckim@cuanschutz.edu", role = "ctb",
+           comment = c(ORCID = "0000-0002-7802-7591"))
   )
 Description: Interactive Shiny dashboard for exploring antimicrobial resistance
     (AMR) data and machine learning model results from the AMR package suite.
@@ -58,6 +60,6 @@ biocViews:
     FunctionalGenomics,
     Genetics,
     Visualization
-URL: https://github.com/jravilab/amRviz
-BugReports: https://github.com/jravilab/amRviz/issues
+URL: https://github.com/JRaviLab/amRviz
+BugReports: https://github.com/JRaviLab/amRviz/issues
 Config/roxygen2/version: 8.0.0

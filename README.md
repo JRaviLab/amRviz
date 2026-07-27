@@ -197,10 +197,14 @@ organized into per-species subdirectories:
 
 If you use `amRviz` in your research, please cite:
 
-    Brenner E, Ghosh A, Boyer E, Vang C, Wolfe E, McKim A, Lesiyon R, Mayer D, Ravi J. (2026).
-    amR: an R package suite to predict antimicrobial resistance in bacterial pathogens.
-    R package version 0.99.0.
-    https://github.com/JRaviLab/amR
+> Ghosh A^, Brenner EP^, Boyer EA, McKim AP, Vang CK, Wolfe EP, Mayer D, Lesiyon RL, Ravi J.
+>
+> amR: an R package suite to predict antimicrobial resistance in bacterial pathogens.
+>
+> bioRxiv. 2026. DOI:
+> [10.64898/2026.07.10.734579](https://doi.org/10.64898/2026.07.10.734579).
+
+^ Co-first authors
 
 ## For Bioconductor submission
 
