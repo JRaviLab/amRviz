@@ -50,9 +50,9 @@ makeCrossModelFeatureImportancePlot <- function(
   }
 
   vi_wider <- features_df |>
-    dplyr::select("Variable", "Importance", !!rlang::sym(strat_col)) |>
+    dplyr::select("Variable", "Importance", dplyr::all_of(strat_col)) |>
     tidyr::pivot_wider(
-      names_from = strat_col,
+      names_from = dplyr::all_of(strat_col),
       values_from = "Importance",
       values_fn = mean
     )
@@ -109,8 +109,7 @@ makeCrossModelFeatureImportancePlot <- function(
 #' @noRd
 makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No data available", x = 0)))
+    return(plotly_placeholder("No data available"))
   }
 
   strat <- if (cross_model == "country") "country" else "year"
@@ -123,8 +122,7 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
     dplyr::filter(.data$drug_label == "drug_class")
 
   if (!nrow(df)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No data for selection", x = 0)))
+    return(plotly_placeholder("No data for selection"))
   }
 
   # Label: Same = trained & tested on same stratum, Different = cross-tested
@@ -198,13 +196,8 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
 #' @keywords internal
 #' @noRd
 makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
-  placeholder <- function(msg) {
-    plotly::plot_ly() |>
-      plotly::layout(title = list(text = msg, x = 0))
-  }
-
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
-    return(placeholder("No data available"))
+    return(plotly_placeholder("No data available"))
   }
 
   strat <- if (cross_model == "country") "country" else "year"
@@ -218,14 +211,14 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     dplyr::filter(.data$strat_label == strat)
 
   if (!nrow(df)) {
-    return(placeholder("No data for selection"))
+    return(plotly_placeholder("No data for selection"))
   }
 
   # A cross-stratum grid needs at least two trained-on strata to compare.
   n_strata <- dplyr::n_distinct(df$strat_value)
   if (n_strata < 2) {
     unit <- if (cross_model == "country") "countries" else "time periods"
-    return(placeholder(paste0(
+    return(plotly_placeholder(paste0(
       "Not enough data to compare: needs models trained on 2+ ", unit,
       " (this selection has ", n_strata, ")."
     )))
@@ -254,7 +247,7 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     as.matrix()
 
   if (!length(models_performance)) {
-    return(placeholder("No data for selection"))
+    return(plotly_placeholder("No data for selection"))
   }
 
   plotly::plot_ly(
