@@ -90,6 +90,12 @@ exportAMRVisualizations(
 
 One figure set is produced per species using the same default selections the dashboard opens with, organized as `output_dir/<species>/<panel>.<ext>`. Cross-species overviews (the performance heatmaps and the across-species feature-importance panel) are written once under `_overview/` and `_across_species/`.
 
+You can adjust how many features appear with `top_n_features` (feature-importance panels) and `network_top_n` (the drug-feature network), and control raster resolution with `scale`:
+
+```{r, eval = FALSE}
+exportAMRVisualizations(top_n_features = 25, network_top_n = 10, scale = 3)
+```
+
 - **Formats**: `png`, `pdf`, and `jpg` are fully supported. `svg` is best-effort — it requires the plotly `kaleido` image engine and applies to plotly charts only, so it is skipped silently when unavailable.
 - **Requirements**: every plot is an interactive htmlwidget, so export photographs each one with a headless Chrome via the `webshot2` and `chromote` packages. Install Google Chrome or Chromium if you don't already have one; the function stops early with a clear message if no browser is found.
 

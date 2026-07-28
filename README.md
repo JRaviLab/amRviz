@@ -98,6 +98,14 @@ the dashboard opens with, organized as
 performance heatmaps and the across-species feature-importance panel)
 are written once under `_overview/` and `_across_species/`.
 
+You can adjust how many features appear with `top_n_features`
+(feature-importance panels) and `network_top_n` (the drug-feature
+network), and control raster resolution with `scale`:
+
+``` r
+exportAMRVisualizations(top_n_features = 25, network_top_n = 10, scale = 3)
+```
+
 -   **Formats**: `png`, `pdf`, and `jpg` are fully supported. `svg` is
     best-effort — it requires the plotly `kaleido` image engine and
     applies to plotly charts only, so it is skipped silently when

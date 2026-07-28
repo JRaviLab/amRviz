@@ -226,7 +226,10 @@ exportAMRVisualizations(
 The exporter produces one figure set per species, using the same default
 selections each tab opens with (all molecular scales, binary encoding,
 gentamicin where present, the top drug classes for the metadata Sankey, and so
-on). Files are laid out by species:
+on). Two of those defaults are adjustable from the call: `top_n_features` sets
+how many features each feature-importance panel shows, and `network_top_n` sets
+how many top features per drug go into the drug-feature network. Files are laid
+out by species:
 
 ```
 figures/

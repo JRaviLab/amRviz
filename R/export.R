@@ -157,7 +157,8 @@
 #' @noRd
 .exportPlanSpecs <- function(perf_data, top_features,
                              ml_species, meta_species,
-                             results_root, amrdata_root) {
+                             results_root, amrdata_root,
+                             top_n_features = 10, network_top_n = 5) {
   specs <- list()
   add <- function(group, name, build) {
     specs[[length(specs) + 1]] <<- list(
@@ -198,7 +199,7 @@
       add("_across_species", paste0("feature_importance_", drug), function() {
         makeFeatureImportancePlot(
           top_features, ml_species$code, drug,
-          fi_scale, fi_subtype, 10, "across_bug",
+          fi_scale, fi_subtype, top_n_features, "across_bug",
           amrdata_root = amrdata_root, results_root = results_root
         )
       })
@@ -243,7 +244,7 @@
         add(folder, "feature_importance_across_drugs", function() {
           makeFeatureImportancePlot(
             top_features, code, fi_drugs,
-            fi_scale, fi_subtype, 10, "across_drug",
+            fi_scale, fi_subtype, top_n_features, "across_drug",
             amrdata_root = amrdata_root, results_root = results_root
           )
         })
@@ -305,7 +306,7 @@
           folder, paste0("holdout_feature_importance_country_", holdout_drug),
           function() {
             makeCrossModelFeatureImportancePlot(
-              top_features, code, holdout_drug, "country", 10
+              top_features, code, holdout_drug, "country", top_n_features
             )
           }
         )
@@ -318,7 +319,8 @@
       add(folder, "drug_feature_network", function() {
         makeDrugFeatureNetwork(
           top_features, code,
-          top_n = 5, include_clusters = FALSE, include_cogs = FALSE,
+          top_n = network_top_n,
+          include_clusters = FALSE, include_cogs = FALSE,
           results_root = results_root
         )
       })
@@ -405,9 +407,11 @@
 #'
 #' One figure set is produced per species using the same default selections the
 #' dashboard opens with (e.g. all molecular scales, binary encoding, gentamicin
-#' where present). Species-agnostic overviews (the performance heatmaps and the
-#' cross-species feature-importance panel) are written once under `_overview`
-#' and `_across_species`.
+#' where present). The number of features shown is adjustable via
+#' `top_n_features` (feature-importance panels) and `network_top_n` (the
+#' drug-feature network). Species-agnostic overviews (the performance heatmaps
+#' and the cross-species feature-importance panel) are written once under
+#' `_overview` and `_across_species`.
 #'
 #' Because every dashboard plot is an interactive htmlwidget (plotly or
 #' networkD3), static export photographs each widget with a headless Chrome via
@@ -437,6 +441,12 @@
 #' @param species Optional character vector restricting which species are
 #'   exported, matched against the species folder names. `NULL` (default)
 #'   exports every species found.
+#' @param top_n_features Number of top features to show in each
+#'   feature-importance panel (per model), matching the dashboard's "Top
+#'   features" control. Defaults to `10`.
+#' @param network_top_n Number of top features per drug to include in the
+#'   drug-feature network, matching the dashboard's network slider. Defaults to
+#'   `5`.
 #' @param width,height Snapshot viewport size in pixels.
 #' @param scale Device-pixel multiplier for raster (`png`/`jpg`) output; the
 #'   saved image is `width * scale` by `height * scale` pixels. Defaults to `2`
@@ -454,12 +464,14 @@
 #'   # Export the packaged demo figures as PNG + PDF into ./amRviz_exports
 #'   exportAMRVisualizations()
 #'
-#'   # Your own results, PNG only, one species
+#'   # Your own results, PNG only, one species, more features per panel
 #'   exportAMRVisualizations(
 #'     output_dir = "figs",
 #'     formats = "png",
 #'     results_root = "~/my_amRml_results",
-#'     species = "Shigella_flexneri"
+#'     species = "Shigella_flexneri",
+#'     top_n_features = 25,
+#'     network_top_n = 10
 #'   )
 #' }
 exportAMRVisualizations <- function(output_dir = "amRviz_exports",
@@ -467,6 +479,8 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     results_root = NULL,
                                     amrdata_root = NULL,
                                     species = NULL,
+                                    top_n_features = 10,
+                                    network_top_n = 5,
                                     width = 1200,
                                     height = 800,
                                     scale = 2,
@@ -509,6 +523,13 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
 
   if (!is.numeric(scale) || length(scale) != 1 || is.na(scale) || scale <= 0) {
     stop("`scale` must be a single positive number.", call. = FALSE)
+  }
+
+  for (nm in c("top_n_features", "network_top_n")) {
+    v <- get(nm)
+    if (!is.numeric(v) || length(v) != 1 || is.na(v) || v < 1) {
+      stop("`", nm, "` must be a single positive number.", call. = FALSE)
+    }
   }
 
   # Default amrdata_root: ~/amRdata/data when present (mirrors the dashboard).
@@ -580,7 +601,8 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
 
   specs <- .exportPlanSpecs(
     perf_data, top_features, ml_species, meta_species,
-    results_root, amrdata_root
+    results_root, amrdata_root,
+    top_n_features = top_n_features, network_top_n = network_top_n
   )
 
   if (!dir.exists(output_dir)) {

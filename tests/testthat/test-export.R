@@ -80,6 +80,53 @@ test_that("exportAMRVisualizations drops species with no code (no phantom folder
   expect_equal(anyDuplicated(groups_names), 0L)
 })
 
+# ── caller-adjustable feature counts ─────────────────────────────────────────
+
+test_that("network_top_n flows through .exportPlanSpecs to the network widget", {
+  perf <- loadMLResults(verbose = FALSE)
+  top <- loadTopFeat(verbose = FALSE)
+  skip_if(!nrow(top), "No demo top-feature data available")
+
+  pairs <- perf |>
+    dplyr::filter(!is.na(species) & nzchar(species)) |>
+    dplyr::filter(!(species %in% c("cross", "MDR"))) |>
+    dplyr::distinct(species, species_label)
+  ml_species <- list(
+    code = as.character(pairs$species),
+    label = as.character(pairs$species_label)
+  )
+
+  network_nodes <- function(ntn) {
+    specs <- .exportPlanSpecs(
+      perf, top, ml_species, character(0),
+      results_root = NULL, amrdata_root = NULL, network_top_n = ntn
+    )
+    spec <- Filter(function(s) s$name == "drug_feature_network", specs)[[1]]
+    w <- spec$build()
+    nrow(w$x$nodes)
+  }
+
+  # A larger top-n keeps more features per drug, so the graph has more nodes.
+  expect_gt(network_nodes(12), network_nodes(5))
+})
+
+test_that("exportAMRVisualizations rejects invalid feature counts", {
+  skip_if_not_installed("webshot2")
+  skip_if_not_installed("htmlwidgets")
+  skip_if(
+    tryCatch(!nzchar(chromote::find_chrome()), error = function(e) TRUE),
+    "No Chrome/Chromium available"
+  )
+  expect_error(
+    exportAMRVisualizations(top_n_features = 0, verbose = FALSE),
+    "top_n_features"
+  )
+  expect_error(
+    exportAMRVisualizations(network_top_n = -1, verbose = FALSE),
+    "network_top_n"
+  )
+})
+
 # ── format validation (no browser needed when it errors early) ───────────────
 
 test_that("exportAMRVisualizations rejects unsupported formats", {
