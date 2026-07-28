@@ -146,6 +146,35 @@
 }
 
 
+#' Fit a networkD3 forceNetwork to its container after simulation settles
+#'
+#' Waits for the force simulation, then makes the SVG fill its container and
+#' rewrites the viewBox to the graph's bbox. Export-only.
+#'
+#' @param widget A `networkD3::forceNetwork` htmlwidget.
+#' @return The widget with the onRender hook attached.
+#' @keywords internal
+#' @noRd
+.fit_network_to_content <- function(widget) {
+  htmlwidgets::onRender(widget, "
+    function(el, x) {
+      setTimeout(function() {
+        try {
+          var svg = el.querySelector('svg');
+          svg.setAttribute('width', '100%');
+          svg.setAttribute('height', '100%');
+          var bb = svg.getBBox();
+          var p = 40;
+          svg.setAttribute('viewBox',
+            (bb.x - p) + ' ' + (bb.y - p) + ' ' +
+            (bb.width + 2*p) + ' ' + (bb.height + 2*p));
+        } catch (e) {}
+      }, 1300);
+    }
+  ")
+}
+
+
 #' Assemble the list of figures to export
 #'
 #' Returns a list of specs; each is `list(group, name, build)` where `build()`
@@ -160,9 +189,10 @@
                              results_root, amrdata_root,
                              top_n_features = 10, network_top_n = 5) {
   specs <- list()
-  add <- function(group, name, build) {
+  add <- function(group, name, build, width = NULL, height = NULL) {
     specs[[length(specs) + 1]] <<- list(
-      group = group, name = name, build = build
+      group = group, name = name, build = build,
+      width = width, height = height
     )
   }
 
@@ -313,7 +343,8 @@
       }
     })
 
-    # Drug-feature network.
+    # Drug-feature network. Square viewport since the graph settles roughly
+    # square; .fit_network_to_content() then fits the SVG to the actual bbox.
     local({
       code <- code
       add(folder, "drug_feature_network", function() {
@@ -322,8 +353,8 @@
           top_n = network_top_n,
           include_clusters = FALSE, include_cogs = FALSE,
           results_root = results_root
-        )
-      })
+        ) |> .fit_network_to_content()
+      }, width = 1600, height = 1600)
     })
   }
 
@@ -636,7 +667,9 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
         widget <- spec$build()
         .exportWidgetFile(
           widget, path_base, formats,
-          width = width, height = height, scale = scale,
+          width = spec$width %||% width,
+          height = spec$height %||% height,
+          scale = scale,
           delay = delay, verbose = verbose
         )
       },
