@@ -33,6 +33,7 @@ Imports:
     ggplot2,
     glue,
     here,
+    htmlwidgets,
     networkD3,
     plotly,
     purrr,

@@ -152,7 +152,7 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     .domain(["drug","variable","cluster","cog"])
     .range(["#d4872a","#5b8db8","#66a61e","#9b7fba"])'
 
-  networkD3::forceNetwork(
+  .styleNetwork(networkD3::forceNetwork(
     Links = edges,
     Nodes = nodes,
     Source = "source",
@@ -164,10 +164,11 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     opacity = 0.9,
     zoom = TRUE,
     fontSize = 13,
+    fontFamily = .NETWORK_FONT,
     linkDistance = 100,
     charge = -80,
     legend = TRUE
-  )
+  ))
 }
 
 
@@ -253,7 +254,7 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     .domain(["variable","cluster","cog"])
     .range(["#5b8db8","#66a61e","#9b7fba"])'
 
-  networkD3::forceNetwork(
+  .styleNetwork(networkD3::forceNetwork(
     Links = edges,
     Nodes = nodes,
     Source = "source",
@@ -265,8 +266,75 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     opacity = 0.9,
     zoom = TRUE,
     fontSize = 12,
+    fontFamily = .NETWORK_FONT,
     linkDistance = 80,
     charge = -120,
     legend = TRUE
-  )
+  ))
+}
+
+
+# Font family for the force-directed networks, matching the plotly/ggplot
+# panels (which use "Arial, sans-serif").
+.NETWORK_FONT <- "Arial, sans-serif"
+
+# Post-render hook for forceNetwork: replace each node's default circle with a
+# shape keyed to its node_type group so element types are distinguishable
+# beyond colour (drug = diamond, variable = circle, cluster = square,
+# cog = triangle). Wrapped in try/catch so the network falls back to circles
+# if the D3 internals change.
+.NETWORK_SHAPE_JS <- "
+function(el, x) {
+  try {
+    var d3 = window.d3;
+    if (!d3 || !d3.symbol) { return; }
+    var shapeMap = {
+      'drug': d3.symbolDiamond,
+      'variable': d3.symbolCircle,
+      'cluster': d3.symbolSquare,
+      'cog': d3.symbolTriangle
+    };
+    var sym = d3.symbol();
+    d3.select(el).selectAll('.node').each(function(d) {
+      var g = d3.select(this);
+      var circle = g.select('circle');
+      if (circle.empty()) { return; }
+      var fill = circle.style('fill');
+      var r = parseFloat(circle.attr('r')) || 8;
+      var type = shapeMap[d.group] || d3.symbolCircle;
+      circle.style('display', 'none');
+      g.insert('path', ':first-child')
+        .attr('class', 'node-shape')
+        .attr('d', sym.type(type).size(Math.PI * r * r * 1.6)())
+        .style('fill', fill)
+        .style('opacity', 0.9)
+        .style('stroke', '#ffffff')
+        .style('stroke-width', 1.2);
+    });
+    // Mirror the shapes in the legend: swap each colour rect for its glyph.
+    var legendSym = d3.symbol().size(150);
+    d3.select(el).selectAll('.legend').each(function(d) {
+      var g = d3.select(this);
+      var rect = g.select('rect');
+      if (rect.empty()) { return; }
+      var fill = rect.style('fill');
+      var type = shapeMap[d] || d3.symbolCircle;
+      rect.style('display', 'none');
+      g.insert('path', ':first-child')
+        .attr('class', 'legend-shape')
+        .attr('transform', 'translate(9,9)')
+        .attr('d', legendSym.type(type)())
+        .style('fill', fill)
+        .style('stroke', fill);
+    });
+  } catch (e) { /* keep default circles on error */ }
+}
+"
+
+# Apply the shared font + per-group node shapes to a forceNetwork widget.
+.styleNetwork <- function(net) {
+  if (is.null(net)) {
+    return(NULL)
+  }
+  htmlwidgets::onRender(net, .NETWORK_SHAPE_JS)
 }
