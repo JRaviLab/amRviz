@@ -48,6 +48,7 @@ Suggests:
     chromote,
     htmlwidgets,
     knitr,
+    magick,
     rmarkdown,
     shinytest2,
     spelling,

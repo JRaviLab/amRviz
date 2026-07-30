@@ -250,16 +250,16 @@ figures/
 
 A few practical notes:
 
-- **Formats.** `png`, `pdf`, and `jpg` are fully supported. `svg` is a
-  best-effort extra: it relies on the plotly `kaleido` image engine and only
-  applies to plotly charts, so it is skipped silently where that engine is not
-  installed.
+- **Formats.** All four (`png`, `jpg`, `pdf`, `svg`) are supported. `png` is a
+  headless-Chrome screenshot; `jpg` and `pdf` are re-encodes of that PNG (so
+  every raster format has the same crop and dimensions). `svg` is extracted
+  from the rendered DOM and inlines every text element so nothing is lost.
 - **How it works.** Every amRviz plot is an interactive `plotly` or `networkD3`
   htmlwidget, so there is no server-side raster renderer. Export instead
-  photographs each widget with a headless Chrome through the `webshot2` and
-  `chromote` packages. Install Google Chrome or Chromium if you do not already
-  have one; `exportAMRVisualizations()` stops early with an informative message
-  if no browser is found.
+  drives each widget with a headless Chrome through the `webshot2` and
+  `chromote` packages, then reformats via `magick`. Install Google Chrome or
+  Chromium if you do not already have one; `exportAMRVisualizations()` stops
+  early with an informative message if no browser is found.
 - **Return value.** The function invisibly returns a data frame summarizing each
   attempted figure (its group, name, number of files written, and whether it
   succeeded), which is useful for logging in batch runs.

@@ -5,102 +5,164 @@
 
 #' Snapshot one htmlwidget to static image file(s)
 #'
-#' Every amRviz plot returns a plotly or networkD3 htmlwidget. There is no
-#' server-side raster renderer for these, so we save the widget to a local HTML
-#' bundle and photograph it with a headless Chrome via webshot2. png/pdf/jpg are
-#' all handled this way (the format follows the file extension). svg is
-#' best-effort: it needs the plotly image engine (kaleido) and only applies to
-#' plotly charts, so it is skipped silently when unavailable.
+#' Saves the widget to a temp HTML bundle, renders it in a headless Chrome,
+#' then writes each requested format. Raster formats (png/jpg/pdf) all derive
+#' from a single webshot PNG so they share crop and dimensions; svg is
+#' extracted from the rendered DOM via chromote.
 #'
 #' @param widget An htmlwidget (plotly / networkD3), or NULL.
-#' @param path_base Output path without extension; one file per requested format
-#'   is written as `path_base.<ext>`.
+#' @param path_base Output path without extension; each format is written as
+#'   `path_base.<ext>`.
 #' @param formats Character vector of extensions among png/pdf/jpg/jpeg/svg.
 #' @param width,height Snapshot viewport size in pixels.
-#' @param scale Device-pixel multiplier for raster (png/jpg) output: the saved
-#'   image is `width * scale` by `height * scale` pixels. Higher values give
-#'   sharper, higher-resolution figures (`scale = 2` ~ 340 dpi at a 7 in width;
-#'   `scale = 4` ~ 680 dpi). Does not affect the vector PDF or SVG output.
-#' @param delay Seconds to let the widget's JavaScript render before the shot.
+#' @param scale Device-pixel multiplier for the underlying PNG render.
+#' @param trim When TRUE, `magick::image_trim()` crops the PNG before other
+#'   raster formats are derived from it. Meant for figures with known excess
+#'   whitespace (currently the drug-feature network only).
+#' @param delay Seconds to let the widget's JavaScript render before capture.
 #' @param verbose Whether to message on per-format failures.
-#' @return Character vector of files actually written (possibly empty).
+#' @return Character vector of files actually written.
 #' @keywords internal
 #' @noRd
 .exportWidgetFile <- function(widget, path_base, formats,
                               width = 1200, height = 800, scale = 2,
+                              trim = FALSE,
                               delay = 1.5, verbose = TRUE) {
-  if (is.null(widget)) {
-    return(character(0))
-  }
+  if (is.null(widget)) return(character(0))
   written <- character(0)
   raster <- intersect(formats, c("png", "pdf", "jpg", "jpeg"))
   want_svg <- "svg" %in% formats
+  if (!length(raster) && !want_svg) return(written)
 
-  # png/pdf/jpg: save the widget once, then photograph it in each format.
+  tmpdir <- tempfile("amrviz_widget_")
+  dir.create(tmpdir)
+  on.exit(unlink(tmpdir, recursive = TRUE), add = TRUE)
+  html <- file.path(tmpdir, "widget.html")
+  # selfcontained = TRUE inlines JS/CSS so the extracted SVG stands alone.
+  saved <- tryCatch(
+    {
+      htmlwidgets::saveWidget(widget, html, selfcontained = TRUE)
+      TRUE
+    },
+    error = function(e) {
+      if (verbose) message("    saveWidget failed: ", conditionMessage(e))
+      FALSE
+    }
+  )
+  if (!saved) return(written)
+
   if (length(raster)) {
-    tmpdir <- tempfile("amrviz_widget_")
-    dir.create(tmpdir)
-    on.exit(unlink(tmpdir, recursive = TRUE), add = TRUE)
-    html <- file.path(tmpdir, "widget.html")
-    saved <- tryCatch(
+    tmp_png <- file.path(tmpdir, "render.png")
+    rendered <- tryCatch(
       {
-        htmlwidgets::saveWidget(widget, html, selfcontained = FALSE)
-        TRUE
+        webshot2::webshot(
+          html, tmp_png,
+          vwidth = width, vheight = height,
+          zoom = scale, delay = delay, quiet = TRUE
+        )
+        file.exists(tmp_png) && file.info(tmp_png)$size > 0
       },
       error = function(e) {
-        if (verbose) message("    saveWidget failed: ", conditionMessage(e))
+        if (verbose) message("    render failed: ", conditionMessage(e))
         FALSE
       }
     )
-    if (isTRUE(saved)) {
+    if (rendered) {
+      if (trim) .trim_raster(tmp_png, verbose = verbose)
       for (ext in raster) {
         out <- paste0(path_base, ".", ext)
-        # Supersample raster output for resolution; PDF is vector, so leave its
-        # zoom at 1 (zooming would only rescale the page, not sharpen it).
-        zoom <- if (ext == "pdf") 1 else scale
-        ok <- tryCatch(
-          {
-            webshot2::webshot(
-              html, out,
-              vwidth = width, vheight = height,
-              zoom = zoom, delay = delay, quiet = TRUE
-            )
-            file.exists(out) && file.info(out)$size > 0
-          },
-          error = function(e) {
-            if (verbose) {
-              message("    ", ext, " failed: ", conditionMessage(e))
-            }
-            FALSE
-          }
-        )
+        ok <- if (ext == "png") {
+          file.copy(tmp_png, out, overwrite = TRUE)
+        } else {
+          .convert_raster(tmp_png, out, ext, verbose = verbose)
+        }
         if (isTRUE(ok)) written <- c(written, out)
       }
     }
   }
 
-  # svg: plotly-only, via the kaleido engine when present.
-  if (isTRUE(want_svg)) {
+  if (want_svg) {
     out <- paste0(path_base, ".svg")
     ok <- tryCatch(
-      {
-        if (inherits(widget, "plotly")) {
-          plotly::save_image(widget, out, width = width, height = height)
-          file.exists(out) && file.info(out)$size > 0
-        } else {
-          FALSE
-        }
-      },
-      error = function(e) FALSE
+      .save_widget_svg(html, out, width, height, delay),
+      error = function(e) {
+        if (verbose) message("    svg failed: ", conditionMessage(e))
+        FALSE
+      }
     )
-    if (isTRUE(ok)) {
-      written <- c(written, out)
-    } else if (verbose) {
-      message("    svg skipped (needs plotly + kaleido image engine)")
-    }
+    if (isTRUE(ok)) written <- c(written, out)
   }
 
   written
+}
+
+
+#' Re-encode a PNG into another raster/PDF format via magick
+#'
+#' PDF is written as a rasterised image wrapped in a PDF page (not vector).
+#'
+#' @param src PNG source path.
+#' @param out Destination path.
+#' @param ext Target extension ("jpg", "jpeg", "pdf").
+#' @param verbose Whether to message on failure.
+#' @return TRUE on success, FALSE otherwise.
+#' @keywords internal
+#' @noRd
+.convert_raster <- function(src, out, ext, verbose = TRUE) {
+  fmt <- if (ext %in% c("jpg", "jpeg")) "jpeg" else ext
+  tryCatch(
+    {
+      magick::image_write(magick::image_read(src), out, format = fmt)
+      file.exists(out) && file.info(out)$size > 0
+    },
+    error = function(e) {
+      if (verbose) message("    ", ext, " failed: ", conditionMessage(e))
+      FALSE
+    }
+  )
+}
+
+
+#' Extract an htmlwidget's rendered SVG element into a standalone .svg file
+#'
+#' Plotly widgets go through `Plotly.toImage` so title/axis/legend overlays
+#' end up inlined as SVG text; other widgets use the raw SVG outerHTML.
+#'
+#' @param html Path to the saved widget HTML.
+#' @param out Path to write the SVG to.
+#' @param width,height Viewport size the widget renders into.
+#' @param delay Seconds to wait after navigation before extracting.
+#' @return TRUE on success, FALSE if the widget has no SVG or writes fail.
+#' @keywords internal
+#' @noRd
+.save_widget_svg <- function(html, out, width, height, delay) {
+  b <- chromote::ChromoteSession$new()
+  on.exit(b$close(), add = TRUE)
+  b$Emulation$setDeviceMetricsOverride(
+    width = as.integer(width), height = as.integer(height),
+    deviceScaleFactor = 1, mobile = FALSE
+  )
+  b$Page$navigate(paste0("file://", html))
+  Sys.sleep(delay)
+  js <- sprintf(
+    "(async function() {
+       var gd = document.querySelector('.js-plotly-plot');
+       if (gd && window.Plotly) {
+         var url = await Plotly.toImage(gd, {format: 'svg', width: %d, height: %d});
+         return decodeURIComponent(url.replace(/^data:image\\/svg\\+xml,/, ''));
+       }
+       var s = document.querySelector('svg');
+       if (!s) return null;
+       if (!s.getAttribute('xmlns')) s.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+       return s.outerHTML;
+     })()",
+    as.integer(width), as.integer(height)
+  )
+  res <- b$Runtime$evaluate(js, returnByValue = TRUE, awaitPromise = TRUE)
+  svg_str <- res$result$value
+  if (is.null(svg_str) || !nzchar(svg_str)) return(FALSE)
+  writeLines(svg_str, out)
+  file.exists(out) && file.info(out)$size > 0
 }
 
 
@@ -143,6 +205,25 @@
     dplyr::pull(.data$drug_or_class) |>
     unique() |>
     sort()
+}
+
+
+#' Crop uniform-white margins from a raster file in place
+#'
+#' No-op when `magick` isn't installed or the trim errors.
+#'
+#' @param path Raster file to overwrite in place.
+#' @param verbose Whether to message on failure.
+#' @keywords internal
+#' @noRd
+.trim_raster <- function(path, verbose = TRUE) {
+  tryCatch(
+    magick::image_write(magick::image_trim(magick::image_read(path)), path),
+    error = function(e) {
+      if (verbose) message("    trim failed: ", conditionMessage(e))
+    }
+  )
+  invisible()
 }
 
 
@@ -189,10 +270,11 @@
                              results_root, amrdata_root,
                              top_n_features = 10, network_top_n = 5) {
   specs <- list()
-  add <- function(group, name, build, width = NULL, height = NULL) {
+  add <- function(group, name, build,
+                  width = NULL, height = NULL, trim = FALSE) {
     specs[[length(specs) + 1]] <<- list(
       group = group, name = name, build = build,
-      width = width, height = height
+      width = width, height = height, trim = trim
     )
   }
 
@@ -354,7 +436,7 @@
           include_clusters = FALSE, include_cogs = FALSE,
           results_root = results_root
         ) |> .fit_network_to_content()
-      }, width = 1600, height = 1600)
+      }, width = 1600, height = 1600, trim = TRUE)
     })
   }
 
@@ -429,66 +511,38 @@
 
 #' Export all amRviz dashboard visualizations to static image files
 #'
-#' Renders the complete set of amRviz figures - metadata distributions, model
-#' performance, feature importance, cross-model holdouts, and drug-feature
-#' networks - to static image files, without launching the interactive Shiny
-#' dashboard. This lets a user install the package, point it at model results
-#' (or use the packaged demo data), and obtain figures for every panel in one
-#' call.
+#' Renders every amRviz figure (metadata, model performance, feature
+#' importance, cross-model holdouts, drug-feature networks) to files, without
+#' launching the Shiny app. One figure set per species, with global overviews
+#' under `_overview` / `_across_species`. Selections mirror the dashboard's
+#' defaults; `top_n_features` and `network_top_n` override the corresponding
+#' sliders.
 #'
-#' One figure set is produced per species using the same default selections the
-#' dashboard opens with (e.g. all molecular scales, binary encoding, gentamicin
-#' where present). The number of features shown is adjustable via
-#' `top_n_features` (feature-importance panels) and `network_top_n` (the
-#' drug-feature network). Species-agnostic overviews (the performance heatmaps
-#' and the cross-species feature-importance panel) are written once under
-#' `_overview` and `_across_species`.
-#'
-#' Because every dashboard plot is an interactive htmlwidget (plotly or
-#' networkD3), static export photographs each widget with a headless Chrome via
-#' the \pkg{webshot2} package. `png`, `pdf`, and `jpg` are fully supported.
-#' `svg` is best-effort: it requires the plotly image engine (kaleido) and is
-#' silently skipped for widgets or environments where that is unavailable.
-#'
-#' On output quality: `pdf` is written as a true vector figure (Chrome's
-#' Skia PDF backend over the plots' underlying SVG), so it is resolution
-#' independent and the best choice for publication. Raster formats (`png`,
-#' `jpg`) are screenshots whose resolution is `width * scale` by
-#' `height * scale` pixels; raise `scale` for high-DPI raster figures.
+#' Widgets are driven by a headless Chrome: `png` is a webshot2 snapshot;
+#' `jpg` and `pdf` are re-encodes of that PNG via \pkg{magick} (identical
+#' crop and dimensions); `svg` is extracted from the DOM via \pkg{chromote},
+#' using `Plotly.toImage` for plotly so titles and labels survive.
 #'
 #' @param output_dir Directory to write figures into; created if needed. Files
 #'   are organised as `output_dir/<species>/<panel>.<ext>`, with global
 #'   overviews under `output_dir/_overview` and `output_dir/_across_species`.
-#' @param formats Character vector of output formats, any of `"png"`, `"pdf"`,
-#'   `"jpg"`, `"svg"`. Defaults to `c("png", "pdf")`.
-#' @param results_root Path to a directory of amRml model outputs (per-species
-#'   subdirectories of `*_perf.parquet` / `*_top_features.parquet` /
-#'   `metadata.parquet`). When `NULL` (default), the packaged demo data bundled
-#'   with amRviz is used.
-#' @param amrdata_root Path to amRdata annotation parquets used to enrich
-#'   feature-importance panels (COG categories, etc.). When `NULL` (default),
-#'   `~/amRdata/data` is used if present; otherwise annotation-based panels fall
-#'   back to unenriched output.
-#' @param species Optional character vector restricting which species are
-#'   exported, matched against the species folder names. `NULL` (default)
-#'   exports every species found.
-#' @param top_n_features Number of top features to show in each
-#'   feature-importance panel (per model), matching the dashboard's "Top
-#'   features" control. Defaults to `10`.
-#' @param network_top_n Number of top features per drug to include in the
-#'   drug-feature network, matching the dashboard's network slider. Defaults to
-#'   `5`.
-#' @param width,height Snapshot viewport size in pixels.
-#' @param scale Device-pixel multiplier for raster (`png`/`jpg`) output; the
-#'   saved image is `width * scale` by `height * scale` pixels. Defaults to `2`
-#'   (~340 dpi at a 7 in figure width); use `3`-`4` for ~500-680 dpi. Ignored
-#'   for the vector `pdf` and `svg` output.
-#' @param delay Seconds to wait for each widget's JavaScript to render before
-#'   the screenshot is taken. Increase if figures come out partially rendered.
-#' @param verbose Whether to print per-figure progress.
+#' @param formats Any of `"png"`, `"pdf"`, `"jpg"`, `"svg"`.
+#' @param results_root Directory of amRml model outputs (per-species subdirs
+#'   of `*_perf.parquet` / `*_top_features.parquet` / `metadata.parquet`).
+#'   `NULL` uses the packaged demo data.
+#' @param amrdata_root Directory of amRdata annotation parquets (for COG
+#'   enrichment). `NULL` tries `~/amRdata/data`, else falls back to unenriched.
+#' @param species Optional character vector restricting which species folders
+#'   to export.
+#' @param top_n_features,network_top_n Feature counts for the
+#'   feature-importance panels and the drug-feature network.
+#' @param width,height Viewport size in pixels.
+#' @param scale Device-pixel multiplier for the PNG render; higher = sharper.
+#' @param delay Seconds to wait for each widget's JavaScript to settle.
+#' @param verbose Per-figure progress messages.
 #'
-#' @return Invisibly, a data frame with one row per attempted figure: its
-#'   `group`, `name`, the number of files `written`, and whether it `ok`.
+#' @return Invisibly, a data frame with one row per figure: `group`, `name`,
+#'   `written` (file count), `ok`.
 #' @export
 #' @examples
 #' if (interactive()) {
@@ -518,7 +572,7 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     delay = 1.5,
                                     verbose = TRUE) {
   # Validate dependencies up front with actionable messages.
-  for (pkg in c("htmlwidgets", "webshot2")) {
+  for (pkg in c("htmlwidgets", "webshot2", "chromote", "magick")) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop(
         "Package '", pkg, "' is required for exportAMRVisualizations(). ",
@@ -669,7 +723,7 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
           widget, path_base, formats,
           width = spec$width %||% width,
           height = spec$height %||% height,
-          scale = scale,
+          scale = scale, trim = isTRUE(spec$trim),
           delay = delay, verbose = verbose
         )
       },
