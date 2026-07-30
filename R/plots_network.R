@@ -17,7 +17,7 @@
 #' @noRd
 makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
                                    include_clusters = FALSE,
-                                   include_cogs = FALSE,
+                                  #  include_cogs = FALSE,
                                    results_root = NULL) {
   if (!requireNamespace("networkD3", quietly = TRUE)) {
     stop(
@@ -69,7 +69,7 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   var_cluster_edges <- NULL
   cluster_cog_edges <- NULL
 
-  if ((include_clusters || include_cogs)) {
+  if (include_clusters) {
     ann <- load_feature_annotations(bug, results_root)
     if (!is.null(ann) && nrow(ann)) {
       # Match Variable ("PF23840_IPR056912") against ann$feature ("PF23840")
@@ -93,53 +93,52 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
         }
       }
 
-      if (include_cogs && nrow(ann_sub)) {
-        if (include_clusters && !is.null(var_cluster_edges)) {
-          # cluster -> COG edges
-          cc_edges <- ann_sub |>
-            dplyr::filter(!is.na(.data$cluster), !is.na(.data$COG)) |>
-            dplyr::distinct(.data$cluster, .data$COG) |>
-            dplyr::transmute(
-              source_name = .data$cluster,
-              target_name = .data$COG,
-              value = 0.3
-            )
-          if (nrow(cc_edges)) {
-            cluster_cog_edges <- cc_edges
-            extra_nodes_cog <- unique(cc_edges$target_name)
-          }
-        } else {
-          # variable -> COG directly
-          cc_edges <- ann_sub |>
-            dplyr::filter(!is.na(.data$COG)) |>
-            dplyr::distinct(.data$feature, .data$COG) |>
-            dplyr::transmute(
-              source_name = var_key_map[.data$feature],
-              target_name = .data$COG,
-              value = 0.3
-            )
-          if (nrow(cc_edges)) {
-            cluster_cog_edges <- cc_edges
-            extra_nodes_cog <- unique(cc_edges$target_name)
-          }
-        }
-      }
+      # if (include_cogs && nrow(ann_sub)) {
+  #       if (include_clusters && !is.null(var_cluster_edges)) {
+  #         # cluster -> COG edges
+  #         cc_edges <- ann_sub |>
+  #           dplyr::filter(!is.na(.data$cluster), !is.na(.data$COG)) |>
+  #           dplyr::distinct(.data$cluster, .data$COG) |>
+  #           dplyr::transmute(
+  #             source_name = .data$cluster,
+  #             target_name = .data$COG,
+  #             value = 0.3
+  #           )
+  #         if (nrow(cc_edges)) {
+  #           cluster_cog_edges <- cc_edges
+  #           extra_nodes_cog <- unique(cc_edges$target_name)
+  #         }
+  #       } else {
+  #         # variable -> COG directly
+  #         cc_edges <- ann_sub |>
+  #           dplyr::filter(!is.na(.data$COG)) |>
+  #           dplyr::distinct(.data$feature, .data$COG) |>
+  #           dplyr::transmute(
+  #             source_name = var_key_map[.data$feature],
+  #             target_name = .data$COG,
+  #             value = 0.3
+  #           )
+  #         if (nrow(cc_edges)) {
+  #           cluster_cog_edges <- cc_edges
+  #           extra_nodes_cog <- unique(cc_edges$target_name)
+  #         }
+  #       }
+  #     }
     }
   }
 
   nodes <- data.frame(
-    name = c(drugs, variables, extra_nodes_cluster, extra_nodes_cog),
+    name = c(drugs, variables, extra_nodes_cluster),
     node_type = c(
       rep("drug", length(drugs)),
       rep("variable", length(variables)),
-      rep("cluster", length(extra_nodes_cluster)),
-      rep("cog", length(extra_nodes_cog))
+      rep("cluster", length(extra_nodes_cluster))
     ),
     stringsAsFactors = FALSE
   )
 
   all_edges <- dplyr::bind_rows(
-    drug_var_edges, var_cluster_edges, cluster_cog_edges
+    drug_var_edges, var_cluster_edges
   )
   edges <- all_edges |>
     dplyr::transmute(
@@ -149,8 +148,8 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     )
 
   color_scale <- 'd3.scaleOrdinal()
-    .domain(["drug","variable","cluster","cog"])
-    .range(["#d4872a","#5b8db8","#66a61e","#9b7fba"])'
+    .domain(["drug","variable","cluster"])
+    .range(["#d4872a","#5b8db8","#66a61e"])'
 
   .styleNetwork(networkD3::forceNetwork(
     Links = edges,
@@ -200,10 +199,10 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     return(NULL)
   }
 
-  cogs <- character(0)
-  if ("COG" %in% names(row) && !is.na(row$COG) && nzchar(row$COG)) {
-    cogs <- trimws(strsplit(row$COG, ",", fixed = TRUE)[[1]])
-  }
+  # cogs <- character(0)
+  # if ("COG" %in% names(row) && !is.na(row$COG) && nzchar(row$COG)) {
+  #   cogs <- trimws(strsplit(row$COG, ",", fixed = TRUE)[[1]])
+  # }
   cluster <- if ("cluster" %in% names(row) && !is.na(row$cluster) &&
     nzchar(row$cluster)) {
     row$cluster
@@ -211,7 +210,7 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     NA_character_
   }
 
-  if (is.na(cluster) && !length(cogs)) {
+  if (is.na(cluster)) {
     return(NULL)
   }
 
@@ -225,19 +224,19 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
     nodes_type <- c(nodes_type, "cluster")
     edges_src <- c(edges_src, variable)
     edges_tgt <- c(edges_tgt, cluster)
-    for (cg in cogs) {
-      nodes_name <- c(nodes_name, cg)
-      nodes_type <- c(nodes_type, "cog")
-      edges_src <- c(edges_src, cluster)
-      edges_tgt <- c(edges_tgt, cg)
-    }
+    # for (cg in cogs) {
+    #   nodes_name <- c(nodes_name, cg)
+    #   nodes_type <- c(nodes_type, "cog")
+    #   edges_src <- c(edges_src, cluster)
+    #   edges_tgt <- c(edges_tgt, cg)
+    # }
   } else {
-    for (cg in cogs) {
-      nodes_name <- c(nodes_name, cg)
-      nodes_type <- c(nodes_type, "cog")
-      edges_src <- c(edges_src, variable)
-      edges_tgt <- c(edges_tgt, cg)
-    }
+    # for (cg in cogs) {
+    #   nodes_name <- c(nodes_name, cg)
+    #   nodes_type <- c(nodes_type, "cog")
+    #   edges_src <- c(edges_src, variable)
+    #   edges_tgt <- c(edges_tgt, cg)
+    # }
   }
 
   nodes <- data.frame(
@@ -251,8 +250,8 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
   )
 
   color_scale <- 'd3.scaleOrdinal()
-    .domain(["variable","cluster","cog"])
-    .range(["#5b8db8","#66a61e","#9b7fba"])'
+    .domain(["variable","cluster"])
+    .range(["#5b8db8","#66a61e"])'
 
   .styleNetwork(networkD3::forceNetwork(
     Links = edges,
@@ -291,8 +290,7 @@ function(el, x) {
     var shapeMap = {
       'drug': d3.symbolDiamond,
       'variable': d3.symbolCircle,
-      'cluster': d3.symbolSquare,
-      'cog': d3.symbolTriangle
+      'cluster': d3.symbolSquare
     };
     var sym = d3.symbol();
     d3.select(el).selectAll('.node').each(function(d) {
