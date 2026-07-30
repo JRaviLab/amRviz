@@ -153,6 +153,10 @@
        }
        var s = document.querySelector('svg');
        if (!s) return null;
+       // Drop tooltip <title> nodes: networkD3 puts <foreignObject><body>
+       // inside them which strict SVG rasterisers reject, and they render
+       // nothing standalone anyway.
+       s.querySelectorAll('title').forEach(function(t) { t.remove(); });
        if (!s.getAttribute('xmlns')) s.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
        return s.outerHTML;
      })()",
