@@ -106,15 +106,17 @@ network), and control raster resolution with `scale`:
 exportAMRVisualizations(top_n_features = 25, network_top_n = 10, scale = 3)
 ```
 
--   **Formats**: `png`, `pdf`, and `jpg` are fully supported. `svg` is
-    best-effort — it requires the plotly `kaleido` image engine and
-    applies to plotly charts only, so it is skipped silently when
-    unavailable.
+-   **Formats**: all four (`png`, `jpg`, `pdf`, `svg`) are supported.
+    `png` is a headless-Chrome screenshot; `jpg` and `pdf` are re-encodes
+    of that PNG, so every raster format shares the same crop and
+    dimensions. `svg` is extracted from the rendered DOM (with all text
+    inlined), giving a scalable, vector figure — the best choice for
+    publication.
 -   **Requirements**: every plot is an interactive htmlwidget, so export
-    photographs each one with a headless Chrome via the `webshot2` and
-    `chromote` packages. Install Google Chrome or Chromium if you don’t
-    already have one; the function stops early with a clear message if no
-    browser is found.
+    drives each one with a headless Chrome via the `webshot2` and
+    `chromote` packages, then reformats with `magick`. Install Google
+    Chrome or Chromium if you don’t already have one; the function stops
+    early with a clear message if no browser is found.
 
 ## Usage
 

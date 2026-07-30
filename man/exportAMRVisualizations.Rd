@@ -24,75 +24,46 @@ exportAMRVisualizations(
 are organised as \verb{output_dir/<species>/<panel>.<ext>}, with global
 overviews under \verb{output_dir/_overview} and \verb{output_dir/_across_species}.}
 
-\item{formats}{Character vector of output formats, any of \code{"png"}, \code{"pdf"},
-\code{"jpg"}, \code{"svg"}. Defaults to \code{c("png", "pdf")}.}
+\item{formats}{Any of \code{"png"}, \code{"pdf"}, \code{"jpg"}, \code{"svg"}.}
 
-\item{results_root}{Path to a directory of amRml model outputs (per-species
-subdirectories of \verb{*_perf.parquet} / \verb{*_top_features.parquet} /
-\code{metadata.parquet}). When \code{NULL} (default), the packaged demo data bundled
-with amRviz is used.}
+\item{results_root}{Directory of amRml model outputs (per-species subdirs
+of \verb{*_perf.parquet} / \verb{*_top_features.parquet} / \code{metadata.parquet}).
+\code{NULL} uses the packaged demo data.}
 
-\item{amrdata_root}{Path to amRdata annotation parquets used to enrich
-feature-importance panels (COG categories, etc.). When \code{NULL} (default),
-\verb{~/amRdata/data} is used if present; otherwise annotation-based panels fall
-back to unenriched output.}
+\item{amrdata_root}{Directory of amRdata annotation parquets (for COG
+enrichment). \code{NULL} tries \verb{~/amRdata/data}, else falls back to unenriched.}
 
-\item{species}{Optional character vector restricting which species are
-exported, matched against the species folder names. \code{NULL} (default)
-exports every species found.}
+\item{species}{Optional character vector restricting which species folders
+to export.}
 
-\item{top_n_features}{Number of top features to show in each
-feature-importance panel (per model), matching the dashboard's "Top
-features" control. Defaults to \code{10}.}
+\item{top_n_features, network_top_n}{Feature counts for the
+feature-importance panels and the drug-feature network.}
 
-\item{network_top_n}{Number of top features per drug to include in the
-drug-feature network, matching the dashboard's network slider. Defaults to
-\code{5}.}
+\item{width, height}{Viewport size in pixels.}
 
-\item{width, height}{Snapshot viewport size in pixels.}
+\item{scale}{Device-pixel multiplier for the PNG render; higher = sharper.}
 
-\item{scale}{Device-pixel multiplier for raster (\code{png}/\code{jpg}) output; the
-saved image is \code{width * scale} by \code{height * scale} pixels. Defaults to \code{2}
-(~340 dpi at a 7 in figure width); use \code{3}-\code{4} for ~500-680 dpi. Ignored
-for the vector \code{pdf} and \code{svg} output.}
+\item{delay}{Seconds to wait for each widget's JavaScript to settle.}
 
-\item{delay}{Seconds to wait for each widget's JavaScript to render before
-the screenshot is taken. Increase if figures come out partially rendered.}
-
-\item{verbose}{Whether to print per-figure progress.}
+\item{verbose}{Per-figure progress messages.}
 }
 \value{
-Invisibly, a data frame with one row per attempted figure: its
-\code{group}, \code{name}, the number of files \code{written}, and whether it \code{ok}.
+Invisibly, a data frame with one row per figure: \code{group}, \code{name},
+\code{written} (file count), \code{ok}.
 }
 \description{
-Renders the complete set of amRviz figures - metadata distributions, model
-performance, feature importance, cross-model holdouts, and drug-feature
-networks - to static image files, without launching the interactive Shiny
-dashboard. This lets a user install the package, point it at model results
-(or use the packaged demo data), and obtain figures for every panel in one
-call.
+Renders every amRviz figure (metadata, model performance, feature
+importance, cross-model holdouts, drug-feature networks) to files, without
+launching the Shiny app. One figure set per species, with global overviews
+under \verb{_overview} / \verb{_across_species}. Selections mirror the dashboard's
+defaults; \code{top_n_features} and \code{network_top_n} override the corresponding
+sliders.
 }
 \details{
-One figure set is produced per species using the same default selections the
-dashboard opens with (e.g. all molecular scales, binary encoding, gentamicin
-where present). The number of features shown is adjustable via
-\code{top_n_features} (feature-importance panels) and \code{network_top_n} (the
-drug-feature network). Species-agnostic overviews (the performance heatmaps
-and the cross-species feature-importance panel) are written once under
-\verb{_overview} and \verb{_across_species}.
-
-Because every dashboard plot is an interactive htmlwidget (plotly or
-networkD3), static export photographs each widget with a headless Chrome via
-the \pkg{webshot2} package. \code{png}, \code{pdf}, and \code{jpg} are fully supported.
-\code{svg} is best-effort: it requires the plotly image engine (kaleido) and is
-silently skipped for widgets or environments where that is unavailable.
-
-On output quality: \code{pdf} is written as a true vector figure (Chrome's
-Skia PDF backend over the plots' underlying SVG), so it is resolution
-independent and the best choice for publication. Raster formats (\code{png},
-\code{jpg}) are screenshots whose resolution is \code{width * scale} by
-\code{height * scale} pixels; raise \code{scale} for high-DPI raster figures.
+Widgets are driven by a headless Chrome: \code{png} is a webshot2 snapshot;
+\code{jpg} and \code{pdf} are re-encodes of that PNG via \pkg{magick} (identical
+crop and dimensions); \code{svg} is extracted from the DOM via \pkg{chromote},
+using \code{Plotly.toImage} for plotly so titles and labels survive.
 }
 \examples{
 if (interactive()) {
