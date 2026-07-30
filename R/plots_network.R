@@ -33,7 +33,18 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     dplyr::mutate(species = normalize_species(.data$species)) |>
     dplyr::filter(.data$species %in% normalize_species(bug)) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
-    dplyr::filter(!is.na(.data$Variable), !is.na(.data$drug_or_class))
+    dplyr::filter(!is.na(.data$Variable), !is.na(.data$drug_or_class)) |>
+    dplyr::mutate(
+      Variable = dplyr::case_when(
+        feature_type == "domains" ~ sub("_.+$", "", Variable),
+        feature_type == "proteins" ~ sub("fig.", "fig|", Variable, fixed = TRUE),
+        feature_type == "args" ~ sub(
+          "^X", "",
+          gsub("\\.NCBIFAM", "", Variable)
+        ),
+        TRUE ~ Variable
+      )
+    )
 
   if (!nrow(df)) {
     return(NULL)
@@ -65,25 +76,25 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     )
 
   extra_nodes_cluster <- character(0)
-  extra_nodes_cog <- character(0)
+  # extra_nodes_cog <- character(0)
   var_cluster_edges <- NULL
-  cluster_cog_edges <- NULL
+  # cluster_cog_edges <- NULL
 
   if (include_clusters) {
     ann <- load_feature_annotations(bug, results_root)
     if (!is.null(ann) && nrow(ann)) {
       # Match Variable ("PF23840_IPR056912") against ann$feature ("PF23840")
-      variables_key <- stringr::str_split_i(variables, "_", 1)
-      var_key_map <- stats::setNames(variables, variables_key)
+      # variables_key <- stringr::str_split_i(variables, "_", 1)
+      # var_key_map <- stats::setNames(variables, variables_key)
       ann_sub <- ann |>
-        dplyr::filter(.data$feature %in% variables_key)
+        dplyr::filter(.data$feature %in% variables)
 
       if (include_clusters && nrow(ann_sub)) {
         cl_edges <- ann_sub |>
           dplyr::filter(!is.na(.data$cluster)) |>
           dplyr::distinct(.data$feature, .data$cluster) |>
           dplyr::transmute(
-            source_name = var_key_map[.data$feature],
+            source_name = .data$feature,
             target_name = .data$cluster,
             value = 0.5
           )
