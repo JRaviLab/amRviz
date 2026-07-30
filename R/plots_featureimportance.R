@@ -284,6 +284,34 @@ makeFeatureImportancePlot <- function(
 }
 
 
+#' Drop literal "NA" tokens from a COG_name string
+#'
+#' The annotation source records unnamed COGs as the literal string "NA" and
+#' space-joins them into `COG_name` (e.g. "Alanine racemase NA NA NA"). This
+#' removes those standalone tokens, returning `NA` when nothing meaningful is
+#' left so callers can fall back to the bare COG id.
+#'
+#' @param x Character vector of `COG_name` values.
+#' @return A character vector with `NA` tokens removed; `NA_character_` where no
+#'   real name remains.
+#' @keywords internal
+#' @noRd
+.clean_cog_name <- function(x) {
+  vapply(
+    x,
+    function(s) {
+      if (is.na(s)) {
+        return(NA_character_)
+      }
+      toks <- setdiff(strsplit(s, "[[:space:]]+")[[1]], c("NA", ""))
+      if (!length(toks)) NA_character_ else paste(toks, collapse = " ")
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+
 #' Horizontal bar chart of the most common COGs
 #'
 #' Counts COG occurrences across the features in an annotation-enriched
@@ -316,9 +344,16 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
 
   rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
     cogs <- trimws(strsplit(cog_df$COG[i], ",", fixed = TRUE)[[1]])
-    names <- if ("COG_name" %in% names(cog_df) &&
-      !is.na(cog_df$COG_name[i])) {
-      n <- trimws(strsplit(cog_df$COG_name[i], ";", fixed = TRUE)[[1]])
+    # The annotation source stores unnamed COGs as the literal token "NA" and
+    # space-joins them into COG_name (e.g. "Alanine racemase NA NA NA");
+    # .clean_cog_name() strips those so they don't leak into the bar labels.
+    clean <- if ("COG_name" %in% names(cog_df)) {
+      .clean_cog_name(cog_df$COG_name[i])
+    } else {
+      NA_character_
+    }
+    names <- if (!is.na(clean)) {
+      n <- trimws(strsplit(clean, ";", fixed = TRUE)[[1]])
       rep_len(n, length(cogs))
     } else {
       rep(NA_character_, length(cogs))
