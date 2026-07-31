@@ -50,9 +50,10 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     return(NULL)
   }
 
-  # Take top N features per drug/class by max importance
+  # Take top N features per drug/class by max importance. Keep feature_type so
+  # variable nodes can be coloured by molecular scale downstream.
   edges_df <- df |>
-    dplyr::group_by(.data$drug_or_class, .data$Variable) |>
+    dplyr::group_by(.data$drug_or_class, .data$Variable, .data$feature_type) |>
     dplyr::summarise(
       Importance = max(.data$Importance, na.rm = TRUE),
       .groups = "drop"
@@ -67,6 +68,8 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
 
   drugs <- unique(edges_df$drug_or_class)
   variables <- unique(edges_df$Variable)
+  # Molecular scale (feature_type) for each variable node, used for colouring.
+  variables_scale <- edges_df$feature_type[match(variables, edges_df$Variable)]
 
   drug_var_edges <- edges_df |>
     dplyr::transmute(
@@ -138,11 +141,14 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     }
   }
 
+  # Variable nodes are grouped by their molecular scale (feature_type) so each
+  # scale - COGs included - gets its own colour from the shared SCALE_COLORS
+  # palette. Drug and cluster keep their own groups.
   nodes <- data.frame(
     name = c(drugs, variables, extra_nodes_cluster),
     node_type = c(
       rep("drug", length(drugs)),
-      rep("variable", length(variables)),
+      variables_scale,
       rep("cluster", length(extra_nodes_cluster))
     ),
     stringsAsFactors = FALSE
@@ -158,9 +164,15 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
       value = .data$value
     )
 
-  color_scale <- 'd3.scaleOrdinal()
-    .domain(["drug","variable","cluster"])
-    .range(["#d4872a","#5b8db8","#66a61e"])'
+  # Colour domain: drug + every molecular scale + cluster, drawing scale colours
+  # from the shared SCALE_COLORS palette so the network matches the other tabs.
+  js_array <- function(x) paste0('["', paste(x, collapse = '","'), '"]')
+  group_domain <- c("drug", names(SCALE_COLORS), "cluster")
+  group_range <- c("#d4872a", unname(SCALE_COLORS), "#66a61e")
+  color_scale <- sprintf(
+    "d3.scaleOrdinal().domain(%s).range(%s)",
+    js_array(group_domain), js_array(group_range)
+  )
 
   .styleNetwork(networkD3::forceNetwork(
     Links = edges,
