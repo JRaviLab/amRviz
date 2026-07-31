@@ -49,12 +49,18 @@ Imports:
 Suggests:
     BiocStyle,
     chromote,
+    htmlwidgets,
     knitr,
+    magick,
     rmarkdown,
     shinytest2,
     spelling,
     testthat (>= 3.0.0),
+    webshot2,
     withr
+SystemRequirements: Google Chrome or Chromium (only for
+    exportAMRVisualizations(), which drives a headless browser via
+    webshot2/chromote to render the interactive plots to static files)
 VignetteBuilder: knitr
 biocViews:
     Software,

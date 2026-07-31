@@ -1,4 +1,23 @@
-# Misc cross-cutting helpers: species-code handling, choice derivation.
+# Misc cross-cutting helpers.
+
+
+#' Empty plotly placeholder with an explanatory title
+#'
+#' Returned by plots_* functions when there's nothing to draw. Sets an explicit
+#' trace type so plotly doesn't warn about guessing one at render.
+#'
+#' @param msg Message shown as the plot title.
+#' @return A `plotly` htmlwidget.
+#' @keywords internal
+#' @noRd
+plotly_placeholder <- function(msg) {
+  plotly::plot_ly(type = "scatter", mode = "markers") |>
+    plotly::layout(
+      title = list(text = msg, x = 0),
+      xaxis = list(visible = FALSE),
+      yaxis = list(visible = FALSE)
+    )
+}
 
 
 # Species code regex (note: Esp. includes escaped period)

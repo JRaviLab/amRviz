@@ -24,17 +24,17 @@ makeModelPerformancePlot <- function(
   amr_drug_class, amr_drug
 ) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No data available", x = 0)))
+    return(plotly_placeholder("No data available"))
   }
 
-  # Filter to baseline models (strat_label is NA = no country/year
-  # stratification); drop cross-tested rows, which ship in their own files.
+  # Baseline models only (strat_label NA); drop cross-tested rows (own files).
+  # Drop NA metric rows so plotly's box trace doesn't warn about dropped obs.
   df <- data |>
     dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
     dplyr::filter(.data$feature_type %in% model_scale) |>
     dplyr::filter(.data$feature_subtype %in% data_type) |>
-    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+    dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
+    dplyr::filter(!is.na(.data[[metrics]]))
   if ("cross_test" %in% names(df)) {
     df <- dplyr::filter(df, !.data$cross_test)
   }
@@ -50,8 +50,7 @@ makeModelPerformancePlot <- function(
   }
 
   if (!nrow(df)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No data for current selection", x = 0)))
+    return(plotly_placeholder("No data for current selection"))
   }
 
   # Normalize species and set ESKAPE factor order
@@ -209,7 +208,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
                              selected_drug = NULL) {
   df <- .prep_mcc_data(data)
   if (is.null(df)) {
-    return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
+    return(plotly_placeholder("No data available"))
   }
 
   sl <- .scale_label_map()
@@ -227,8 +226,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     )
 
   if (!nrow(df)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = "No data for selected filters"))
+    return(plotly_placeholder("No data for selected filters"))
   }
 
   # Highlight selected drug or drug class. Priority: specific drug > class.
@@ -262,6 +260,9 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       )
     )
 
+  # Keep alpha/size on geom_jitter only. In the top-level aes() they'd also
+  # apply to geom_boxplot's line width, triggering ggplot2 3.4's size-for-lines
+  # deprecation.
   g <- ggplot2::ggplot(
     df,
     ggplot2::aes(
@@ -269,11 +270,9 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       y = .data$mcc,
       color = .data$scale_label,
       fill = .data$scale_label,
-      alpha = .data$pt_alpha,
-      size = .data$pt_size,
       text = paste0(
         "Drug/class: ", .data$drug_or_class,
-        "\MCC: ", round(.data$mcc, 3),
+        "\nMCC: ", round(.data$mcc, 3),
         "\nEncoding: ", .data$feature_subtype
       )
     )
@@ -282,7 +281,10 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       alpha = 0.3, outlier.shape = NA,
       width = 0.5, linewidth = 0.4
     ) +
-    ggplot2::geom_jitter(width = 0.15, size = 1.5) +
+    ggplot2::geom_jitter(
+      ggplot2::aes(alpha = .data$pt_alpha, size = .data$pt_size),
+      width = 0.15
+    ) +
     ggplot2::geom_hline(
       yintercept = 0, linetype = "dashed",
       color = "gray50", linewidth = 0.4
@@ -331,12 +333,11 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
 makeMCCHeatmap <- function(data, selected_drug_class = NULL) {
   df <- .prep_mcc_data(data)
   if (is.null(df)) {
-    return(plotly::plot_ly() |> plotly::layout(title = "No data available"))
+    return(plotly_placeholder("No data available"))
   }
   df <- df |> dplyr::filter(.data$drug_label == "drug_class")
   if (!nrow(df)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = "No drug-class data available"))
+    return(plotly_placeholder("No drug-class data available"))
   }
 
   # Drug-class order: most-represented first (bottom of y = first row)

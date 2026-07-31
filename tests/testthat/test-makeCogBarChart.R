@@ -60,3 +60,37 @@ test_that("makeClusterBarChart respects top_n parameter", {
   result <- makeClusterBarChart(df, top_n = 5)
   expect_s3_class(result, "plotly")
 })
+
+test_that(".clean_cog_name strips standalone NA tokens", {
+  expect_equal(.clean_cog_name("Alanine racemase NA NA NA"), "Alanine racemase")
+  expect_equal(
+    .clean_cog_name("D-serine deaminase NA"), "D-serine deaminase"
+  )
+  # NA tokens in the middle collapse too
+  expect_equal(.clean_cog_name("foo NA bar"), "foo bar")
+})
+
+test_that(".clean_cog_name returns NA when nothing meaningful remains", {
+  expect_true(is.na(.clean_cog_name("NA")))
+  expect_true(is.na(.clean_cog_name("NA NA NA")))
+  expect_true(is.na(.clean_cog_name(NA_character_)))
+})
+
+test_that(".clean_cog_name strips NA tokens adjacent to semicolons", {
+  expect_equal(
+    .clean_cog_name("Foo NA NA NA; Bar NA NA"),
+    "Foo; Bar"
+  )
+  expect_equal(
+    .clean_cog_name("Foo NA; NA; Bar"),
+    "Foo; Bar"
+  )
+})
+
+test_that(".clean_cog_name leaves clean names untouched and is vectorised", {
+  expect_equal(.clean_cog_name("Beta-lactamase class C"), "Beta-lactamase class C")
+  expect_equal(
+    .clean_cog_name(c("Helicase NA", "NA", "Transcription")),
+    c("Helicase", NA, "Transcription")
+  )
+})
