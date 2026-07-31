@@ -98,16 +98,16 @@ amRviz reads the parquet files produced by **amRml**. Files must be organized in
 ```
 results/
 ├── Shigella_flexneri/
-│   ├── Sfl_ML_perf.parquet
-│   ├── Sfl_country_ML_perf.parquet
-│   ├── Sfl_year_ML_perf.parquet
-│   ├── Sfl_cross_ML_perf.parquet
-│   ├── Sfl_ML_top_features.parquet
-│   ├── Sfl_country_ML_top_features.parquet
-│   ├── Sfl_year_ML_top_features.parquet
-│   └── Sfl_metadata.parquet
+│   ├── all_perf.parquet
+│   ├── country_perf.parquet
+│   ├── year_perf.parquet
+│   ├── cross_perf.parquet
+│   ├── all_top_features.parquet
+│   ├── country_top_features.parquet
+│   ├── year_top_features.parquet
+│   └── metadata.parquet
 ├── Klebsiella_pneumoniae/
-│   ├── Kpn_ML_perf.parquet
+│   ├── all_perf.parquet
 │   └── ...
 └── ...
 ```
@@ -118,7 +118,7 @@ results/
 
 ## Data schema
 
-### Performance metrics (`*_ML_perf.parquet`)
+### Performance metrics (`*_perf.parquet`)
 
 | Column | Description |
 |---|---|
@@ -131,7 +131,7 @@ results/
 | `strat_value` / `strat_value_test` | Trained-on / tested-on country or year (stratified/cross models) |
 | `mcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics |
 
-### Top features (`*_ML_top_features.parquet`)
+### Top features (`*_top_features.parquet`)
 
 | Column | Description |
 |---|---|

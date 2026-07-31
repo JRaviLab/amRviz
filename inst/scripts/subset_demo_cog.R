@@ -11,7 +11,7 @@ ann_file <- file.path(dir, "cluster_feature.parquet")
 # never match and is safe to drop.
 tf_files <- list.files(
   dir,
-  pattern = "_ML_top_features\\.parquet$",
+  pattern = "_top_features\\.parquet$",
   full.names = TRUE
 )
 
