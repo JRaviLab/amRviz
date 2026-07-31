@@ -3,15 +3,9 @@
 
 # ── .load_one_species_cluster_features ────────────────────────────────────────────────
 
-test_that(".load_one_species_cluster_features returns a tibble for bundled Shigella demo", {
-  folders <- listAmRmlSpeciesFolders(extdata, verbose = FALSE)
-  skip_if(
-    length(folders) == 0,
-    "No species dirs with baseline perf in extdata"
-  )
-
-  ann <- .load_one_species_cluster_features(folders[1])
-  # Demo data ships with cluster_feature_COG.parquet for Shigella_flexneri.
+test_that("load_feature_annotations returns a tibble for bundled Shigella demo", {
+  ann <- load_feature_annotations("Sfl")
+  # Demo data ships with cluster_feature.parquet for Shigella_flexneri.
   expect_true(is.null(ann) || tibble::is_tibble(ann) || is.data.frame(ann))
   if (!is.null(ann)) {
     expect_true(all(

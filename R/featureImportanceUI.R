@@ -81,14 +81,14 @@ featureImportanceUI <- function() {
                   condition = "input.across_bug_id == 'drug'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_ml_across_bug", "Drug", NULL, FALSE)
+                    amr_select("amr_drug_across_bug", "Drug", NULL, FALSE)
                   )
                 ),
                 shiny::conditionalPanel(
                   condition = "input.across_bug_id == 'drug_class'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_class_ml_across_bug", "Drug class", NULL, FALSE)
+                    amr_select("amr_drug_class_across_bug", "Drug class", NULL, FALSE)
                   )
                 )
               ),
@@ -150,14 +150,14 @@ featureImportanceUI <- function() {
                   condition = "input.across_drug_id == 'drug'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_ml_across_drug", "Drug (multi-select)", NULL)
+                    amr_select("amr_drug_across_drug", "Drug (multi-select)", NULL)
                   )
                 ),
                 shiny::conditionalPanel(
                   condition = "input.across_drug_id == 'drug_class'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_class_ml_across_drug", "Drug class (multi-select)", NULL)
+                    amr_select("amr_drug_class_across_drug", "Drug class (multi-select)", NULL)
                   )
                 )
               ),

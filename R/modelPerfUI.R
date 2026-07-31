@@ -12,7 +12,7 @@ modelPerfUI <- function() {
         div(
           h3("Model Performance", style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"),
           amr_select(
-            "bug_ml_perf_id", "Bug",
+            "bug_perf_id", "Bug",
             character(0),
             multiple = TRUE,
             selected = NULL
@@ -22,12 +22,12 @@ modelPerfUI <- function() {
       column(
         width = 4,
         style = "padding-top: 52px;",
-        amr_select("drug_class_ml_perf_id", "Drug class", NULL, FALSE)
+        amr_select("drug_class_perf_id", "Drug class", NULL, FALSE)
       ),
       column(
         width = 4,
         style = "padding-top: 52px;",
-        amr_select("drug_ml_perf_id", "Drug", NULL, FALSE)
+        amr_select("drug_perf_id", "Drug", NULL, FALSE)
       )
     ),
     column(

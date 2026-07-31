@@ -7,7 +7,7 @@
 #'        output results. If `NULL` (default), the application will attempt to
 #'        use example data bundled with the package, where available.
 #' @param amrdata_root File path to the root directory containing amRdata
-#'        annotation parquets (e.g. `cluster_feature_COG.parquet`,
+#'        annotation parquets (e.g. `cluster_feature.parquet`,
 #'        `gene_names.parquet`). If `NULL` (default), `~/amRdata/data` is used
 #'        when present; otherwise annotation-based features are disabled.
 #'

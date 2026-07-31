@@ -53,20 +53,21 @@ networkUI <- function() {
             "Adds cluster (fig) nodes from annotations.",
             style = "font-size: 11px; color: #666;"
           )
-        ),
-        column(
-          width = 3,
-          style = "padding: 10px;",
-          checkboxInput(
-            inputId = "network_include_cogs",
-            label = "Show COGs",
-            value = FALSE
-          ),
-          tags$span(
-            "Adds COG nodes from annotations.",
-            style = "font-size: 11px; color: #666;"
-          )
         )
+        # ,
+        # column(
+        #   width = 3,
+        #   style = "padding: 10px;",
+        #   checkboxInput(
+        #     inputId = "network_include_cogs",
+        #     label = "Show COGs",
+        #     value = FALSE
+        #   ),
+        #   tags$span(
+        #     "Adds COG nodes from annotations.",
+        #     style = "font-size: 11px; color: #666;"
+        #   )
+        # )
       ),
       fluidRow(
         column(

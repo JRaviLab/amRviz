@@ -95,7 +95,7 @@ setupServerCore <- function(input, output, session, results_root) {
     choices <- available_species()
     sel <- if (length(choices)) choices[[1]] else NULL
 
-    shiny::updateSelectizeInput(session, "bug_ml_perf_id",
+    shiny::updateSelectizeInput(session, "bug_perf_id",
       choices = choices, selected = choices
     )
     shiny::updateSelectizeInput(session, "bug_search_amr_across_bug",

@@ -88,7 +88,7 @@ The dashboard is organized into tabs:
 5. **Model holdouts**: Compare models across stratifications
    - Country-holdout and year-interval models
    - Accuracy distributions, performance heatmaps, and feature consistency
-6. **Network**: Interactive force-directed drug → feature graph, with optional cluster/COG nodes
+6. **Network**: Interactive force-directed drug → feature graph, with optional cluster nodes
 7. **Query data**: Browse and export the raw performance-metric and top-feature tables as CSV
 
 ### Data requirements
@@ -98,16 +98,16 @@ amRviz reads the parquet files produced by **amRml**. Files must be organized in
 ```
 results/
 ├── Shigella_flexneri/
-│   ├── Sfl_ML_perf.parquet
-│   ├── Sfl_country_ML_perf.parquet
-│   ├── Sfl_year_ML_perf.parquet
-│   ├── Sfl_cross_ML_perf.parquet
-│   ├── Sfl_ML_top_features.parquet
-│   ├── Sfl_country_ML_top_features.parquet
-│   ├── Sfl_year_ML_top_features.parquet
-│   └── Sfl_metadata.parquet
+│   ├── all_perf.parquet
+│   ├── country_perf.parquet
+│   ├── year_perf.parquet
+│   ├── cross_perf.parquet
+│   ├── all_top_features.parquet
+│   ├── country_top_features.parquet
+│   ├── year_top_features.parquet
+│   └── metadata.parquet
 ├── Klebsiella_pneumoniae/
-│   ├── Kpn_ML_perf.parquet
+│   ├── all_perf.parquet
 │   └── ...
 └── ...
 ```
@@ -118,7 +118,7 @@ results/
 
 ## Data schema
 
-### Performance metrics (`*_ML_perf.parquet`)
+### Performance metrics (`*_perf.parquet`)
 
 | Column | Description |
 |---|---|
@@ -131,7 +131,7 @@ results/
 | `strat_value` / `strat_value_test` | Trained-on / tested-on country or year (stratified/cross models) |
 | `mcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics |
 
-### Top features (`*_ML_top_features.parquet`)
+### Top features (`*_top_features.parquet`)
 
 | Column | Description |
 |---|---|
@@ -187,12 +187,13 @@ amRviz/
 
 If you use `amRviz` in your research, please cite:
 
-```
-Brenner E, Ghosh A, Boyer E, Vang C, Wolfe E, McKim A, Lesiyon R, Mayer D, Ravi J. (2026).
-amR: an R package suite to predict antimicrobial resistance in bacterial pathogens.
-R package version 0.99.0.
-https://github.com/JRaviLab/amR
-```
+> Ghosh A^, Brenner EP^, Boyer EA, McKim AP, Vang CK, Wolfe EP, Mayer D, Lesiyon RL, Ravi J.
+>
+> amR: an R package suite to predict antimicrobial resistance in bacterial pathogens.
+>
+> bioRxiv. 2026. DOI: [10.64898/2026.07.10.734579](https://doi.org/10.64898/2026.07.10.734579).
+
+^ Co-first authors
 
 ## For Bioconductor submission
 

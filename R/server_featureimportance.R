@@ -2,14 +2,14 @@
 
 serverFeatureImportance <- function(input, output, session, core,
                                     results_root, amrdata_root) {
-  output$ml_drug_toggle_ui <- shiny::renderUI({
-    choices <- switch(input$ml_drug_toggle_top,
+  output$drug_toggle_ui <- shiny::renderUI({
+    choices <- switch(input$drug_toggle_top,
       "bug"   = c("Drug Class" = "class", "Drug" = "drug"),
       "class" = c("Bug" = "bug", "Drug" = "drug"),
       "drug"  = c("Bug" = "bug", "Drug Class" = "class")
     )
     shiny::radioButtons(
-      inputId  = "ml_drug_toggle",
+      inputId  = "drug_toggle",
       label    = shiny::tags$label("Select by", style = "font-size: 15px;"),
       choices  = choices,
       selected = names(choices)[1],
@@ -53,7 +53,7 @@ serverFeatureImportance <- function(input, output, session, core,
         sel <- intersect("GEN", drugs_vec)
         if (!length(sel)) sel <- utils::head(drugs_vec, 1)
         shiny::updateSelectInput(
-          session, "amr_drug_ml_across_bug",
+          session, "amr_drug_across_bug",
           choices = drugs_vec, selected = sel
         )
       } else {
@@ -64,7 +64,7 @@ serverFeatureImportance <- function(input, output, session, core,
           sort()
         sel <- utils::head(drugs_class_vec, 1)
         shiny::updateSelectInput(
-          session, "amr_drug_class_ml_across_bug",
+          session, "amr_drug_class_across_bug",
           choices = drugs_class_vec, selected = sel
         )
       }
@@ -95,7 +95,7 @@ serverFeatureImportance <- function(input, output, session, core,
           dplyr::pull(.data$drug_or_class) |>
           unique() |>
           sort()
-        prev <- shiny::isolate(input$amr_drug_ml_across_drug)
+        prev <- shiny::isolate(input$amr_drug_across_drug)
         sel <- prev[prev %in% drugs_vec]
         if (!length(sel)) {
           pref <- c("OXA", "PEN", "MET")
@@ -103,7 +103,7 @@ serverFeatureImportance <- function(input, output, session, core,
           if (!length(sel)) sel <- utils::head(drugs_vec, min(3, length(drugs_vec)))
         }
         shiny::updateSelectInput(
-          session, "amr_drug_ml_across_drug",
+          session, "amr_drug_across_drug",
           choices = drugs_vec, selected = sel
         )
       } else {
@@ -112,7 +112,7 @@ serverFeatureImportance <- function(input, output, session, core,
           dplyr::pull(.data$drug_or_class) |>
           unique() |>
           sort()
-        prev <- shiny::isolate(input$amr_drug_class_ml_across_drug)
+        prev <- shiny::isolate(input$amr_drug_class_across_drug)
         sel <- prev[prev %in% drugs_class_vec]
         if (!length(sel)) {
           pref <- c("CEP", "LIN", "MAC", "PEN")
@@ -120,7 +120,7 @@ serverFeatureImportance <- function(input, output, session, core,
           if (!length(sel)) sel <- utils::head(drugs_class_vec, min(4, length(drugs_class_vec)))
         }
         shiny::updateSelectInput(
-          session, "amr_drug_class_ml_across_drug",
+          session, "amr_drug_class_across_drug",
           choices = drugs_class_vec, selected = sel
         )
       }
@@ -132,9 +132,9 @@ serverFeatureImportance <- function(input, output, session, core,
       return(NULL)
     }
     amr_drug <- if (input$across_bug_id == "drug") {
-      input$amr_drug_ml_across_bug
+      input$amr_drug_across_bug
     } else {
-      input$amr_drug_class_ml_across_bug
+      input$amr_drug_class_across_bug
     }
     makeFeatureImportancePlot(
       core$topFeatures(),
@@ -154,9 +154,9 @@ serverFeatureImportance <- function(input, output, session, core,
       return(NULL)
     }
     amr_drug <- if (input$across_drug_id == "drug") {
-      input$amr_drug_ml_across_drug
+      input$amr_drug_across_drug
     } else {
-      input$amr_drug_class_ml_across_drug
+      input$amr_drug_class_across_drug
     }
     makeFeatureImportancePlot(
       core$topFeatures(),
@@ -175,9 +175,9 @@ serverFeatureImportance <- function(input, output, session, core,
   enriched_across_bug <- shiny::reactive({
     amr_drug <- if (!is.null(input$across_bug_id) &&
       input$across_bug_id == "drug_class") {
-      input$amr_drug_class_ml_across_bug
+      input$amr_drug_class_across_bug
     } else {
-      input$amr_drug_ml_across_bug
+      input$amr_drug_across_bug
     }
     bug <- input$bug_search_amr_across_bug
     tf <- core$filtered_top_features() |>
@@ -198,9 +198,9 @@ serverFeatureImportance <- function(input, output, session, core,
   enriched_across_drug <- shiny::reactive({
     amr_drug <- if (!is.null(input$across_drug_id) &&
       input$across_drug_id == "drug_class") {
-      input$amr_drug_class_ml_across_drug
+      input$amr_drug_class_across_drug
     } else {
-      input$amr_drug_ml_across_drug
+      input$amr_drug_across_drug
     }
     bug <- input$bug_search_amr_across_drug
     tf <- core$filtered_top_features() |>

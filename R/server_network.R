@@ -8,7 +8,7 @@ serverNetwork <- function(input, output, session, core, results_root) {
       input$network_bug_id,
       top_n = input$network_top_n,
       include_clusters = isTRUE(input$network_include_clusters),
-      include_cogs = isTRUE(input$network_include_cogs),
+      # include_cogs = isTRUE(input$network_include_cogs),
       results_root = results_root
     )
   })
