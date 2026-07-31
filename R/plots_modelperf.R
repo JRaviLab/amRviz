@@ -273,7 +273,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       size = .data$pt_size,
       text = paste0(
         "Drug/class: ", .data$drug_or_class,
-        "\MCC: ", round(.data$mcc, 3),
+        "\nMCC: ", round(.data$mcc, 3),
         "\nEncoding: ", .data$feature_subtype
       )
     )
