@@ -3,7 +3,7 @@
 # root
 
 dir <- "inst/extdata/Shigella_flexneri"
-ann_file <- file.path(dir, "cluster_feature_COG.parquet")
+ann_file <- file.path(dir, "cluster_feature.parquet")
 
 # Each top-features file's Variable column has the form "<prefix>_<suffix>"
 # (e.g. "PF21279_IPR056912"). enrich_with_annotations() joins on the prefix,

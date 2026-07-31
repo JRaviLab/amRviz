@@ -81,14 +81,14 @@ The dashboard is organized into tabs:
    - Host and isolation-source breakdown, plus a phenotype → drug → country → source Sankey
 3. **Model performance**: Compare ML model metrics
    - Filter by species, drug/drug class, molecular scale, and data encoding
-   - Per-model metric distributions, plus a Performance overview (nMCC strip plot and drug-class heatmaps)
+   - Per-model metric distributions, plus a Performance overview (MCC strip plot and drug-class heatmaps)
 4. **Bug/Drug feature comparison**: Analyze predictive features
    - Top features across species or across drugs
    - Annotated feature tables (COG/ARG), category barplots, and ego networks
 5. **Model holdouts**: Compare models across stratifications
    - Country-holdout and year-interval models
    - Accuracy distributions, performance heatmaps, and feature consistency
-6. **Network**: Interactive force-directed drug → feature graph, with optional cluster/COG nodes
+6. **Network**: Interactive force-directed drug → feature graph, with optional cluster nodes
 7. **Query data**: Browse and export the raw performance-metric and top-feature tables as CSV
 
 ### Data requirements
