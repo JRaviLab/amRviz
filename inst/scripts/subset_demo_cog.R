@@ -3,7 +3,7 @@
 # root
 
 dir <- "inst/extdata/Shigella_flexneri"
-ann_file <- file.path(dir, "cluster_feature_COG.parquet")
+ann_file <- file.path(dir, "cluster_feature.parquet")
 
 # Each top-features file's Variable column has the form "<prefix>_<suffix>"
 # (e.g. "PF21279_IPR056912"). enrich_with_annotations() joins on the prefix,
@@ -11,7 +11,7 @@ ann_file <- file.path(dir, "cluster_feature_COG.parquet")
 # never match and is safe to drop.
 tf_files <- list.files(
   dir,
-  pattern = "_ML_top_features\\.parquet$",
+  pattern = "_top_features\\.parquet$",
   full.names = TRUE
 )
 

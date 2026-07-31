@@ -1,7 +1,7 @@
 ---
 title: "Using the amRviz dashboard"
 output:
-  BiocStyle::html_document:
+  BiocStyle::htdocument:
     fig_width: 7
     fig_height: 5
 vignette: >
@@ -81,20 +81,20 @@ becomes the display label throughout the dashboard, while a short species code
 ```
 results/
 └── Shigella_flexneri/
-    ├── Sfl_ML_perf.parquet              # baseline model performance
-    ├── Sfl_country_ML_perf.parquet      # country-stratified models
-    ├── Sfl_year_ML_perf.parquet         # year-stratified models
-    ├── Sfl_cross_ML_perf.parquet        # cross-tested models
-    ├── Sfl_ML_top_features.parquet      # top predictive features
-    ├── Sfl_country_ML_top_features.parquet
-    ├── Sfl_year_ML_top_features.parquet
-    ├── Sfl_metadata.parquet             # isolate surveillance metadata
-    └── cluster_feature_COG.parquet      # optional COG/annotation lookup
+    ├── perf.parquet              # baseline model performance
+    ├── country_perf.parquet      # country-stratified models
+    ├── year_perf.parquet         # year-stratified models
+    ├── cross_perf.parquet        # cross-tested models
+    ├── top_features.parquet      # top predictive features
+    ├── country_top_features.parquet
+    ├── year_top_features.parquet
+    ├── metadata.parquet             # isolate surveillance metadata
+    └── cluster_feature.parquet      # optional COG/annotation lookup
 ```
 
 Three file types drive the dashboard:
 
-**Performance metrics** (`*_ML_perf.parquet`) has one row per model. Key columns:
+**Performance metrics** (`*_perf.parquet`) has one row per model. Key columns:
 
 | Column | Description |
 |---|---|
@@ -107,7 +107,7 @@ Three file types drive the dashboard:
 | `strat_value` / `strat_value_test` | Trained-on / tested-on stratum |
 | `mcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics |
 
-**Top features** (`*_ML_top_features.parquet`), ranked predictive features per
+**Top features** (`*_top_features.parquet`), ranked predictive features per
 model, with `Variable` (feature ID), `Importance` (score), and `Sign`
 (direction of effect).
 
@@ -156,9 +156,9 @@ knitr::include_graphics("figures/tour-metadata.png")
 Compare model performance across drugs and molecular scales. Pick a bug, drug
 class, and drug; the **Model performance** sub-tab shows per-model metric
 distributions, while the **Performance overview** sub-tab (below) gives a
-bird's-eye summary of baseline models: a strip plot of nMCC by molecular scale
-(left) and heatmaps of median nMCC by drug class across scale and data encoding
-(right). Here, domain- and gene-scale models reach the highest nMCC for most
+bird's-eye summary of baseline models: a strip plot of MCC by molecular scale
+(left) and heatmaps of median MCC by drug class across scale and data encoding
+(right). Here, domain- and gene-scale models reach the highest MCC for most
 drug classes.
 
 ```{r, echo = FALSE, out.width = "100%"}
