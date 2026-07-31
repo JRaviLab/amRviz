@@ -327,8 +327,7 @@ makeFeatureImportancePlot <- function(
 makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
     !"COG" %in% names(enriched_tbl)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No annotations available", x = 0)))
+    return(plotly_placeholder("No annotations available"))
   }
 
   # Split the comma-separated COG cells and count occurrences per Variable.
@@ -338,8 +337,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
     dplyr::distinct()
 
   if (!nrow(cog_df)) {
-    return(plotly::plot_ly() |>
-      plotly::layout(title = list(text = "No COGs in selection", x = 0)))
+    return(plotly_placeholder("No COGs in selection"))
   }
 
   rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
