@@ -76,6 +76,17 @@ test_that(".clean_cog_name returns NA when nothing meaningful remains", {
   expect_true(is.na(.clean_cog_name(NA_character_)))
 })
 
+test_that(".clean_cog_name strips NA tokens adjacent to semicolons", {
+  expect_equal(
+    .clean_cog_name("Foo NA NA NA; Bar NA NA"),
+    "Foo; Bar"
+  )
+  expect_equal(
+    .clean_cog_name("Foo NA; NA; Bar"),
+    "Foo; Bar"
+  )
+})
+
 test_that(".clean_cog_name leaves clean names untouched and is vectorised", {
   expect_equal(.clean_cog_name("Beta-lactamase class C"), "Beta-lactamase class C")
   expect_equal(

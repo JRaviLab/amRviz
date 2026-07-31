@@ -284,31 +284,26 @@ makeFeatureImportancePlot <- function(
 }
 
 
-#' Drop literal "NA" tokens from a COG_name string
+#' Strip standalone "NA" tokens from a COG_name string
 #'
-#' The annotation source records unnamed COGs as the literal string "NA" and
-#' space-joins them into `COG_name` (e.g. "Alanine racemase NA NA NA"). This
-#' removes those standalone tokens, returning `NA` when nothing meaningful is
-#' left so callers can fall back to the bare COG id.
+#' The annotation source stores unnamed COG name slots as the literal string
+#' "NA". Splits on `;` first so tokens adjacent to a semicolon get caught too.
 #'
 #' @param x Character vector of `COG_name` values.
-#' @return A character vector with `NA` tokens removed; `NA_character_` where no
-#'   real name remains.
+#' @return Cleaned vector; `NA_character_` where no real name remains.
 #' @keywords internal
 #' @noRd
 .clean_cog_name <- function(x) {
-  vapply(
-    x,
-    function(s) {
-      if (is.na(s)) {
-        return(NA_character_)
-      }
-      toks <- setdiff(strsplit(s, "[[:space:]]+")[[1]], c("NA", ""))
-      if (!length(toks)) NA_character_ else paste(toks, collapse = " ")
-    },
-    character(1),
-    USE.NAMES = FALSE
-  )
+  clean_one <- function(s) {
+    if (is.na(s)) return(NA_character_)
+    kept <- character(0)
+    for (p in trimws(strsplit(s, ";", fixed = TRUE)[[1]])) {
+      toks <- setdiff(strsplit(p, "[[:space:]]+")[[1]], c("NA", ""))
+      if (length(toks)) kept <- c(kept, paste(toks, collapse = " "))
+    }
+    if (!length(kept)) NA_character_ else paste(kept, collapse = "; ")
+  }
+  vapply(x, clean_one, character(1), USE.NAMES = FALSE)
 }
 
 
@@ -342,9 +337,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
 
   rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
     cogs <- trimws(strsplit(cog_df$COG[i], ",", fixed = TRUE)[[1]])
-    # The annotation source stores unnamed COGs as the literal token "NA" and
-    # space-joins them into COG_name (e.g. "Alanine racemase NA NA NA");
-    # .clean_cog_name() strips those so they don't leak into the bar labels.
+    # .clean_cog_name() strips "NA" placeholder tokens the source stuffs in.
     clean <- if ("COG_name" %in% names(cog_df)) {
       .clean_cog_name(cog_df$COG_name[i])
     } else {
