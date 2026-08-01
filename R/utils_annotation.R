@@ -146,7 +146,7 @@ load_feature_annotations <- function(species_code, results_root = NULL) {
 }
 
 
-#' Enrich a top-features tibble with cluster/COG annotations
+#' Enrich a top-features tibble with cluster annotations
 #'
 #' Joins annotations on the feature key extracted from `Variable` (the part
 #' before the first "_"), collapsing multiple COGs per feature into a single
@@ -155,7 +155,7 @@ load_feature_annotations <- function(species_code, results_root = NULL) {
 #' @param tbl Top-features tibble (must contain a `Variable` column).
 #' @param species_code Species code passed to load_feature_annotations().
 #' @param results_root Optional user results root.
-#' @return `tbl` with cluster/COG columns joined on, or unchanged when no
+#' @return `tbl` with cluster columns joined on, or unchanged when no
 #'   annotations are available.
 #' @keywords internal
 #' @noRd

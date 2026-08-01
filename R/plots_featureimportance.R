@@ -146,7 +146,7 @@ makeFeatureImportancePlot <- function(
       top_features_df <- tryCatch(
         top_features_df |>
           dplyr::inner_join(annotated_table, by = join_by_expr) |>
-          dplyr::filter(!is.na(.data$COG_name)),
+          dplyr::filter(!is.na(.data$cluster_name)),
         error = function(e) {
           message("Annotation join failed: ", conditionMessage(e))
           top_features_df
@@ -192,7 +192,7 @@ makeFeatureImportancePlot <- function(
 
   # Aggregate: max importance per group x COG
   top_features_df <- top_features_df |>
-    dplyr::group_by(!!rlang::sym(group_column), .data$COG_name) |>
+    dplyr::group_by(!!rlang::sym(group_column), .data$cluster_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
 
   # Min-max normalise within each group
@@ -243,7 +243,7 @@ makeFeatureImportancePlot <- function(
 
     vi_wider <- top_features_df |>
       dplyr::select("COG_name", "Importance", "drug_or_class") |>
-      dplyr::group_by(.data$COG_name, .data$drug_or_class) |>
+      dplyr::group_by(.data$cluster_name, .data$drug_or_class) |>
       dplyr::summarise(
         Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop"
       ) |>
@@ -321,49 +321,49 @@ makeFeatureImportancePlot <- function(
 #' @noRd
 makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
-    !"COG" %in% names(enriched_tbl)) {
+    !"cluster" %in% names(enriched_tbl)) {
     return(plotly_placeholder("No annotations available"))
   }
 
-  # Split the comma-separated COG cells and count occurrences per Variable.
-  cog_df <- enriched_tbl |>
-    dplyr::filter(!is.na(.data$COG), nzchar(.data$COG)) |>
-    dplyr::select("Variable", "COG", dplyr::any_of("COG_name")) |>
+  # Split the comma-separated cluster cells and count occurrences per Variable.
+  cluster_df <- enriched_tbl |>
+    dplyr::filter(!is.na(.data$cluster), nzchar(.data$cluster)) |>
+    dplyr::select("Variable", "cluster", dplyr::any_of("cluster_name")) |>
     dplyr::distinct()
 
-  if (!nrow(cog_df)) {
-    return(plotly_placeholder("No COGs in selection"))
+  if (!nrow(cluster_df)) {
+    return(plotly_placeholder("No clusters in selection"))
   }
 
-  rows <- do.call(rbind, lapply(seq_len(nrow(cog_df)), function(i) {
-    cogs <- trimws(strsplit(cog_df$COG[i], ",", fixed = TRUE)[[1]])
-    # .clean_cog_name() strips "NA" placeholder tokens the source stuffs in.
-    clean <- if ("COG_name" %in% names(cog_df)) {
-      .clean_cog_name(cog_df$COG_name[i])
-    } else {
-      NA_character_
-    }
-    names <- if (!is.na(clean)) {
-      n <- trimws(strsplit(clean, ";", fixed = TRUE)[[1]])
-      rep_len(n, length(cogs))
-    } else {
-      rep(NA_character_, length(cogs))
-    }
-    data.frame(COG = cogs, COG_name = names, stringsAsFactors = FALSE)
-  }))
+  # rows <- do.call(rbind, lapply(seq_len(nrow(cluster_df)), function(i) {
+  #   cogs <- trimws(strsplit(cluster_df$COG[i], ",", fixed = TRUE)[[1]])
+  #   # .clean_cog_name() strips "NA" placeholder tokens the source stuffs in.
+  #   clean <- if ("COG_name" %in% names(cluster_df)) {
+  #     .clean_cog_name(cluster_df$COG_name[i])
+  #   } else {
+  #     NA_character_
+  #   }
+  #   names <- if (!is.na(clean)) {
+  #     n <- trimws(strsplit(clean, ";", fixed = TRUE)[[1]])
+  #     rep_len(n, length(cogs))
+  #   } else {
+  #     rep(NA_character_, length(cogs))
+  #   }
+  #   data.frame(COG = cogs, COG_name = names, stringsAsFactors = FALSE)
+  # }))
 
-  counts <- rows |>
-    dplyr::filter(nzchar(.data$COG)) |>
-    dplyr::count(.data$COG, .data$COG_name, name = "n") |>
+  counts <- cluster_df |>
+    dplyr::filter(nzchar(.data$cluster)) |>
+    dplyr::count(.data$cluster, .data$cluster_name, name = "n") |>
     dplyr::arrange(dplyr::desc(.data$n)) |>
     dplyr::slice_head(n = top_n) |>
     dplyr::mutate(
       label = dplyr::if_else(
-        is.na(.data$COG_name) | !nzchar(.data$COG_name),
-        .data$COG,
+        is.na(.data$cluster_name) | !nzchar(.data$cluster_name),
+        .data$cluster,
         paste0(
-          .data$COG, ": ",
-          stringr::str_trunc(.data$COG_name, 40)
+          .data$cluster, ": ",
+          stringr::str_trunc(.data$cluster_name, 40)
         )
       )
     )
