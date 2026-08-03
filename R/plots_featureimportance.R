@@ -190,8 +190,16 @@ makeFeatureImportancePlot <- function(
   #   return(NULL)
   # }
 
-  # Aggregate: max importance per group x COG
-  top_features_df <- top_features_df |> amRviz:::enrich_with_annotations()|>
+  # Enrich per-species so each subset uses its own species_code, then drop
+  # features that didn't match an annotation (nothing to place on the y-axis).
+  top_features_df <- dplyr::bind_rows(lapply(
+    unique(top_features_df$species),
+    function(sp) enrich_with_annotations(
+      top_features_df[top_features_df$species == sp, ],
+      species_code = sp, results_root = results_root
+    )
+  )) |>
+    dplyr::filter(!is.na(.data$cluster_name)) |>
     dplyr::group_by(!!rlang::sym(group_column), .data$cluster_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
 

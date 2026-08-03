@@ -12,7 +12,7 @@ output results. If \code{NULL} (default), the application will attempt to
 use example data bundled with the package, where available.}
 
 \item{amrdata_root}{File path to the root directory containing amRdata
-annotation parquets (e.g. \code{cluster_feature_COG.parquet},
+annotation parquets (e.g. \code{cluster_feature.parquet},
 \code{gene_names.parquet}). If \code{NULL} (default), \verb{~/amRdata/data} is used
 when present; otherwise annotation-based features are disabled.}
 }
