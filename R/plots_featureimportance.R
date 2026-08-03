@@ -319,7 +319,7 @@ makeFeatureImportancePlot <- function(
 #'   annotations).
 #' @keywords internal
 #' @noRd
-makeCogBarChart <- function(enriched_tbl, top_n = 15) {
+makeClusterBarChart <- function(enriched_tbl, top_n = 15) {
   if (is.null(enriched_tbl) || !nrow(enriched_tbl) ||
     !"cluster" %in% names(enriched_tbl)) {
     return(plotly_placeholder("No annotations available"))
@@ -383,7 +383,7 @@ makeCogBarChart <- function(enriched_tbl, top_n = 15) {
   ) |>
     plotly::layout(
       title = list(
-        text = "Top COGs among selected features",
+        text = "Top protein clusters mapped to top features",
         x = 0, font = list(size = 13)
       ),
       xaxis = list(title = "Features"),

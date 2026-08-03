@@ -376,7 +376,7 @@
             ) |>
             dplyr::filter(.data$drug_or_class %in% fi_drugs)
           if (!nrow(tf)) {
-            return(makeCogBarChart(NULL))
+            return(makeClusterBarChart(NULL))
           }
           enriched <- dplyr::bind_rows(lapply(unique(tf$species), function(sp) {
             enrich_with_annotations(
@@ -384,7 +384,7 @@
               species_code = sp, results_root = results_root
             )
           }))
-          makeCogBarChart(enriched)
+          makeClusterBarChart(enriched)
         })
       })
     }
