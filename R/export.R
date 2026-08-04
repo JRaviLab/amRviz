@@ -437,7 +437,7 @@
         makeDrugFeatureNetwork(
           top_features, code,
           top_n = network_top_n,
-          include_clusters = FALSE, include_cogs = FALSE,
+          include_clusters = FALSE,
           results_root = results_root
         ) |> .fit_network_to_content()
       }, width = 1600, height = 1600, trim = TRUE)

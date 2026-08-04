@@ -9,8 +9,7 @@ test_that("load_feature_annotations returns a tibble for bundled Shigella demo",
   expect_true(is.null(ann) || tibble::is_tibble(ann) || is.data.frame(ann))
   if (!is.null(ann)) {
     expect_true(all(
-      c("cluster", "feature", "cluster_name", "COG", "COG_name") %in%
-        names(ann)
+      c("cluster", "feature", "cluster_name") %in% names(ann)
     ))
     expect_gt(nrow(ann), 0)
   }
@@ -51,16 +50,17 @@ test_that("enrich_with_annotations adds cluster/COG columns when annotations exi
   skip_if(nrow(ann) == 0, "Empty annotations")
 
   # Build a tbl using a feature ID that exists in the annotations.
+  # feature_type hits the case_when catch-all so Variable is
+  # passed through unchanged and the join can match on it directly.
   sample_feature <- ann$feature[1]
   df <- tibble::tibble(
     Variable = c(sample_feature, paste0(sample_feature, "_extra")),
+    feature_type = c("testvar", "testvar"),
     Importance = c(0.5, 0.3)
   )
 
   result <- enrich_with_annotations(df, "Sfl")
-  expect_true(all(
-    c("cluster", "cluster_name", "COG", "COG_name") %in% names(result)
-  ))
+  expect_true(all(c("cluster", "cluster_name") %in% names(result)))
   expect_equal(nrow(result), 2)
 })
 

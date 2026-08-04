@@ -284,9 +284,5 @@ get_metadata_path <- function(species_dir = NULL, results_root = NULL) {
     return(NULL)
   }
 
-  fp <- .find_file_in_subdirs(results_root, fname)
-  if (!is.null(fp)) {
-    return(fp)
-  }
-  .find_file_in_subdirs(system.file("extdata", package = "amRviz"), fname)
+  find_parquet(fname, results_root)
 }
