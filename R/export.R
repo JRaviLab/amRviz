@@ -376,7 +376,7 @@
             ) |>
             dplyr::filter(.data$drug_or_class %in% fi_drugs)
           if (!nrow(tf)) {
-            return(makeCogBarChart(NULL))
+            return(makeClusterBarChart(NULL))
           }
           enriched <- dplyr::bind_rows(lapply(unique(tf$species), function(sp) {
             enrich_with_annotations(
@@ -384,7 +384,7 @@
               species_code = sp, results_root = results_root
             )
           }))
-          makeCogBarChart(enriched)
+          makeClusterBarChart(enriched)
         })
       })
     }
@@ -437,7 +437,7 @@
         makeDrugFeatureNetwork(
           top_features, code,
           top_n = network_top_n,
-          include_clusters = FALSE, include_cogs = FALSE,
+          include_clusters = FALSE,
           results_root = results_root
         ) |> .fit_network_to_content()
       }, width = 1600, height = 1600, trim = TRUE)
@@ -534,7 +534,7 @@
 #' @param results_root Directory of amRml model outputs (per-species subdirs
 #'   of `*_perf.parquet` / `*_top_features.parquet` / `metadata.parquet`).
 #'   `NULL` uses the packaged demo data.
-#' @param amrdata_root Directory of amRdata annotation parquets (for COG
+#' @param amrdata_root Directory of amRdata annotation parquets (for cluster
 #'   enrichment). `NULL` tries `~/amRdata/data`, else falls back to unenriched.
 #' @param species Optional character vector restricting which species folders
 #'   to export.

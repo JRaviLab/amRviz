@@ -1,6 +1,20 @@
 # Misc cross-cutting helpers.
 
 
+#' Locate a parquet by filename, preferring `results_root` over packaged extdata
+#'
+#' @param fname File name to look for.
+#' @param results_root Optional user results root, searched first.
+#' @return The full file path, or `NULL` when the file isn't found in either
+#'   location.
+#' @keywords internal
+#' @noRd
+find_parquet <- function(fname, results_root = NULL) {
+  .find_file_in_subdirs(results_root, fname) %||%
+    .find_file_in_subdirs(system.file("extdata", package = "amRviz"), fname)
+}
+
+
 #' Empty plotly placeholder with an explanatory title
 #'
 #' Returned by plots_* functions when there's nothing to draw. Sets an explicit

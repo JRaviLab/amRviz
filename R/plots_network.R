@@ -4,12 +4,12 @@
 #' Interactive force-directed drug -> feature network
 #'
 #' Links drugs (or drug classes) to their top features (Variables), optionally
-#' extending to cluster and COG tiers when an annotations parquet is available.
+#' extending to cluster tier when an annotations parquet is available.
 #'
 #' @param top_data Pre-loaded top-features tibble from loadTopFeat().
 #' @param bug 3-letter species code.
 #' @param top_n Number of top features per drug to include as edges.
-#' @param include_clusters,include_cogs Add annotation tiers when TRUE.
+#' @param include_clusters Add annotation tiers when TRUE.
 #' @param results_root Path for annotation lookup (falls back to extdata).
 #' @return A `networkD3` forceNetwork widget, or NULL when there is nothing to
 #'   plot.
@@ -107,6 +107,8 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
         }
       }
 
+      # TODO(HMMER PR): restore the cluster -> COG / variable -> COG network
+      # tiers below once cross-scale features land.
       # if (include_cogs && nrow(ann_sub)) {
   #       if (include_clusters && !is.null(var_cluster_edges)) {
   #         # cluster -> COG edges

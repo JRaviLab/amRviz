@@ -98,55 +98,41 @@ load_feature_name_map <- function(species_code, model_scale,
   NULL
 }
 
+.ann_cache <- new.env(parent = emptyenv())
 
-#' Load cluster/COG annotations for a species
+#' Load cluster annotations for a species
 #'
-#' Searches the species subdirectories under `results_root`, then the packaged
-#' extdata, for `cluster_feature.parquet`.
+#' Reads `cluster_feature.parquet` + `protein_names.parquet` from `results_root`
+#' (else packaged extdata). Cached per-session since these parquets don't change.
 #'
 #' @param species_code Species code (currently unused; kept for call-site
 #'   consistency).
 #' @param results_root Optional user results root, searched first.
-#' @return The annotations tibble, or NULL when no parquet is found.
+#' @return The annotations tibble, or NULL when a parquet is missing.
 #' @keywords internal
 #' @noRd
+
 load_feature_annotations <- function(species_code, results_root = NULL) {
-  feature_fname <- "cluster_feature.parquet"
-  protein_fname <- "protein_names.parquet"
+  key <- paste(species_code %||% "", results_root %||% "", sep = "|")
+  if (!is.null(.ann_cache[[key]])) return(.ann_cache[[key]])
 
-  feature_fp <- .find_file_in_subdirs(results_root, feature_fname)
-  if (is.null(feature_fp)) {
-    feature_fp <- .find_file_in_subdirs(
-      system.file("extdata", package = "amRviz"),
-      feature_fname
-    )
-  }
+  feature_fp <- find_parquet("cluster_feature.parquet", results_root)
+  protein_fp <- find_parquet("protein_names.parquet", results_root)
+  if (is.null(feature_fp) || is.null(protein_fp)) return(NULL)
 
-  protein_fp <- .find_file_in_subdirs(results_root, protein_fname)
-  if (is.null(protein_fp)) {
-    protein_fp <- .find_file_in_subdirs(
-      system.file("extdata", package = "amRviz"),
-      protein_fname
-    )
-  }
-
-  if (is.null(feature_fp) || is.null(protein_fp)) {
-    return(NULL)
-  }
-
-  feature_tbl <- arrow::read_parquet(feature_fp)
-  protein_tbl <- arrow::read_parquet(protein_fp)
-
-  dplyr::left_join(
-    feature_tbl,
-    protein_tbl,
-    by = c("cluster" = "proteinID") 
+  result <- dplyr::left_join(
+    arrow::read_parquet(feature_fp),
+    arrow::read_parquet(protein_fp),
+    by = c("cluster" = "proteinID")
   ) |>
     dplyr::rename(cluster_name = "proteinName")
+
+  .ann_cache[[key]] <- result
+  result
 }
 
 
-#' Enrich a top-features tibble with cluster/COG annotations
+#' Enrich a top-features tibble with cluster annotations
 #'
 #' Joins annotations on the feature key extracted from `Variable` (the part
 #' before the first "_"), collapsing multiple COGs per feature into a single
@@ -155,7 +141,7 @@ load_feature_annotations <- function(species_code, results_root = NULL) {
 #' @param tbl Top-features tibble (must contain a `Variable` column).
 #' @param species_code Species code passed to load_feature_annotations().
 #' @param results_root Optional user results root.
-#' @return `tbl` with cluster/COG columns joined on, or unchanged when no
+#' @return `tbl` with cluster columns joined on, or unchanged when no
 #'   annotations are available.
 #' @keywords internal
 #' @noRd
@@ -183,8 +169,11 @@ enrich_with_annotations <- function(tbl, species_code, results_root = NULL) {
       )
     )
 
+  # Filter to only the features actually present in tbl before aggregating.
+  # The annotation table has ~2M rows; without this, group_by/summarise runs
+  # over all of them on every call.
   ann_collapsed <- ann |>
-    # dplyr::filter(.data$feature %in% join_keys) |>
+    dplyr::filter(.data$feature %in% tbl$Variable) |>
     dplyr::group_by(.data$feature) |>
     dplyr::summarise(
       cluster = dplyr::first(.data$cluster),

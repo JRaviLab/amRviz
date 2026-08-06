@@ -171,7 +171,7 @@ serverFeatureImportance <- function(input, output, session, core,
     )
   })
 
-  # Annotation-joined top features feeding the table, COG barplot, and ego network.
+  # Annotation-joined top features feeding the table, cluster barplot, and ego network.
   enriched_across_bug <- shiny::reactive({
     amr_drug <- if (!is.null(input$across_bug_id) &&
       input$across_bug_id == "drug_class") {
@@ -232,10 +232,10 @@ serverFeatureImportance <- function(input, output, session, core,
   })
 
   output$across_bug_cog_barplot <- plotly::renderPlotly({
-    makeCogBarChart(enriched_across_bug())
+    makeClusterBarChart(enriched_across_bug())
   })
   output$across_drug_cog_barplot <- plotly::renderPlotly({
-    makeCogBarChart(enriched_across_drug())
+    makeClusterBarChart(enriched_across_drug())
   })
 
   output$across_bug_ego_network <- networkD3::renderForceNetwork({

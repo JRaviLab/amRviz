@@ -50,19 +50,6 @@ test_that("makeFeatureImportTable adds hyperlinks for accession column", {
   expect_true(any(grepl("href", unlist(result$x$data))))
 })
 
-test_that("makeFeatureImportTable adds hyperlinks for COG column", {
-  df <- tibble::tibble(
-    species = c("Sau"),
-    drug_or_class = c("ampicillin"),
-    COG = c("COG0001"),
-    Importance = c(0.5)
-  )
-
-  result <- makeFeatureImportTable(df)
-  expect_s3_class(result, "datatables")
-  expect_true(any(grepl("href", unlist(result$x$data))))
-})
-
 test_that("makeFeatureImportTable adds hyperlinks for cluster column", {
   df <- tibble::tibble(
     species = c("Sfl"),
