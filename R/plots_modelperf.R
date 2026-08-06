@@ -57,10 +57,24 @@ makeModelPerformancePlot <- function(
   eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
   df <- df |>
     dplyr::mutate(species = normalize_species(.data$species))
+
+  # Prefer the full species name (from species_label) over the 3-letter code
+  # for display, matching makeMCCStripPlot()'s .prep_mcc_data() convention.
+  df <- df |>
+    dplyr::mutate(
+      species_display = if ("species_label" %in% names(df)) {
+        gsub("_", " ", .data$species_label)
+      } else {
+        .data$species
+      }
+    )
+
   present <- unique(df$species)
   lvls <- intersect(eskape_order, present)
   if (length(lvls) > 0) {
-    df <- df |> dplyr::mutate(species = factor(.data$species, levels = lvls))
+    display_lvls <- unique(df$species_display[match(lvls, df$species)])
+    df <- df |>
+      dplyr::mutate(species_display = factor(.data$species_display, levels = display_lvls))
   }
 
   # Order feature_type so legend + colors line up with SCALE_COLORS.
@@ -102,7 +116,7 @@ makeModelPerformancePlot <- function(
     p <- p |>
       plotly::add_trace(
         type = "box",
-        x = sub$species,
+        x = sub$species_display,
         y = sub[[metrics]],
         name = ft,
         legendgroup = ft,
@@ -119,7 +133,7 @@ makeModelPerformancePlot <- function(
         p <- p |>
           plotly::add_trace(
             type = "box",
-            x = sub_pts$species,
+            x = sub_pts$species_display,
             y = sub_pts[[metrics]],
             boxpoints = "all",
             pointpos = 0,
@@ -308,7 +322,9 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     plotly::layout(
       title = list(
         text = "MCC per species and molecular scale", x = 0,
-        font = list(size = 13, color = "#333333", family = "Arial, sans-serif")
+        font = list(size = 13, color = "#333333", family = "Arial, sans-serif")),
+        xaxis = list(
+       tickfont = list(size = 10), tickangle = -45
       ),
       margin = list(t = 50)
     )
