@@ -6,7 +6,7 @@
 #' Orders rows by coverage (number of non-NA groups) then peak importance, drops
 #' the scratch ranking columns, and returns a feature x group numeric matrix.
 #'
-#' @param vi_wider Wide importance tibble with a `COG_name` column.
+#' @param vi_wider Wide importance tibble with a `cluster_name` column.
 #' @param group_cols Names of the group (value) columns.
 #' @return A numeric matrix with features as row names and groups as columns.
 #' @keywords internal
@@ -95,7 +95,8 @@ makeFeatureImportancePlot <- function(
     feature_importance_tabset == "across_bug" ~ "species"
   )
 
-  # Attempt to load annotated files for COG name lookup
+  # TODO(HMMER PR): restore COG/ARG annotation join once cross-scale features
+  # land. Attempt to load annotated files for COG name lookup
   # ann_dirs <- c(
   #   annotated_dir,
   #   system.file("extdata", "Annotated", package = "amRviz")
@@ -155,10 +156,10 @@ makeFeatureImportancePlot <- function(
     # }
  #}
 
-  # If no annotation join produced COG_name, fall back to Variable
-  # if (!"COG_name" %in% names(top_features_df)) {
+  # If no annotation join produced cluster_name, fall back to Variable
+  # if (!"cluster_name" %in% names(top_features_df)) {
   #   top_features_df <- top_features_df |>
-  #     dplyr::mutate(COG_name = .data$Variable)
+  #     dplyr::mutate(cluster_name = .data$Variable)
   # }
 
   # Replace opaque feature IDs (e.g. "group_6367") with human-readable names
@@ -173,16 +174,16 @@ makeFeatureImportancePlot <- function(
   #   # Domain variables in top features look like "PF21279_IPR...": split
   #   # on "_" to extract the join key.
   #   join_key <- if (scale == "domain") {
-  #     stringr::str_split_i(top_features_df$COG_name, "_", 1)
+  #     stringr::str_split_i(top_features_df$cluster_name, "_", 1)
   #   } else {
-  #     top_features_df$COG_name
+  #     top_features_df$cluster_name
   #   }
   #   lookup <- stats::setNames(name_map$label, name_map$Variable)
   #   new_label <- lookup[join_key]
   #   # Keep original id only when no label is available or it's blank
   #   replace <- !is.na(new_label) & nzchar(new_label)
-  #   top_features_df$COG_name[replace] <- paste0(
-  #     top_features_df$COG_name[replace],
+  #   top_features_df$cluster_name[replace] <- paste0(
+  #     top_features_df$cluster_name[replace],
   #     " (", new_label[replace], ")"
   #   )
   # }
@@ -343,6 +344,14 @@ makeClusterBarChart <- function(enriched_tbl, top_n = 15) {
     return(plotly_placeholder("No clusters in selection"))
   }
 
+  # cluster_name is optional on the input; dplyr::count() below needs the
+  # column to exist even when every value is NA.
+  if (!"cluster_name" %in% names(cluster_df)) {
+    cluster_df$cluster_name <- NA_character_
+  }
+
+  # TODO(HMMER PR): restore per-feature COG splitting once cross-scale
+  # features land. This pairs with the annotation-join TODO above.
   # rows <- do.call(rbind, lapply(seq_len(nrow(cluster_df)), function(i) {
   #   cogs <- trimws(strsplit(cluster_df$COG[i], ",", fixed = TRUE)[[1]])
   #   # .clean_cog_name() strips "NA" placeholder tokens the source stuffs in.

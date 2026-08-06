@@ -107,6 +107,8 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
         }
       }
 
+      # TODO(HMMER PR): restore the cluster -> COG / variable -> COG network
+      # tiers below once cross-scale features land.
       # if (include_cogs && nrow(ann_sub)) {
   #       if (include_clusters && !is.null(var_cluster_edges)) {
   #         # cluster -> COG edges

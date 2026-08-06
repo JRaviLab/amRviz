@@ -171,7 +171,7 @@ serverFeatureImportance <- function(input, output, session, core,
     )
   })
 
-  # Annotation-joined top features feeding the table, COG barplot, and ego network.
+  # Annotation-joined top features feeding the table, cluster barplot, and ego network.
   enriched_across_bug <- shiny::reactive({
     amr_drug <- if (!is.null(input$across_bug_id) &&
       input$across_bug_id == "drug_class") {
