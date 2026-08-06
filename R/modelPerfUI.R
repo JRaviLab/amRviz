@@ -41,7 +41,7 @@ modelPerfUI <- function() {
             fluidPage(
               tags$p(
                 style = "color: #555; font-size: 10px; padding-top: 10px;",
-                "Baseline models only (non-stratified, non-cross-test). ",
+                "Only baseline models from all the available species. ",
                 "Left: MCC distribution per species and molecular scale. ",
                 "Right: median MCC by drug class across species, ",
                 "molecular scale, and data encoding."
@@ -60,6 +60,10 @@ modelPerfUI <- function() {
           ),
           tabPanel(
             "Model performance",
+             fluidPage(
+              tags$p(
+                style = "color: #555; font-size: 10px; padding-top: 10px;","The filter options above allow to select a subset of species, drug classes, and drugs. ",
+                "The filter options below allow to select the model scale and data type")),
             tagList(
               fluidRow(
                 column(

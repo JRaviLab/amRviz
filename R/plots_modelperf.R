@@ -322,7 +322,9 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     plotly::layout(
       title = list(
         text = "MCC per species and molecular scale", x = 0,
-        font = list(size = 13, color = "#333333", family = "Arial, sans-serif")
+        font = list(size = 13, color = "#333333", family = "Arial, sans-serif")),
+        xaxis = list(
+       tickfont = list(size = 10), tickangle = -45
       ),
       margin = list(t = 50)
     )
