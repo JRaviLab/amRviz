@@ -37,6 +37,28 @@ modelPerfUI <- function() {
         style = "padding: 0;",
         tabsetPanel(
           tabPanel(
+            "Performance overview",
+            fluidPage(
+              tags$p(
+                style = "color: #555; font-size: 10px; padding-top: 10px;",
+                "Baseline models only (non-stratified, non-cross-test). ",
+                "Left: MCC distribution per species and molecular scale. ",
+                "Right: median MCC by drug class across species, ",
+                "molecular scale, and data encoding."
+              ),
+              fluidRow(
+                column(4, plotly::plotlyOutput(
+                  "mcc_strip_plot",
+                  height = "420px"
+                )),
+                column(8, plotly::plotlyOutput(
+                  "mcc_heatmap",
+                  height = "420px"
+                ))
+              )
+            )
+          ),
+          tabPanel(
             "Model performance",
             tagList(
               fluidRow(
@@ -85,28 +107,6 @@ modelPerfUI <- function() {
                   style = "height: 600px;",
                   plotly::plotlyOutput("model_perfomance_plot", height = "100%")
                 )
-              )
-            )
-          ),
-          tabPanel(
-            "Performance overview",
-            fluidPage(
-              tags$p(
-                style = "color: #555; font-size: 10px; padding-top: 10px;",
-                "Baseline models only (non-stratified, non-cross-test). ",
-                "Left: MCC distribution per species and molecular scale. ",
-                "Right: median MCC by drug class across species, ",
-                "molecular scale, and data encoding."
-              ),
-              fluidRow(
-                column(4, plotly::plotlyOutput(
-                  "mcc_strip_plot",
-                  height = "420px"
-                )),
-                column(8, plotly::plotlyOutput(
-                  "mcc_heatmap",
-                  height = "420px"
-                ))
               )
             )
           )

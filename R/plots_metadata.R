@@ -85,7 +85,7 @@ makeQuickStats <- function(data) {
     dplyr::pull(drug_class)
 
   top_n_countries <- data_with_drug_class |>
-    dplyr::filter(!grepl(pattern = "NA", x = genome.isolation_country)) |>
+    dplyr::filter(!is.na(genome.isolation_country)) |>
     dplyr::group_by(genome.isolation_country) |>
     dplyr::summarize(n = n()) |>
     dplyr::arrange(desc(n)) |>
@@ -271,6 +271,7 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
       legend.title = element_text(size = 12),
       legend.text = element_text(size = 10),
       axis.text = element_text(size = 10),
+      axis.text.x = element_text(angle = 45, hjust = 1),
       axis.title = element_text(size = 10)
     )
   plotly::ggplotly(g, tooltip = "text")
