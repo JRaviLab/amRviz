@@ -296,7 +296,7 @@ makeFeatureImportancePlot <- function(
 #'
 #' The annotation source stores unnamed COG name slots as the literal string
 #' "NA". Splits on `;` first so tokens adjacent to a semicolon get caught too.
-#'
+#' Used by the commented-out COG block below;
 #' @param x Character vector of `COG_name` values.
 #' @return Cleaned vector; `NA_character_` where no real name remains.
 #' @keywords internal
@@ -320,7 +320,7 @@ makeFeatureImportancePlot <- function(
 #' Counts cluster occurrences across the features in an annotation-enriched
 #' top-features tibble and shows the `top_n` most frequent.
 #'
-#' @param enriched_tbl Annotation-enriched top-features tibble (needs a `COG`
+#' @param enriched_tbl Annotation-enriched top-features tibble (needs a `cluster`
 #'   column; see enrich_with_annotations()).
 #' @param top_n Number of clusters to display.
 #' @return A horizontal plotly bar chart (empty placeholder when there are no

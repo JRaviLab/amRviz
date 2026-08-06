@@ -98,8 +98,9 @@ load_feature_name_map <- function(species_code, model_scale,
   NULL
 }
 
+.ann_cache <- new.env(parent = emptyenv())
 
-#' Load cluster/COG annotations for a species
+#' Load cluster annotations for a species
 #'
 #' Reads `cluster_feature.parquet` + `protein_names.parquet` from `results_root`
 #' (else packaged extdata). Cached per-session since these parquets don't change.
@@ -110,7 +111,6 @@ load_feature_name_map <- function(species_code, model_scale,
 #' @return The annotations tibble, or NULL when a parquet is missing.
 #' @keywords internal
 #' @noRd
-.ann_cache <- new.env(parent = emptyenv())
 
 load_feature_annotations <- function(species_code, results_root = NULL) {
   key <- paste(species_code %||% "", results_root %||% "", sep = "|")
