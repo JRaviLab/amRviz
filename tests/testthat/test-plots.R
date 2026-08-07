@@ -1,8 +1,8 @@
 ## Tests for plot generation functions
 
-# ── makeDatAvailabilityPlot ──────────────────────────────────────────────────
+# ── makeDataAvailabilityPlot ──────────────────────────────────────────────────
 
-test_that("makeDatAvailabilityPlot returns a plotly object", {
+test_that("makeDataAvailabilityPlot returns a plotly object", {
   df <- tibble::tibble(
     genome_drug.antibiotic = c(
       "ampicillin", "ampicillin", "tetracycline"
@@ -12,7 +12,7 @@ test_that("makeDatAvailabilityPlot returns a plotly object", {
     )
   )
 
-  result <- makeDatAvailabilityPlot(df)
+  result <- makeDataAvailabilityPlot(df)
   expect_s3_class(result, "plotly")
 })
 
