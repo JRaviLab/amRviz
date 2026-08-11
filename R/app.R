@@ -13,7 +13,6 @@
 #'
 #' @return A Shiny application object
 #' @export
-#' @import shiny
 #' @importFrom utils head write.csv
 #' @importFrom shinyjs useShinyjs
 #' @examples
@@ -29,11 +28,11 @@ launchAMRDashboard <- function(results_root = NULL,
     if (dir.exists(default_amrdata)) amrdata_root <- default_amrdata
   }
   # UI
-  ui <- tagList(
+  ui <- shiny::tagList(
     shinyjs::useShinyjs(),
-    tags$head(includeCSS(system.file("app/www/style.css", package = "amRviz"))),
-    tags$head(
-      tags$style(HTML("
+    shiny::tags$head(shiny::includeCSS(system.file("app/www/style.css", package = "amRviz"))),
+    shiny::tags$head(
+      shiny::tags$style(shiny::HTML("
                       .innerbox {
                         /*border: 2px solid black;*/
                         box-shadow: 2px 2px 3px 3px #ccc;
@@ -146,85 +145,85 @@ launchAMRDashboard <- function(results_root = NULL,
                     "))
     ),
     # App header: title row separate from the nav tabs
-    tags$div(
+    shiny::tags$div(
       class = "amr-app-header",
-      tags$div(
+      shiny::tags$div(
         class = "amr-app-header-title",
         "amRviz"
       ),
-      tags$div(
+      shiny::tags$div(
         class = "amr-app-header-logo",
-        tags$img(src = "www/logo.png", onerror = "this.style.display='none'")
+        shiny::tags$img(src = "www/logo.png", onerror = "this.style.display='none'")
       )
     ),
-    navbarPage(
+    shiny::navbarPage(
       id = "tabselected",
       selected = "home",
       title = "",
       # 2. Home icon tab (right of AMR dashboard)
-      tabPanel(
-        title = icon("home", class = "home-tab-icon"),
+      shiny::tabPanel(
+        title = shiny::icon("home", class = "home-tab-icon"),
         value = "home",
-        fluidPage(
+        shiny::fluidPage(
           style = "max-width: 960px; margin: 0 auto; padding: 24px 16px;",
 
           # Overview & Features
-          h3("Overview and Features",
+          shiny::h3("Overview and Features",
             style = "font-weight: bold; margin-bottom: 12px;"
           ),
-          tags$p("amRviz allows users to:"),
-          tags$ul(
+          shiny::tags$p("amRviz allows users to:"),
+          shiny::tags$ul(
             style = "line-height: 2; margin-bottom: 16px;",
-            tags$li("Explore AMR model performance across species, drugs, and drug classes."),
-            tags$li("Compare predictive performance across molecular feature scales (gene, protein, domain, structure)."),
-            tags$li("Identify key genomic features driving resistance predictions."),
-            tags$li("Analyze model generalization across geography and time."),
-            tags$li("Visualize and filter isolate metadata and model results interactively.")
+            shiny::tags$li("Explore AMR model performance across species, drugs, and drug classes."),
+            shiny::tags$li("Compare predictive performance across molecular feature scales (gene, protein, domain, structure)."),
+            shiny::tags$li("Identify key genomic features driving resistance predictions."),
+            shiny::tags$li("Analyze model generalization across geography and time."),
+            shiny::tags$li("Visualize and filter isolate metadata and model results interactively.")
           ),
-          tags$p(
+          shiny::tags$p(
             style = "margin-bottom: 28px;",
-            tags$em("amRviz is interactive, modular, and scalable for exploring AMR data and machine learning outputs.")
+            shiny::tags$em("amRviz is interactive, modular, and scalable for exploring AMR data and machine learning outputs.")
           ),
 
           # Workflow figure
-          div(
+          shiny::div(
             style = "text-align: center; margin-bottom: 32px;",
-            tags$img(
+            shiny::tags$img(
               src = "www/amr_overview.png",
               style = "max-width: 70%; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.12);",
               onerror = "this.style.display='none'"
             )
           ),
-          tags$hr(),
-          h2("amR: an R package suite to predict antimicrobial resistance in bacterial pathogens"),
-          tags$p(
-            tags$strong("Authors: "),
+          shiny::tags$hr(),
+          shiny::h2("amR: an R package suite to predict antimicrobial resistance in bacterial pathogens"),
+          shiny::tags$p(
+            shiny::tags$strong("Authors: "),
             "Evan P Brenner^, Abhirupa Ghosh^, Emily A Boyer, Charmie K Vang, Ethan P Wolfe, Alexander P McKim, Raymond L Lesiyon, David Mayer, Janani Ravi*."
           ),
-          tags$p(
+          shiny::tags$p(
             "Department of Biomedical Informatics, Center for Health Artificial Intelligence, University of Colorado Anschutz, Aurora, CO 80045.",
-            tags$span(style = "font-style: italic", " ^Co-primary authors contributing equally. *Corresponding author: janani.ravi@cuanschutz.edu")
+            shiny::tags$span(style = "font-style: italic", " ^Co-primary authors contributing equally. *Corresponding author: janani.ravi@cuanschutz.edu")
           ),
-          tags$p(
-            tags$strong("Keywords: "),
+          shiny::tags$p(
+            shiny::tags$strong("Keywords: "),
             "antimicrobial resistance, machine learning, bacterial genomics, pangenomics, interpretable models, drug resistance prediction, multiscale features, R package"
           ),
-          br(),
-          h4("Abstract"),
-          tags$strong("Motivation: "),
-          tags$p("Identifying antimicrobial resistance (AMR) in bacterial pathogens is critical for diagnostics and treatment, but resistance is a complex trait arising from diverse mechanisms spanning multiple molecular scales. Existing computational approaches often function as black boxes and rarely explore cross-species or multi-drug patterns. We developed amR, an integrated R package suite providing a complete framework from bacterial genome sequences to interpretable AMR predictions, enabling identification of resistance mechanisms across species and drugs."),
-          tags$strong("Results: "),
-          tags$p("The amR suite contains three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs pangenomes, and extracts features at gene/protein cluster, protein domain, and structural variant scales, along with annotating protein clusters with Clusters of Orthologous Genes and ResFinder AMR-associated features. Data are stored in memory-efficient Parquet and DuckDB formats. amRml trains interpretable machine learning models per species-drug combination, calculates feature importance and comprehensive performance metrics, and provides rich ground for mechanism discovery. amRviz provides an interactive Shiny dashboard to explore metadata distributions, model performance across species and drugs, visualize top predictive AMR features, and analyze cross-model patterns (including across geographic/temporal strata). The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides an accessible, comprehensive framework for AMR research."),
-          tags$strong("Availability and implementation: "),
-          tags$p(
+          shiny::br(),
+          shiny::h4("Abstract"),
+          shiny::tags$strong("Motivation: "),
+          shiny::tags$p("Identifying antimicrobial resistance (AMR) in bacterial pathogens is critical for diagnostics and treatment, but resistance is a complex trait arising from diverse mechanisms spanning multiple molecular scales. Existing computational approaches often function as black boxes and rarely explore cross-species or multi-drug patterns. We developed amR, an integrated R package suite providing a complete framework from bacterial genome sequences to interpretable AMR predictions, enabling identification of resistance mechanisms across species and drugs."),
+          shiny::tags$strong("Results: "),
+          shiny::tags$p("The amR suite contains three modular packages. amRdata interfaces with BV-BRC to download and process bacterial genomes with paired antimicrobial susceptibility testing data, constructs pangenomes, and extracts features at gene/protein cluster, protein domain, and structural variant scales, along with annotating protein clusters with Clusters of Orthologous Genes and ResFinder AMR-associated features. Data are stored in memory-efficient Parquet and DuckDB formats. amRml trains interpretable machine learning models per species-drug combination, calculates feature importance and comprehensive performance metrics, and provides rich ground for mechanism discovery. amRviz provides an interactive Shiny dashboard to explore metadata distributions, model performance across species and drugs, visualize top predictive AMR features, and analyze cross-model patterns (including across geographic/temporal strata). The suite has been applied to ESKAPE pathogens, achieving balanced accuracies above 0.80. With thousands of genomes, multi-scale features, and interpretable models, amR provides an accessible, comprehensive framework for AMR research."),
+          shiny::tags$strong("Availability and implementation: "),
+          shiny::tags$p(
             "amR is developed in R. We use Dockerized software for data curation and feature extraction, perform modeling with the tidymodels framework, and visualize results using Shiny. The suite is available at: ",
-            tags$a(href = "https://github.com/JRaviLab/amR", "https://github.com/JRaviLab/amR"), "."
+            shiny::tags$a(href = "https://github.com/JRaviLab/amR", "https://github.com/JRaviLab/amR"), "."
           ),
-          tags$p(
-            tags$strong("Contact: "),
-            tags$a(href = "mailto:janani.ravi@cuanschutz.edu", "janani.ravi@cuanschutz.edu")
+          shiny::tags$p(
+            shiny::tags$strong("Contact: "),
+            shiny::tags$a(href = "mailto:janani.ravi@cuanschutz.edu", "janani.ravi@cuanschutz.edu")
           ),
-          tags$hr(),
+          shiny::tags$hr(),
         )
       ),
       # other tabs
@@ -235,17 +234,17 @@ launchAMRDashboard <- function(results_root = NULL,
       networkUI(),
       queryDataUI()
     ),
-    tags$footer(
+    shiny::tags$footer(
       class = "footer",
-      tags$div(
+      shiny::tags$div(
         "(c) JRaviLab 2026 | ",
-        tags$a(href = "https://jravilab.github.io", "jravilab.github.io"),
+        shiny::tags$a(href = "https://jravilab.github.io", "jravilab.github.io"),
         " | ",
-        tags$a(href = "https://twitter.com/jravilab", "@jravilab"),
+        shiny::tags$a(href = "https://twitter.com/jravilab", "@jravilab"),
         " | janani.ravi@cuanschutz.edu |",
-        tags$a(
+        shiny::tags$a(
           href = "https://docs.google.com/forms/d/e/1FAIpQLSdwFo5Wwt_t4WGthDGgc1EYhvvKagUEb3RiNLdsbnpDlYTk7Q/viewform?usp=dialog",
-          icon("question-circle"),
+          shiny::icon("question-circle"),
           " Help Doc"
         )
       )

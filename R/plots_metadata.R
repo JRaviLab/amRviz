@@ -13,7 +13,7 @@
 #' @noRd
 quickStatBox <- function(title, value, icon_name, bg_color,
                          text_color = "white") {
-  div(
+  shiny::div(
     style = glue::glue("
       background-color: {bg_color};
       color: {text_color};
@@ -27,19 +27,19 @@ quickStatBox <- function(title, value, icon_name, bg_color,
       min-height: 55px;
       font-family: sans-serif;
     "),
-    div(
-      div(
+    shiny::div(
+      shiny::div(
         style = "font-size: 18px; font-weight: bold; line-height: 1.2;",
         value
       ),
-      div(
+      shiny::div(
         style = "font-size: 11px; margin-top: 3px; opacity: 0.9;",
         title
       )
     ),
-    div(
+    shiny::div(
       style = "font-size: 24px; opacity: 0.4;",
-      icon(icon_name)
+      shiny::icon(icon_name)
     )
   )
 }
@@ -92,44 +92,44 @@ makeQuickStats <- function(data) {
     dplyr::slice_head(n = 5) |>
     dplyr::pull(genome.isolation_country)
   spp_name <- unique(data_with_drug_class$species)
-  summary_paragraph <- tags$p(
+  summary_paragraph <- shiny::tags$p(
     style = "font-weight: bold; padding: 4px 4px 4px; font-family: sans-serif; font-size: 14px;",
     stringr::str_glue("Data summary for {stringr::str_to_sentence(spp_name[1])}")
   )
-  tagList(
+  shiny::tagList(
     summary_paragraph,
-    fluidRow(
-      column(4, quickStatBox("Isolate-drug records", total_genomes, "database", "#3c5a6f")),
-      column(4, quickStatBox("Unique genomes", total_uniques_genomes, "dna", "#7aab6e")),
-      column(4, quickStatBox("Drugs tested", n_amr_drugs, "pills", "#9b7fba"))
+    shiny::fluidRow(
+      shiny::column(4, quickStatBox("Isolate-drug records", total_genomes, "database", "#3c5a6f")),
+      shiny::column(4, quickStatBox("Unique genomes", total_uniques_genomes, "dna", "#7aab6e")),
+      shiny::column(4, quickStatBox("Drugs tested", n_amr_drugs, "pills", "#9b7fba"))
     ),
-    fluidRow(
-      column(4, quickStatBox("Resistant isolates", n_genomes_resistant, "virus", "#d4872a")),
-      column(4, quickStatBox("Susceptible isolates", n_genomes_susceptible, "shield-halved", "#8a8a8a")),
-      column(4, quickStatBox("Drug classes", n_amr_drug_class, "layer-group", "#8b6b7a"))
+    shiny::fluidRow(
+      shiny::column(4, quickStatBox("Resistant isolates", n_genomes_resistant, "virus", "#d4872a")),
+      shiny::column(4, quickStatBox("Susceptible isolates", n_genomes_susceptible, "shield-halved", "#8a8a8a")),
+      shiny::column(4, quickStatBox("Drug classes", n_amr_drug_class, "layer-group", "#8b6b7a"))
     ),
-    fluidRow(
-      column(4, quickStatBox(
+    shiny::fluidRow(
+      shiny::column(4, quickStatBox(
         "Top 5 drugs",
-        tags$span(
+        shiny::tags$span(
           style = "font-size:11px; line-height:1.5;",
-          HTML(paste(top_n_drugs, collapse = "<br/>"))
+          shiny::HTML(paste(top_n_drugs, collapse = "<br/>"))
         ),
         "star", "#4e9a9a"
       )),
-      column(4, quickStatBox(
+      shiny::column(4, quickStatBox(
         "Top 5 drug classes",
-        tags$span(
+        shiny::tags$span(
           style = "font-size:11px; line-height:1.5;",
-          HTML(paste(top_n_drugs_class, collapse = "<br/>"))
+          shiny::HTML(paste(top_n_drugs_class, collapse = "<br/>"))
         ),
         "list", "#6a6f4e"
       )),
-      column(4, quickStatBox(
+      shiny::column(4, quickStatBox(
         "Top 5 countries",
-        tags$span(
+        shiny::tags$span(
           style = "font-size:11px; line-height:1.5;",
-          HTML(paste(top_n_countries, collapse = "<br/>"))
+          shiny::HTML(paste(top_n_countries, collapse = "<br/>"))
         ),
         "globe", "#d4735e"
       ))

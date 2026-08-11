@@ -2,7 +2,6 @@
 
 export(exportAMRVisualizations)
 export(launchAMRDashboard)
-import(shiny)
 importFrom(DT,datatable)
 importFrom(arrow,read_parquet)
 importFrom(arrow,write_parquet)
