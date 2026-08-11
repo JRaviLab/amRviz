@@ -4,6 +4,7 @@
 
 test_that("makeDataAvailabilityPlot returns a plotly object", {
   df <- tibble::tibble(
+    genome.genome_id = c("G1", "G2", "G3"),
     genome_drug.antibiotic = c(
       "ampicillin", "ampicillin", "tetracycline"
     ),
