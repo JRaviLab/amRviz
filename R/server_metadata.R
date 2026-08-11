@@ -127,7 +127,7 @@ serverMetadata <- function(input, output, session, results_root) {
 
   output$resistance_vs_susceptible_plot <- plotly::renderPlotly({
     shiny::req(input$bug_metadata_id)
-    makeDatAvailabilityPlot(
+    makeDataAvailabilityPlot(
       .read_metadata_for_bug(input$bug_metadata_id, results_root)
     )
   })

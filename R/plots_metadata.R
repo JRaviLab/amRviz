@@ -144,8 +144,9 @@ makeQuickStats <- function(data) {
 #' @return A plotly stacked bar chart.
 #' @keywords internal
 #' @noRd
-makeDatAvailabilityPlot <- function(data) {
+makeDataAvailabilityPlot <- function(data) {
   data <- data |>
+    dplyr::distinct(genome.genome_id, genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
     dplyr::group_by(genome_drug.antibiotic, genome_drug.resistant_phenotype) |>
     count() |>
     ungroup()

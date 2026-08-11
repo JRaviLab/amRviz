@@ -453,7 +453,7 @@
       meta_raw <- function() .read_metadata_for_bug(sp, results_root)
 
       add(folder, "metadata_data_availability", function() {
-        makeDatAvailabilityPlot(meta_raw())
+        makeDataAvailabilityPlot(meta_raw())
       })
       add(folder, "metadata_geographic", function() {
         data <- meta_raw() |>
