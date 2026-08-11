@@ -2,12 +2,12 @@
 #' @return A tabPanel for metadata visualization
 #' @keywords internal
 metadataUI <- function() {
-  tabPanel(
+  shiny::tabPanel(
     title = "Metadata",
-    icon = icon("globe"),
-    fluidPage(
+    icon = shiny::icon("globe"),
+    shiny::fluidPage(
       # Main Content Section
-      column(
+      shiny::column(
         width = 12,
         amr_select(
           "bug_metadata_id",
@@ -17,23 +17,23 @@ metadataUI <- function() {
           selected = NULL
         )
       ),
-      fluidRow(
+      shiny::fluidRow(
         # Quick Stats Section
-        column(
+        shiny::column(
           width = 12,
-          div(
+          shiny::div(
             class = "quick-stats-container",
             style = "padding: 10px; margin-bottom: 20px; border: 1px solid lightgray; border-radius: 5px;",
-            uiOutput("quick_metadata_stats")
+            shiny::uiOutput("quick_metadata_stats")
           )
         )
       ),
-      fluidRow(
-        column(
+      shiny::fluidRow(
+        shiny::column(
           width = 6,
-          div(
+          shiny::div(
             class = "plot-container",
-            div(
+            shiny::div(
               class = "plot-header",
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes"
@@ -41,11 +41,11 @@ metadataUI <- function() {
             styledBox("resistance_vs_susceptible_ui")
           )
         ),
-        column(
+        shiny::column(
           width = 6,
-          div(
+          shiny::div(
             class = "plot-container",
-            div(
+            shiny::div(
               class = "plot-header",
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Global distribution of resistant phenotypes"
@@ -54,12 +54,12 @@ metadataUI <- function() {
           )
         )
       ),
-      fluidRow(
-        column(
+      shiny::fluidRow(
+        shiny::column(
           width = 6,
-          div(
+          shiny::div(
             class = "plot-container",
-            div(
+            shiny::div(
               class = "plot-header",
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes by year"
@@ -67,19 +67,19 @@ metadataUI <- function() {
             styledBox("r_s_across_time_ui")
           )
         ),
-        column(
+        shiny::column(
           width = 6,
-          div(
+          shiny::div(
             class = "plot-container",
-            uiOutput("isolation_source_header"),
+            shiny::uiOutput("isolation_source_header"),
             tabBox(
               id = "isolation_source_tabset",
               width = 12,
-              tabPanel(
+              shiny::tabPanel(
                 "Isolation sources",
                 styledBox("isolation_source_ui")
               ),
-              tabPanel(
+              shiny::tabPanel(
                 "Hosts",
                 styledBox("host_isolate_plot_ui")
               )
@@ -87,12 +87,12 @@ metadataUI <- function() {
           )
         )
       ),
-      fluidRow(
-        column(
+      shiny::fluidRow(
+        shiny::column(
           width = 12,
-          div(
+          shiny::div(
             class = "plot-container",
-            div(
+            shiny::div(
               class = "plot-header",
               style = paste0(
                 "text-align: center; font-family: 'Arial', sans-serif;",
@@ -104,11 +104,11 @@ metadataUI <- function() {
                 "country -> host -> isolation source"
               )
             ),
-            div(
+            shiny::div(
               style = "padding: 0 10px;",
-              selectInput(
+              shiny::selectInput(
                 inputId = "metadata_sankey_classes",
-                label = tags$label(
+                label = shiny::tags$label(
                   "Drug classes (top 3 by default)",
                   style = "font-size: 13px;"
                 ),

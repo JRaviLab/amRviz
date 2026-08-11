@@ -11,12 +11,12 @@
 #' @keywords internal
 #' @noRd
 amr_button <- function(id, label, icon_name, class_name) {
-  div(
+  shiny::div(
     style = "padding: 5px; text-align: center;",
-    actionButton(
+    shiny::actionButton(
       inputId = id,
-      label = tags$label(label, style = "font-size: 15px;"),
-      icon = icon(icon_name),
+      label = shiny::tags$label(label, style = "font-size: 15px;"),
+      icon = shiny::icon(icon_name),
       class = class_name,
       style = "width: 80%; font-weight: bold;"
     )
@@ -31,8 +31,8 @@ amr_button <- function(id, label, icon_name, class_name) {
 #' @keywords internal
 #' @noRd
 styledBox <- function(outputId) {
-  uiOutput(outputId, container = function(...) {
-    div(style = "padding-top: 0px; padding-bottom: 10px; height: 80%", ...)
+  shiny::uiOutput(outputId, container = function(...) {
+    shiny::div(style = "padding-top: 0px; padding-bottom: 10px; height: 80%", ...)
   })
 }
 
@@ -48,11 +48,11 @@ styledBox <- function(outputId) {
 #' @keywords internal
 #' @noRd
 amr_select <- function(id, label, choices, multiple = TRUE, selected = NULL) {
-  div(
+  shiny::div(
     style = "padding: 10px;",
-    selectInput(
+    shiny::selectInput(
       inputId = id,
-      label = tags$label(label, style = "font-size: 15px;"),
+      label = shiny::tags$label(label, style = "font-size: 15px;"),
       choices = choices,
       multiple = multiple,
       selectize = TRUE,

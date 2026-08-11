@@ -2,15 +2,15 @@
 #' @return A tabPanel for model performance visualization
 #' @keywords internal
 modelPerfUI <- function() {
-  tabPanel(
+  shiny::tabPanel(
     title = "Model performance",
     value = "model_perf_tab",
-    icon = icon("chart-line"),
-    fluidRow(
-      column(
+    icon = shiny::icon("chart-line"),
+    shiny::fluidRow(
+      shiny::column(
         width = 4,
-        div(
-          h3("Model Performance", style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"),
+        shiny::div(
+          shiny::h3("Model Performance", style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"),
           amr_select(
             "bug_perf_id", "Bug",
             character(0),
@@ -19,58 +19,58 @@ modelPerfUI <- function() {
           )
         )
       ),
-      column(
+      shiny::column(
         width = 4,
         style = "padding-top: 52px;",
         amr_select("drug_class_perf_id", "Drug class", NULL, FALSE)
       ),
-      column(
+      shiny::column(
         width = 4,
         style = "padding-top: 52px;",
         amr_select("drug_perf_id", "Drug", NULL, FALSE)
       )
     ),
-    column(
+    shiny::column(
       width = 12,
-      mainPanel(
+      shiny::mainPanel(
         width = 12,
         style = "padding: 0;",
-        tabsetPanel(
-          tabPanel(
+        shiny::tabsetPanel(
+          shiny::tabPanel(
             "Performance overview",
-            fluidPage(
-              tags$p(
+            shiny::fluidPage(
+              shiny::tags$p(
                 style = "color: #555; font-size: 10px; padding-top: 10px;",
                 "Only baseline models from all the available species. ",
                 "Left: MCC distribution per species and molecular scale. ",
                 "Right: median MCC by drug class across species, ",
                 "molecular scale, and data encoding."
               ),
-              fluidRow(
-                column(4, plotly::plotlyOutput(
+              shiny::fluidRow(
+                shiny::column(4, plotly::plotlyOutput(
                   "mcc_strip_plot",
                   height = "420px"
                 )),
-                column(8, plotly::plotlyOutput(
+                shiny::column(8, plotly::plotlyOutput(
                   "mcc_heatmap",
                   height = "420px"
                 ))
               )
             )
           ),
-          tabPanel(
+          shiny::tabPanel(
             "Model performance",
-             fluidPage(
-              tags$p(
+             shiny::fluidPage(
+              shiny::tags$p(
                 style = "color: #555; font-size: 10px; padding-top: 10px;","The filter options above allow to select a subset of species, drug classes, and drugs. ",
                 "The filter options below allow to select the model scale and data type")),
-            tagList(
-              fluidRow(
-                column(
+            shiny::tagList(
+              shiny::fluidRow(
+                shiny::column(
                   width = 4,
-                  selectInput(
+                  shiny::selectInput(
                     "model_scale",
-                    label = tags$label("Model scale", style = "font-size: 15px;"),
+                    label = shiny::tags$label("Model scale", style = "font-size: 15px;"),
                     choices = c("genes", "domains", "proteins", "cogs", "args"),
                     multiple = TRUE,
                     selectize = TRUE,
@@ -78,11 +78,11 @@ modelPerfUI <- function() {
                     width = "80%"
                   )
                 ),
-                column(
+                shiny::column(
                   width = 4,
-                  selectInput(
+                  shiny::selectInput(
                     "data_type",
-                    label = tags$label("Data type", style = "font-size: 15px;"),
+                    label = shiny::tags$label("Data type", style = "font-size: 15px;"),
                     choices = c("count" = "counts", "binary" = "binary"),
                     multiple = FALSE,
                     selectize = TRUE,
@@ -90,13 +90,13 @@ modelPerfUI <- function() {
                     selected = c("binary")
                   )
                 ),
-                column(
+                shiny::column(
                   width = 4,
-                  div(
+                  shiny::div(
                     style = "display:none; padding: 10px;",
-                    selectInput(
+                    shiny::selectInput(
                       "model_metrics",
-                      label = tags$label("Performance metric", style = "font-size: 15px;"),
+                      label = shiny::tags$label("Performance metric", style = "font-size: 15px;"),
                       choices = c("Matthews Correlation Coefficient" = "mcc"),
                       multiple = FALSE,
                       selectize = TRUE,
@@ -105,9 +105,9 @@ modelPerfUI <- function() {
                   )
                 )
               ),
-              column(
+              shiny::column(
                 width = 12,
-                div(
+                shiny::div(
                   style = "height: 600px;",
                   plotly::plotlyOutput("model_perfomance_plot", height = "100%")
                 )

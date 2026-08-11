@@ -2,45 +2,45 @@
 #' @return A tabPanel for cross model comparison visualization
 #' @keywords internal
 crossModelComparisonUI <- function() {
-  tabPanel(
+  shiny::tabPanel(
     title = "Model holdouts",
-    icon = icon("clock"),
-    fluidRow(
-      h3("Model Holdouts Comparison",
+    icon = shiny::icon("clock"),
+    shiny::fluidRow(
+      shiny::h3("Model Holdouts Comparison",
         style = "margin-top: 15px; margin-bottom: 15px; font-weight: bold;"
       ),
       style = "padding: 10px;",
-      tagList(
-        column(
+      shiny::tagList(
+        shiny::column(
           width = 4,
           style = "height: 80px; display: flex; align-items: center;",
-          selectInput(
+          shiny::selectInput(
             inputId = "bug_cross_model_comparison_id",
-            label = tags$label("Bug", style = "font-size: 15px;"),
+            label = shiny::tags$label("Bug", style = "font-size: 15px;"),
             choices = character(0),
             multiple = FALSE,
             selectize = TRUE,
             width = "100%"
           )
         ),
-        column(
+        shiny::column(
           width = 4,
           style = "height: 80px; display: flex; align-items: center;",
-          selectInput(
+          shiny::selectInput(
             inputId = "drug_cross_model_comparison_id",
-            label = tags$label("Drug/Drug class", style = "font-size: 15px;"),
+            label = shiny::tags$label("Drug/Drug class", style = "font-size: 15px;"),
             choices = NULL,
             multiple = FALSE,
             selectize = TRUE,
             width = "100%"
           )
         ),
-        column(
+        shiny::column(
           width = 4,
           style = "height: 80px; display: flex; align-items: center;",
-          radioButtons(
+          shiny::radioButtons(
             inputId = "cross_model_comparison",
-            label = tags$label("Cross-train models across",
+            label = shiny::tags$label("Cross-train models across",
               style = "font-size: 15px;"
             ),
             choices = c(
@@ -53,27 +53,27 @@ crossModelComparisonUI <- function() {
         )
       )
     ),
-    column(
+    shiny::column(
       width = 12, offset = 0,
-      mainPanel(
+      shiny::mainPanel(
         width = 12,
         style = "padding: 0;",
-        tabsetPanel(
+        shiny::tabsetPanel(
           id = "cross_model_comparison_tabset",
           type = "tabs",
           # Tab 1: Accuracy distributions
-          tabPanel(
+          shiny::tabPanel(
             "Accuracy distributions",
-            fluidRow(
+            shiny::fluidRow(
               style = "padding: 10px;",
-              column(
+              shiny::column(
                 width = 6,
                 plotly::plotlyOutput("cross_model_ridge_country",
                   height = "400px"
                 ),
                 style = "padding: 5px; border: 1px solid lightgray;"
               ),
-              column(
+              shiny::column(
                 width = 6,
                 plotly::plotlyOutput("cross_model_ridge_time",
                   height = "400px"
@@ -83,18 +83,18 @@ crossModelComparisonUI <- function() {
             )
           ),
           # Tab 2: Model performance heatmaps
-          tabPanel(
+          shiny::tabPanel(
             "Model performance",
-            fluidRow(
+            shiny::fluidRow(
               style = "padding: 10px;",
-              column(
+              shiny::column(
                 width = 6,
                 plotly::plotlyOutput("cross_model_perf_country",
                   height = "400px"
                 ),
                 style = "padding: 5px; border: 1px solid lightgray;"
               ),
-              column(
+              shiny::column(
                 width = 6,
                 plotly::plotlyOutput("cross_model_perf_time",
                   height = "400px"
@@ -104,15 +104,15 @@ crossModelComparisonUI <- function() {
             )
           ),
           # Tab 3: Top features
-          tabPanel(
+          shiny::tabPanel(
             "Top features",
-            tagList(
-              fluidRow(
-                column(
+            shiny::tagList(
+              shiny::fluidRow(
+                shiny::column(
                   width = 4,
-                  div(
+                  shiny::div(
                     style = "padding: 10px;",
-                    sliderInput(
+                    shiny::sliderInput(
                       inputId = "cross_model_top_n_features",
                       label = "Top features",
                       min = 0, max = 100, value = 10
@@ -120,8 +120,8 @@ crossModelComparisonUI <- function() {
                   )
                 )
               ),
-              fluidRow(
-                column(
+              shiny::fluidRow(
+                shiny::column(
                   width = 6,
                   plotly::plotlyOutput(
                     "cross_model_feature_importance_plot",
@@ -132,7 +132,7 @@ crossModelComparisonUI <- function() {
                     " border: 1px solid lightgray;"
                   )
                 ),
-                column(
+                shiny::column(
                   width = 6,
                   DT::dataTableOutput(
                     "cross_model_feature_importance_table"
