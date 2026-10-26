@@ -450,60 +450,26 @@
     local({
       sp <- sp
       folder <- folder
-      meta_raw <- function() .read_metadata_for_bug(sp, results_root)
+      meta_raw <- function() readSpeciesMetadata(sp, results_root)
 
       add(folder, "metadata_data_availability", function() {
         makeDataAvailabilityPlot(meta_raw())
       })
       add(folder, "metadata_geographic", function() {
-        data <- meta_raw() |>
-          dplyr::filter(.data$genome.isolation_country != "") |>
-          .add_evidence_column() |>
-          dplyr::group_by(
-            .data$genome.isolation_country, .data$genome_drug.antibiotic
-          ) |>
-          dplyr::summarize(count = dplyr::n(), .groups = "drop") |>
-          dplyr::group_by(.data$genome.isolation_country) |>
-          dplyr::summarise(count = sum(.data$count), .groups = "drop")
-        makeGeoChloroPlot(data)
+        makeGeoChloroPlot(metadataByCountry(meta_raw()))
       })
       add(folder, "metadata_resistance_over_time", function() {
-        data <- meta_raw() |>
-          .add_evidence_column() |>
-          dplyr::filter(!is.na(.data$genome.collection_year)) |>
-          dplyr::group_by(
-            .data$genome_drug.antibiotic,
-            .data$genome_drug.resistant_phenotype,
-            .data$genome.isolation_country,
-            .data$genome.collection_year
-          ) |>
-          dplyr::summarize(n = dplyr::n(), .groups = "drop")
-        makeTimeSeriesAMRPlot(data, "all")
+        makeTimeSeriesAMRPlot(metadataByYear(meta_raw()), "all")
       })
       add(folder, "metadata_hosts", function() {
-        data <- meta_raw() |>
-          dplyr::filter(.data$genome.host_common_name != "") |>
-          .add_evidence_column()
-        makeHostIsolatePlot(data)
+        makeHostIsolatePlot(metadataWithHost(meta_raw()))
       })
       add(folder, "metadata_isolation_sources", function() {
-        data <- meta_raw() |>
-          dplyr::filter(.data$genome.host_common_name != "") |>
-          .add_evidence_column()
-        makeIsolationSourcesPlot(data)
+        makeIsolationSourcesPlot(metadataWithHost(meta_raw()))
       })
       add(folder, "metadata_resistance_sankey", function() {
         meta <- meta_raw()
-        classes <- if (nrow(meta) && "drug_class" %in% names(meta)) {
-          meta |>
-            dplyr::filter(!is.na(.data$drug_class)) |>
-            dplyr::count(.data$drug_class, name = "n") |>
-            dplyr::arrange(dplyr::desc(.data$n)) |>
-            dplyr::slice_head(n = 3) |>
-            dplyr::pull(.data$drug_class)
-        } else {
-          NULL
-        }
+        classes <- topDrugClasses(meta)
         makeMetadataSankey(meta, drug_classes = classes)
       })
     })
@@ -656,20 +622,7 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
   }
 
   # Metadata species: subdirectories that hold a metadata.parquet.
-  scan_root <- if (!is.null(results_root) && nzchar(results_root)) {
-    results_root
-  } else {
-    system.file("extdata", package = "amRviz")
-  }
-  meta_species <- character(0)
-  if (nzchar(scan_root)) {
-    for (d in list.dirs(scan_root, full.names = TRUE, recursive = FALSE)) {
-      if (file.exists(file.path(d, "metadata.parquet"))) {
-        meta_species <- c(meta_species, basename(d))
-      }
-    }
-    meta_species <- sort(unique(meta_species))
-  }
+  meta_species <- sort(unname(listMetadataSpecies(results_root)))
 
   # Optional species filter (matched against folder labels).
   if (!is.null(species)) {

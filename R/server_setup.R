@@ -1,50 +1,94 @@
-# Shared reactives and cross-tab observers wired in once by setupServerCore().
+# Shared data for the tab modules: the results-folder selector and the loaded
+# ML results every model tab reads.
 
-setupServerCore <- function(input, output, session, results_root) {
-  output$results_species_selector_ui <- shiny::renderUI({
-    if (is.null(results_root) || !nzchar(results_root)) {
-      return(NULL)
-    }
 
-    choices <- listAmRmlSpeciesFolders(results_root)
-    if (!length(choices)) {
-      return(shiny::div(
-        class = "note-box",
-        paste("No amRml species folders found under:", results_root)
-      ))
-    }
+#' Results-folder selector UI
+#'
+#' Placeholder for the species result-folder selector, which is only shown when
+#' the app is given a `results_root`. Placed inside the Query Data tab by
+#' launchAMRDashboard().
+#'
+#' @param id Module id; must match the id passed to `resultsSourceServer()`.
+#' @return A shiny `uiOutput`.
+#' @keywords internal
+#' @noRd
+resultsSourceUI <- function(id) {
+  shiny::uiOutput(shiny::NS(id, "results_species_selector_ui"))
+}
 
-    shiny::selectizeInput(
-      inputId = "results_species_dirs",
-      label = "Select species result folders",
-      choices = choices,
-      selected = unname(choices),
-      multiple = TRUE,
-      options = list(
-        plugins = list("remove_button"),
-        placeholder = "Select species..."
+
+#' Results-folder selector server
+#'
+#' Lists the amRml species folders under `results_root` and lets the user pick
+#' which to load.
+#'
+#' @param id Module id; must match the id passed to `resultsSourceUI()`.
+#' @param results_root User results root, or NULL for the packaged demo data.
+#' @return A reactive returning the selected species-folder paths (NULL until
+#'   the user's selection is available, and always NULL in demo mode).
+#' @keywords internal
+#' @noRd
+resultsSourceServer <- function(id, results_root) {
+  shiny::moduleServer(id, function(input, output, session) {
+    output$results_species_selector_ui <- shiny::renderUI({
+      if (is.null(results_root) || !nzchar(results_root)) {
+        return(NULL)
+      }
+
+      choices <- listAmRmlSpeciesFolders(results_root)
+      if (!length(choices)) {
+        return(shiny::div(
+          class = "note-box",
+          paste("No amRml species folders found under:", results_root)
+        ))
+      }
+
+      shiny::selectizeInput(
+        inputId = session$ns("results_species_dirs"),
+        label = "Select species result folders",
+        choices = choices,
+        selected = unname(choices),
+        multiple = TRUE,
+        options = list(
+          plugins = list("remove_button"),
+          placeholder = "Select species..."
+        )
       )
-    )
-  })
+    })
 
+    shiny::reactive(input$results_species_dirs)
+  })
+}
+
+
+#' Load the ML results shared by the model tabs
+#'
+#' @param results_root User results root, or NULL for the packaged demo data.
+#' @param species_dirs Reactive returning the selected species-folder paths,
+#'   from resultsSourceServer().
+#' @return A named list of reactives: `queryData`, `topFeatures`,
+#'   `available_species`, `filtered_top_features`, `loadDrugClassMapRec`.
+#' @keywords internal
+#' @noRd
+setupServerCore <- function(results_root, species_dirs) {
   # Performance metrics + top features, refreshed when the species selection changes.
   queryData <- shiny::reactiveVal(tibble::tibble())
   topFeatures <- shiny::reactiveVal(tibble::tibble())
 
   shiny::observeEvent(
-    list(results_root, input$results_species_dirs),
+    list(results_root, species_dirs()),
     {
       if (!is.null(results_root) && nzchar(results_root)) {
-        shiny::req(input$results_species_dirs)
+        shiny::req(species_dirs())
       }
 
       queryData(loadMLResults(
         results_root = results_root,
-        species_dirs = input$results_species_dirs
+        species_dirs = species_dirs()
       ))
       topFeatures(loadTopFeat(
         results_root = results_root,
-        species_dirs = input$results_species_dirs
+        species_dirs = species_dirs()
       ))
     },
     ignoreInit = FALSE
@@ -67,59 +111,6 @@ setupServerCore <- function(input, output, session, results_root) {
     sort(choices)
   })
 
-  # Independent species list from metadata parquets so the Metadata tab works without ML results.
-  available_metadata_species <- shiny::reactive({
-    rr <- results_root
-    scan_dirs <- if (!is.null(rr) && nzchar(rr)) {
-      list.dirs(rr, full.names = TRUE, recursive = FALSE)
-    } else {
-      extdata <- system.file("extdata", package = "amRviz")
-      if (nzchar(extdata)) {
-        list.dirs(extdata, full.names = TRUE, recursive = FALSE)
-      } else {
-        character(0)
-      }
-    }
-    # Each species subdirectory holds a single metadata.parquet; identify the
-    # species by its subdirectory name.
-    choices <- character(0)
-    for (d in scan_dirs) {
-      if (!file.exists(file.path(d, "metadata.parquet"))) next
-      label <- gsub("_", " ", basename(d))
-      choices <- c(choices, stats::setNames(basename(d), label))
-    }
-    sort(choices)
-  })
-
-  shiny::observe({
-    choices <- available_species()
-    sel <- if (length(choices)) choices[[1]] else NULL
-
-    shiny::updateSelectizeInput(session, "bug_perf_id",
-      choices = choices, selected = choices
-    )
-    shiny::updateSelectizeInput(session, "bug_search_amr_across_bug",
-      choices = choices, selected = choices
-    )
-    shiny::updateSelectizeInput(session, "bug_search_amr_across_drug",
-      choices = choices, selected = sel
-    )
-    shiny::updateSelectizeInput(session, "bug_cross_model_comparison_id",
-      choices = choices, selected = sel
-    )
-    shiny::updateSelectizeInput(session, "network_bug_id",
-      choices = choices, selected = sel
-    )
-  })
-
-  shiny::observe({
-    choices <- available_metadata_species()
-    sel <- if (length(choices)) choices[[1]] else NULL
-    shiny::updateSelectizeInput(session, "bug_metadata_id",
-      choices = choices, selected = sel
-    )
-  })
-
   # Baseline (non-stratified, non-cross-test) slice consumed by the FI plots and tables.
   filtered_top_features <- shiny::reactive({
     tf <- topFeatures()
@@ -137,19 +128,11 @@ setupServerCore <- function(input, output, session, results_root) {
       dplyr::distinct()
   })
 
-  # Normalised species code from the across-bug selector.
-  bug_norm_input <- shiny::reactive({
-    shiny::req(input$bug_search_amr_across_bug)
-    normalize_species(input$bug_search_amr_across_bug)
-  })
-
   list(
     queryData = queryData,
     topFeatures = topFeatures,
     available_species = available_species,
-    available_metadata_species = available_metadata_species,
     filtered_top_features = filtered_top_features,
-    loadDrugClassMapRec = loadDrugClassMapRec,
-    bug_norm_input = bug_norm_input
+    loadDrugClassMapRec = loadDrugClassMapRec
   )
 }

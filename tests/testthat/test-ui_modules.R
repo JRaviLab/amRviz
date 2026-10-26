@@ -1,28 +1,28 @@
 ## Tests for UI module functions
 
 test_that("queryDataUI returns a shiny tabPanel", {
-  result <- queryDataUI()
+  result <- queryDataUI("query")
   expect_s3_class(result, "shiny.tag")
   expect_true("shiny.tag" %in% class(result))
 })
 
 test_that("metadataUI returns a shiny tabPanel", {
-  result <- metadataUI()
+  result <- metadataUI("metadata")
   expect_s3_class(result, "shiny.tag")
 })
 
 test_that("modelPerfUI returns a shiny tabPanel", {
-  result <- modelPerfUI()
+  result <- modelPerfUI("model_perf")
   expect_s3_class(result, "shiny.tag")
 })
 
 test_that("featureImportanceUI returns a shiny tabPanel", {
-  result <- featureImportanceUI()
+  result <- featureImportanceUI("features")
   expect_s3_class(result, "shiny.tag")
 })
 
 test_that("crossModelComparisonUI returns a shiny tabPanel", {
-  result <- crossModelComparisonUI()
+  result <- crossModelComparisonUI("holdouts")
   expect_s3_class(result, "shiny.tag")
 })
 

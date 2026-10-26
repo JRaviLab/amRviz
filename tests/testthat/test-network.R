@@ -71,7 +71,7 @@ test_that("makeFeatureEgoNetwork returns forceNetwork for valid annotated row", 
 # ── networkUI ───────────────────────────────────────────────────────────────
 
 test_that("networkUI returns a shiny tabPanel", {
-  ui <- networkUI()
+  ui <- networkUI("network")
   expect_s3_class(ui, "shiny.tag")
 })
 

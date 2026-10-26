@@ -110,15 +110,15 @@ test_that("each dashboard tab renders its primary output", {
 
   # Each entry pairs a tab with one plot or table that should appear on it.
   tabs <- list(
-    list(value = "Metadata", output = "quick_metadata_stats"),
-    list(value = "model_perf_tab", output = "model_perfomance_plot"),
+    list(value = "Metadata", output = "metadata-quick_metadata_stats"),
+    list(value = "model_perf_tab", output = "model_perf-model_perfomance_plot"),
     list(
       value = "Bug/Drug feature comparison",
-      output = "across_bug_feature_importance_plot"
+      output = "features-across_bug_feature_importance_plot"
     ),
-    list(value = "Model holdouts", output = "cross_model_ridge_country"),
-    list(value = "Network", output = "drug_feature_network"),
-    list(value = "query_datatable", output = "queryDataTable")
+    list(value = "Model holdouts", output = "holdouts-cross_model_ridge_country"),
+    list(value = "Network", output = "network-drug_feature_network"),
+    list(value = "query_datatable", output = "query-queryDataTable")
   )
 
   for (tab in tabs) {

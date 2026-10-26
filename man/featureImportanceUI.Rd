@@ -4,7 +4,10 @@
 \alias{featureImportanceUI}
 \title{Feature Importance UI Tab}
 \usage{
-featureImportanceUI()
+featureImportanceUI(id)
+}
+\arguments{
+\item{id}{Module id; must match the id passed to \code{featureImportanceServer()}.}
 }
 \value{
 A tabPanel for feature importance visualization

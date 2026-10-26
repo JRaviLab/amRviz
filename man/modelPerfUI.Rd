@@ -4,7 +4,10 @@
 \alias{modelPerfUI}
 \title{Model Performance UI Tab}
 \usage{
-modelPerfUI()
+modelPerfUI(id)
+}
+\arguments{
+\item{id}{Module id; must match the id passed to \code{modelPerfServer()}.}
 }
 \value{
 A tabPanel for model performance visualization
