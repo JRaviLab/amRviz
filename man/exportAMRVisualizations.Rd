@@ -21,7 +21,7 @@ exportAMRVisualizations(
 }
 \arguments{
 \item{output_dir}{Directory to write figures into; created if needed. Files
-are organised as \verb{output_dir/<species>/<panel>.<ext>}, with global
+are organized as \verb{output_dir/<species>/<panel>.<ext>}, with global
 overviews under \verb{output_dir/_overview} and \verb{output_dir/_across_species}.}
 
 \item{formats}{Any of \code{"png"}, \code{"pdf"}, \code{"jpg"}, \code{"svg"}.}

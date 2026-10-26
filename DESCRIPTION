@@ -49,7 +49,6 @@ Imports:
 Suggests:
     BiocStyle,
     chromote,
-    htmlwidgets,
     knitr,
     magick,
     rmarkdown,
