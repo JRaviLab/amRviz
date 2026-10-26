@@ -23,6 +23,7 @@ utils::globalVariables(c(
   "drug_or_drug_class",
   "feature_type",
   "genome.collection_year",
+  "genome.genome_id",
   "genome.host_common_name",
   "genome.isolation_country",
   "genome.isolation_source",
