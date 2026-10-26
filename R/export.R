@@ -528,7 +528,7 @@
 #' using `Plotly.toImage` for plotly so titles and labels survive.
 #'
 #' @param output_dir Directory to write figures into; created if needed. Files
-#'   are organised as `output_dir/<species>/<panel>.<ext>`, with global
+#'   are organized as `output_dir/<species>/<panel>.<ext>`, with global
 #'   overviews under `output_dir/_overview` and `output_dir/_across_species`.
 #' @param formats Any of `"png"`, `"pdf"`, `"jpg"`, `"svg"`.
 #' @param results_root Directory of amRml model outputs (per-species subdirs
