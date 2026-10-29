@@ -27,6 +27,7 @@ Depends:
     R (>= 4.5.0)
 Imports:
     arrow,
+    BiocFileCache,
     countrycode,
     dplyr,
     DT,
@@ -34,6 +35,7 @@ Imports:
     glue,
     here,
     htmlwidgets,
+    jsonlite,
     networkD3,
     plotly,
     purrr,
