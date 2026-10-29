@@ -1,7 +1,9 @@
 #' Metadata UI Tab
+#' @param id Module id; must match the id passed to `metadataServer()`.
 #' @return A tabPanel for metadata visualization
 #' @keywords internal
-metadataUI <- function() {
+metadataUI <- function(id) {
+  ns <- shiny::NS(id)
   shiny::tabPanel(
     title = "Metadata",
     icon = shiny::icon("globe"),
@@ -10,7 +12,7 @@ metadataUI <- function() {
       shiny::column(
         width = 12,
         amr_select(
-          "bug_metadata_id",
+          ns("bug_metadata_id"),
           "Bug",
           choices = character(0),
           multiple = FALSE,
@@ -24,7 +26,7 @@ metadataUI <- function() {
           shiny::div(
             class = "quick-stats-container",
             style = "padding: 10px; margin-bottom: 20px; border: 1px solid lightgray; border-radius: 5px;",
-            shiny::uiOutput("quick_metadata_stats")
+            shiny::uiOutput(ns("quick_metadata_stats"))
           )
         )
       ),
@@ -38,7 +40,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes"
             ),
-            styledBox("resistance_vs_susceptible_ui")
+            styledBox(ns("resistance_vs_susceptible_ui"))
           )
         ),
         shiny::column(
@@ -50,7 +52,7 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Global distribution of resistant phenotypes"
             ),
-            styledBox("geo_isolate_plot_ui")
+            styledBox(ns("geo_isolate_plot_ui"))
           )
         )
       ),
@@ -64,24 +66,24 @@ metadataUI <- function() {
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
               "Distribution of AMR phenotypes by year"
             ),
-            styledBox("r_s_across_time_ui")
+            styledBox(ns("r_s_across_time_ui"))
           )
         ),
         shiny::column(
           width = 6,
           shiny::div(
             class = "plot-container",
-            shiny::uiOutput("isolation_source_header"),
+            shiny::uiOutput(ns("isolation_source_header")),
             tabBox(
-              id = "isolation_source_tabset",
+              id = ns("isolation_source_tabset"),
               width = 12,
               shiny::tabPanel(
                 "Isolation sources",
-                styledBox("isolation_source_ui")
+                styledBox(ns("isolation_source_ui"))
               ),
               shiny::tabPanel(
                 "Hosts",
-                styledBox("host_isolate_plot_ui")
+                styledBox(ns("host_isolate_plot_ui"))
               )
             )
           )
@@ -107,7 +109,7 @@ metadataUI <- function() {
             shiny::div(
               style = "padding: 0 10px;",
               shiny::selectInput(
-                inputId = "metadata_sankey_classes",
+                inputId = ns("metadata_sankey_classes"),
                 label = shiny::tags$label(
                   "Drug classes (top 3 by default)",
                   style = "font-size: 13px;"
@@ -121,7 +123,7 @@ metadataUI <- function() {
             ),
             shinycssloaders::withSpinner(
               networkD3::sankeyNetworkOutput(
-                "metadata_sankey",
+                ns("metadata_sankey"),
                 height = "550px"
               )
             )

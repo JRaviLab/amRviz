@@ -1,7 +1,9 @@
 #' Network UI Tab
+#' @param id Module id; must match the id passed to `networkServer()`.
 #' @return A tabPanel for drug-feature network visualization
 #' @keywords internal
-networkUI <- function() {
+networkUI <- function(id) {
+  ns <- shiny::NS(id)
   shiny::tabPanel(
     title = "Network",
     icon = shiny::icon("circle-nodes"),
@@ -21,7 +23,7 @@ networkUI <- function() {
           width = 3,
           style = "padding: 10px;",
           shiny::selectInput(
-            inputId = "network_bug_id",
+            inputId = ns("network_bug_id"),
             label = shiny::tags$label("Bug", style = "font-size: 15px;"),
             choices = character(0),
             multiple = FALSE,
@@ -33,7 +35,7 @@ networkUI <- function() {
           width = 3,
           style = "padding: 10px;",
           shiny::sliderInput(
-            inputId = "network_top_n",
+            inputId = ns("network_top_n"),
             label = shiny::tags$label(
               "Top features per drug",
               style = "font-size: 15px;"
@@ -45,7 +47,7 @@ networkUI <- function() {
           width = 3,
           style = "padding: 10px;",
           shiny::checkboxInput(
-            inputId = "network_include_clusters",
+            inputId = ns("network_include_clusters"),
             label = "Show clusters",
             value = FALSE
           ),
@@ -74,7 +76,7 @@ networkUI <- function() {
           width = 12,
           shinycssloaders::withSpinner(
             networkD3::forceNetworkOutput(
-              "drug_feature_network",
+              ns("drug_feature_network"),
               height = "600px"
             )
           ),

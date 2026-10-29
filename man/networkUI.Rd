@@ -4,7 +4,10 @@
 \alias{networkUI}
 \title{Network UI Tab}
 \usage{
-networkUI()
+networkUI(id)
+}
+\arguments{
+\item{id}{Module id; must match the id passed to \code{networkServer()}.}
 }
 \value{
 A tabPanel for drug-feature network visualization

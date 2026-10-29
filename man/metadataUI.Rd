@@ -4,7 +4,10 @@
 \alias{metadataUI}
 \title{Metadata UI Tab}
 \usage{
-metadataUI()
+metadataUI(id)
+}
+\arguments{
+\item{id}{Module id; must match the id passed to \code{metadataServer()}.}
 }
 \value{
 A tabPanel for metadata visualization

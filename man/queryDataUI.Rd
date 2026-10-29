@@ -4,7 +4,13 @@
 \alias{queryDataUI}
 \title{Query Data UI Tab}
 \usage{
-queryDataUI()
+queryDataUI(id, source_ui = NULL)
+}
+\arguments{
+\item{id}{Module id; must match the id passed to \code{queryDataServer()}.}
+
+\item{source_ui}{UI shown above the tables, e.g. the results-folder selector
+from \code{resultsSourceUI()}, or NULL.}
 }
 \value{
 A tabPanel for querying and downloading data

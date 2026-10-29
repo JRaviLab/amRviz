@@ -1,7 +1,9 @@
 #' Feature Importance UI Tab
+#' @param id Module id; must match the id passed to `featureImportanceServer()`.
 #' @return A tabPanel for feature importance visualization
 #' @keywords internal
-featureImportanceUI <- function() {
+featureImportanceUI <- function(id) {
+  ns <- shiny::NS(id)
   shiny::tabPanel(
     title = "Bug/Drug feature comparison",
     icon = shiny::icon("bug"),
@@ -12,7 +14,7 @@ featureImportanceUI <- function() {
         width = 4,
         style = "height: 80px; display: flex; align-items: center;",
         shiny::selectInput(
-          "bug_drug_comp_model_scale",
+          ns("bug_drug_comp_model_scale"),
           label = shiny::tags$label("Model scale", style = "font-size: 15px;"),
           choices = c("genes", "domains", "proteins", "cogs", "args"),
           multiple = FALSE,
@@ -24,7 +26,7 @@ featureImportanceUI <- function() {
         width = 4,
         style = "height: 80px; display: flex; align-items: center;",
         shiny::selectInput(
-          "feature_data_type",
+          ns("feature_data_type"),
           label = shiny::tags$label("Data type", style = "font-size: 15px;"),
           choices = c("count" = "counts", "binary" = "binary"),
           multiple = FALSE,
@@ -36,7 +38,7 @@ featureImportanceUI <- function() {
         width = 4,
         style = "height: 80px; display: flex; align-items: center;",
         shiny::div(
-          shiny::sliderInput(inputId = "top_n_features", label = "Top features (per model)", min = 0, max = 100, value = 10)
+          shiny::sliderInput(inputId = ns("top_n_features"), label = "Top features (per model)", min = 0, max = 100, value = 10)
         )
       )
     ),
@@ -46,7 +48,7 @@ featureImportanceUI <- function() {
         width = 12,
         style = "padding: 0;",
         shiny::tabsetPanel(
-          id = "feature_importance_tabset",
+          id = ns("feature_importance_tabset"),
           type = "tabs",
           shiny::tabPanel(
             "Across bugs",
@@ -62,7 +64,7 @@ featureImportanceUI <- function() {
                   width = 4,
                   style = "height: 50px; display: flex; align-items: center;",
                   shiny::radioButtons(
-                    inputId = "across_bug_id",
+                    inputId = ns("across_bug_id"),
                     label = "",
                     choices = c("Drug class" = "drug_class", "Drug" = "drug"),
                     selected = "drug",
@@ -75,44 +77,46 @@ featureImportanceUI <- function() {
                 # outside the conditional panels (avoids a duplicate input id).
                 shiny::column(
                   width = 6, style = "padding: 0;",
-                  amr_select("bug_search_amr_across_bug", "Bug (multi-select)", character(0), selected = NULL)
+                  amr_select(ns("bug_search_amr_across_bug"), "Bug (multi-select)", character(0), selected = NULL)
                 ),
                 shiny::conditionalPanel(
+                  ns = ns,
                   condition = "input.across_bug_id == 'drug'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_across_bug", "Drug", NULL, FALSE)
+                    amr_select(ns("amr_drug_across_bug"), "Drug", NULL, FALSE)
                   )
                 ),
                 shiny::conditionalPanel(
+                  ns = ns,
                   condition = "input.across_bug_id == 'drug_class'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_class_across_bug", "Drug class", NULL, FALSE)
+                    amr_select(ns("amr_drug_class_across_bug"), "Drug class", NULL, FALSE)
                   )
                 )
               ),
               shiny::column(
                 width = 6,
                 style = "padding: 0; height: 600px; border: 1px solid lightgray;",
-                plotly::plotlyOutput("across_bug_feature_importance_plot", height = "100%", width = "100%")
+                plotly::plotlyOutput(ns("across_bug_feature_importance_plot"), height = "100%", width = "100%")
               ),
               shiny::column(
                 width = 6,
                 style = "padding: 0; height: 600px; border: 1px solid lightgray;",
-                DT::dataTableOutput("across_bug_feature_importance_table", height = "100%")
+                DT::dataTableOutput(ns("across_bug_feature_importance_table"), height = "100%")
               ),
               shiny::fluidRow(
                 style = "padding: 10px 0;",
                 shiny::column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
-                  plotly::plotlyOutput("across_bug_cog_barplot", height = "100%")
+                  plotly::plotlyOutput(ns("across_bug_cog_barplot"), height = "100%")
                 ),
                 shiny::column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
-                  networkD3::forceNetworkOutput("across_bug_ego_network", height = "100%")
+                  networkD3::forceNetworkOutput(ns("across_bug_ego_network"), height = "100%")
                 )
               )
             )
@@ -131,7 +135,7 @@ featureImportanceUI <- function() {
                   width = 4,
                   style = "height: 50px; display: flex; align-items: center;",
                   shiny::radioButtons(
-                    inputId = "across_drug_id",
+                    inputId = ns("across_drug_id"),
                     label = "",
                     choices = c("Drug class" = "drug_class", "Drug" = "drug"),
                     selected = "drug",
@@ -144,44 +148,46 @@ featureImportanceUI <- function() {
                 # outside the conditional panels (avoids a duplicate input id).
                 shiny::column(
                   width = 6, style = "padding: 0;",
-                  amr_select("bug_search_amr_across_drug", "Bug", character(0), selected = NULL, multiple = FALSE)
+                  amr_select(ns("bug_search_amr_across_drug"), "Bug", character(0), selected = NULL, multiple = FALSE)
                 ),
                 shiny::conditionalPanel(
+                  ns = ns,
                   condition = "input.across_drug_id == 'drug'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_across_drug", "Drug (multi-select)", NULL)
+                    amr_select(ns("amr_drug_across_drug"), "Drug (multi-select)", NULL)
                   )
                 ),
                 shiny::conditionalPanel(
+                  ns = ns,
                   condition = "input.across_drug_id == 'drug_class'",
                   shiny::column(
                     width = 6, style = "padding: 0;",
-                    amr_select("amr_drug_class_across_drug", "Drug class (multi-select)", NULL)
+                    amr_select(ns("amr_drug_class_across_drug"), "Drug class (multi-select)", NULL)
                   )
                 )
               ),
               shiny::column(
                 width = 6, style = "padding: 0;",
-                plotly::plotlyOutput("across_drug_feature_importance_plot", height = "100%"),
+                plotly::plotlyOutput(ns("across_drug_feature_importance_plot"), height = "100%"),
                 style = "padding: 0; height: 600px; border: 1px solid lightgray;"
               ),
               shiny::column(
                 width = 6,
                 style = "padding: 0; height: 600px; border: 1px solid lightgray;",
-                DT::dataTableOutput("across_drug_feature_importance_table", height = "100%")
+                DT::dataTableOutput(ns("across_drug_feature_importance_table"), height = "100%")
               ),
               shiny::fluidRow(
                 style = "padding: 10px 0;",
                 shiny::column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
-                  plotly::plotlyOutput("across_drug_cog_barplot", height = "100%")
+                  plotly::plotlyOutput(ns("across_drug_cog_barplot"), height = "100%")
                 ),
                 shiny::column(
                   width = 6,
                   style = "padding: 0; border: 1px solid lightgray; height: 350px;",
-                  networkD3::forceNetworkOutput("across_drug_ego_network", height = "100%")
+                  networkD3::forceNetworkOutput(ns("across_drug_ego_network"), height = "100%")
                 )
               )
             )

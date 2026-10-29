@@ -1,4 +1,5 @@
-# Metadata tab visualisations.
+# Metadata tab data prep and visualizations, shared by the dashboard and
+# exportAMRVisualizations().
 
 
 #' Styled summary-statistic card
@@ -572,4 +573,153 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     nodeWidth = 25,
     sinksRight = FALSE
   )
+}
+
+
+# ---- Data prep ----
+
+#' List species that have a metadata parquet
+#'
+#' Each species subdirectory holds a single `metadata.parquet`, so a species is
+#' identified by its subdirectory name. Scans `results_root` when given, else
+#' the packaged extdata.
+#'
+#' @param results_root User results root, or NULL for the packaged demo data.
+#' @return A sorted named character vector (names = display labels with
+#'   underscores replaced by spaces, values = subdirectory basenames), or empty
+#'   when none are found.
+#' @keywords internal
+#' @noRd
+listMetadataSpecies <- function(results_root = NULL) {
+  scan_root <- if (!is.null(results_root) && nzchar(results_root)) {
+    results_root
+  } else {
+    system.file("extdata", package = "amRviz")
+  }
+  if (!nzchar(scan_root)) {
+    return(character(0))
+  }
+  dirs <- list.dirs(scan_root, full.names = TRUE, recursive = FALSE)
+  dirs <- dirs[file.exists(file.path(dirs, "metadata.parquet"))]
+  if (!length(dirs)) {
+    return(character(0))
+  }
+  sort(stats::setNames(basename(dirs), gsub("_", " ", basename(dirs))))
+}
+
+
+#' Read and row-bind metadata parquets for one or more species
+#'
+#' @param species_dirs Species subdirectory basename(s).
+#' @param results_root User results root, or NULL for the packaged demo data.
+#' @return A tibble with a `species` column set to the subdirectory name, or an
+#'   empty tibble when no metadata parquet is found.
+#' @keywords internal
+#' @noRd
+readSpeciesMetadata <- function(species_dirs, results_root = NULL) {
+  purrr::map_dfr(species_dirs, function(x) {
+    fp <- get_metadata_path(x, results_root)
+    if (!is.null(fp) && file.exists(fp)) {
+      arrow::read_parquet(fp) |> dplyr::mutate(species = x)
+    } else {
+      tibble::tibble()
+    }
+  })
+}
+
+
+#' Coarsen the lab method into Laboratory vs Computational evidence
+#'
+#' @param df Metadata tibble with `genome_drug.laboratory_typing_method`.
+#' @return `df` with a `genome_drug.evidence` column added.
+#' @keywords internal
+#' @noRd
+.add_evidence_column <- function(df) {
+  df |>
+    dplyr::mutate(
+      genome_drug.evidence = dplyr::case_when(
+        genome_drug.laboratory_typing_method %in%
+          c("Disk diffusion", "MIC", "Broth dilution", "Agar dilution") ~
+          "Laboratory Method",
+        genome_drug.laboratory_typing_method ==
+          "Computational Prediction" ~ "Computational Method",
+        TRUE ~ genome_drug.laboratory_typing_method
+      )
+    )
+}
+
+
+#' Genome-drug record counts per isolation country
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @return A tibble with `genome.isolation_country` and `count`, the input to
+#'   makeGeoChloroPlot().
+#' @keywords internal
+#' @noRd
+metadataByCountry <- function(meta) {
+  meta |>
+    dplyr::filter(.data$genome.isolation_country != "") |>
+    .add_evidence_column() |>
+    dplyr::group_by(
+      .data$genome.isolation_country, .data$genome_drug.antibiotic
+    ) |>
+    dplyr::summarize(count = dplyr::n(), .groups = "drop") |>
+    dplyr::group_by(.data$genome.isolation_country) |>
+    dplyr::summarise(count = sum(.data$count), .groups = "drop")
+}
+
+
+#' Record counts per drug, phenotype, country, and collection year
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @return A tibble with an `n` column, the input to makeTimeSeriesAMRPlot().
+#' @keywords internal
+#' @noRd
+metadataByYear <- function(meta) {
+  meta |>
+    .add_evidence_column() |>
+    dplyr::filter(!is.na(.data$genome.collection_year)) |>
+    dplyr::group_by(
+      .data$genome_drug.antibiotic,
+      .data$genome_drug.resistant_phenotype,
+      .data$genome.isolation_country,
+      .data$genome.collection_year
+    ) |>
+    dplyr::summarize(n = dplyr::n(), .groups = "drop")
+}
+
+
+#' Metadata rows with a recorded host
+#'
+#' Feeds both makeHostIsolatePlot() and makeIsolationSourcesPlot().
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @return `meta` without blank hosts, with a `genome_drug.evidence` column.
+#' @keywords internal
+#' @noRd
+metadataWithHost <- function(meta) {
+  meta |>
+    dplyr::filter(.data$genome.host_common_name != "") |>
+    .add_evidence_column()
+}
+
+
+#' Most-represented drug classes, the default sankey selection
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @param n Number of classes to return.
+#' @return A character vector of up to `n` drug classes, or NULL when `meta`
+#'   has no `drug_class` column or no rows.
+#' @keywords internal
+#' @noRd
+topDrugClasses <- function(meta, n = 3) {
+  if (!nrow(meta) || !"drug_class" %in% names(meta)) {
+    return(NULL)
+  }
+  meta |>
+    dplyr::filter(!is.na(.data$drug_class)) |>
+    dplyr::count(.data$drug_class, name = "records") |>
+    dplyr::arrange(dplyr::desc(.data$records)) |>
+    dplyr::slice_head(n = n) |>
+    dplyr::pull(.data$drug_class)
 }

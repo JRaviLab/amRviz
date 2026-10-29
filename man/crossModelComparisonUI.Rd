@@ -4,7 +4,10 @@
 \alias{crossModelComparisonUI}
 \title{Cross Model Comparison UI Tab}
 \usage{
-crossModelComparisonUI()
+crossModelComparisonUI(id)
+}
+\arguments{
+\item{id}{Module id; must match the id passed to \code{crossModelComparisonServer()}.}
 }
 \value{
 A tabPanel for cross model comparison visualization

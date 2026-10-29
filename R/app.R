@@ -227,12 +227,12 @@ launchAMRDashboard <- function(results_root = NULL,
         )
       ),
       # other tabs
-      metadataUI(),
-      modelPerfUI(),
-      featureImportanceUI(),
-      crossModelComparisonUI(),
-      networkUI(),
-      queryDataUI()
+      metadataUI("metadata"),
+      modelPerfUI("model_perf"),
+      featureImportanceUI("features"),
+      crossModelComparisonUI("holdouts"),
+      networkUI("network"),
+      queryDataUI("query", source_ui = resultsSourceUI("source"))
     ),
     shiny::tags$footer(
       class = "footer",
@@ -252,36 +252,31 @@ launchAMRDashboard <- function(results_root = NULL,
   )
   ## Server
   server <- function(input, output, session) {
-    # Shared reactives, data loaders, and cross-tab UI-update observers used
-    # by every tab module below. `core` is a named list of reactive accessors.
-    core <- setupServerCore(input, output, session, results_root)
-    queryData <- core$queryData
-    topFeatures <- core$topFeatures
-    available_species <- core$available_species
-    available_metadata_species <- core$available_metadata_species
-    filtered_top_features <- core$filtered_top_features
-    loadDrugClassMapRec <- core$loadDrugClassMapRec
-    bug_norm_input <- core$bug_norm_input
+    # Species result folders chosen on the Query Data tab (user mode only).
+    species_dirs <- resultsSourceServer("source", results_root)
+
+    # ML results shared by the model tabs. `core` is a named list of reactive
+    # accessors; each tab module fills its own selectors from it.
+    core <- setupServerCore(results_root, species_dirs)
 
     # Metadata tab
-    serverMetadata(input, output, session, results_root)
+    metadataServer("metadata", results_root)
 
     # Model Performance + Performance overview tabs (includes the bug/class/drug
     # cascading selector observers).
-    serverModelPerf(input, output, session, core, results_root)
+    modelPerfServer("model_perf", core, results_root)
 
     # Bug/Drug feature comparison tab
-    serverFeatureImportance(input, output, session, core, results_root, amrdata_root)
+    featureImportanceServer("features", core, results_root, amrdata_root)
 
     # Model-holdouts tab
-    serverCrossModel(input, output, session, core)
-
+    crossModelComparisonServer("holdouts", core)
 
     # Drug-feature network tab
-    serverNetwork(input, output, session, core, results_root)
+    networkServer("network", core, results_root)
 
     # Query data + top-features tables and CSV downloads
-    serverQuery(input, output, session, core)
+    queryDataServer("query", core)
   }
 
   # Register inst/app/www/ so images and CSS are served from the package
