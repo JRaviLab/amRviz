@@ -197,14 +197,18 @@ results/
 amRviz/
 ├── R/
 │   ├── app.R                      # Main Shiny app (ui + server)
-│   ├── utils.R                    # File loading and plot functions
+│   ├── app_shared.R               # Results-folder picker and data shared by the tabs
+│   ├── export.R                   # Figure export
 │   ├── globals.R                  # Global variable declarations
-│   ├── metadataUI.R               # Metadata tab UI
-│   ├── modelPerfUI.R              # Model performance tab UI
-│   ├── featureImportanceUI.R      # Bug/Drug feature comparison tab UI
-│   ├── crossModelComparisonUI.R   # Model holdouts tab UI
-│   ├── networkUI.R                # Network tab UI
-│   └── queryDataUI.R              # Query data tab UI
+│   ├── utils_*.R                  # Data loading, ORB discovery, colors, helpers
+│   ├── metadata_ui.R              # Each tab has a layout file (_ui), a logic
+│   ├── metadata_server.R          # file (_server) and a plots file (_plots)
+│   ├── metadata_plots.R
+│   ├── modelperf_{ui,server,plots}.R   # Model Performance tab
+│   ├── features_{ui,server,plots}.R    # Feature Importance tab
+│   ├── holdouts_{ui,server,plots}.R    # Model Holdouts tab
+│   ├── network_{ui,server,plots}.R     # Drug-Feature Network tab
+│   └── query_{ui,server}.R             # Query Data tab
 ├── inst/
 │   ├── app/www/                   # Static assets (CSS, images)
 │   └── extdata/
