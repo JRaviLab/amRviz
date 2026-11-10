@@ -36,10 +36,10 @@ skip_if_no_shinytest2 <- function() {
 # dplyr (non-standard evaluation). This is a harmless false positive -- the app
 # runs correctly -- so we quietly drop just that one warning and let any other
 # warning through.
-new_demo_app <- function(name) {
+new_demo_app <- function(name, results_root = NULL) {
   withCallingHandlers(
     shinytest2::AppDriver$new(
-      launchAMRDashboard(),
+      launchAMRDashboard(results_root = results_root),
       name = name,
       seed = 1234,
       timeout = 60 * 1000,
@@ -127,4 +127,21 @@ test_that("each dashboard tab renders its primary output", {
     expect_identical(app$get_value(input = "tabselected"), tab$value)
     expect_output_ok(app, tab$output)
   }
+})
+
+test_that("model tabs load a results folder without visiting Query Data first", {
+  skip_if_no_shinytest2()
+
+  # The packaged demo ORB, passed as a user results folder.
+  app <- new_demo_app(
+    "amRviz-results-root",
+    results_root = system.file("extdata", package = "amRviz")
+  )
+  withr::defer(app$stop())
+  app$wait_for_idle(timeout = 60 * 1000)
+
+  app$set_inputs(tabselected = "model_perf_tab")
+  app$wait_for_idle(timeout = 60 * 1000)
+  expect_identical(app$get_value(input = "model_perf-bug_perf_id"), "Sfl")
+  expect_output_ok(app, "model_perf-mcc_strip_plot")
 })

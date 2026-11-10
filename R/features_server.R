@@ -208,7 +208,12 @@ featureImportanceServer <- function(id, core, results_root = NULL,
         input$amr_drug_across_bug
       }
       bug <- input$bug_search_amr_across_bug
-      tf <- core$filtered_top_features() |>
+      tf <- core$filtered_top_features()
+      # No results loaded yet (or none selected): nothing to show.
+      if (!nrow(tf)) {
+        return(NULL)
+      }
+      tf <- tf |>
         dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
         dplyr::filter(.data$drug_or_class %in% amr_drug)
       if (!nrow(tf)) {
@@ -231,7 +236,12 @@ featureImportanceServer <- function(id, core, results_root = NULL,
         input$amr_drug_across_drug
       }
       bug <- input$bug_search_amr_across_drug
-      tf <- core$filtered_top_features() |>
+      tf <- core$filtered_top_features()
+      # No results loaded yet (or none selected): nothing to show.
+      if (!nrow(tf)) {
+        return(NULL)
+      }
+      tf <- tf |>
         dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
         dplyr::filter(.data$drug_or_class %in% amr_drug)
       if (!nrow(tf)) {

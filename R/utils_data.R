@@ -132,8 +132,9 @@ listResultSources <- function(results_root, verbose = TRUE) {
     ))))
   }
 
-  # User mode: results_root set but nothing selected yet
-  if (!is.null(rr) && is.null(result_dirs)) {
+  # User mode: results_root set but nothing selected yet, or nothing found
+  # there. Never fall back to the demo data for a user's folder.
+  if (!is.null(rr)) {
     return(tibble::tibble())
   }
 

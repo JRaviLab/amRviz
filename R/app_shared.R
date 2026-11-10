@@ -56,6 +56,14 @@ resultsSourceServer <- function(id, results_root) {
       )
     })
 
+    # The selector sits on the Query Data tab. Build it even while that tab is
+    # hidden, so the model tabs get the selected results without the user
+    # visiting Query Data first.
+    shiny::outputOptions(
+      output, "results_species_selector_ui",
+      suspendWhenHidden = FALSE
+    )
+
     shiny::reactive(input$results_species_dirs)
   })
 }

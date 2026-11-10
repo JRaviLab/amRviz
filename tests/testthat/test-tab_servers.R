@@ -113,3 +113,21 @@ test_that("queryDataServer shows the chosen performance columns", {
     }
   )
 })
+
+test_that("the model tabs show nothing, rather than errors, before results load", {
+  empty <- tibble::tibble()
+  core <- list(
+    queryData = function() empty, topFeatures = function() empty,
+    available_species = function() character(0),
+    filtered_top_features = function() empty,
+    loadDrugClassMapRec = function() tibble::tibble()
+  )
+  shiny::testServer(featureImportanceServer, args = list(core = core), {
+    session$setInputs(across_bug_id = "drug", across_drug_id = "drug")
+    expect_null(enriched_across_bug())
+    expect_null(enriched_across_drug())
+  })
+  shiny::testServer(crossModelComparisonServer, args = list(core = core), {
+    expect_no_error(output$cross_model_feature_importance_table)
+  })
+})

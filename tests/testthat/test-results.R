@@ -108,6 +108,15 @@ test_that("listResultSources finds a run from its ORB, the ORB's folder, or the 
   }
 })
 
+test_that("a results folder with no runs loads nothing, not the demo data", {
+  root <- withr::local_tempdir()
+  make_orb(root)
+  sources <- listResultSources(root)
+  expect_length(sources, 0)
+  expect_equal(nrow(loadMLResults(root, unname(sources), verbose = FALSE)), 0)
+  expect_equal(nrow(loadTopFeat(root, unname(sources), verbose = FALSE)), 0)
+})
+
 # ── packaged demo data ───────────────────────────────────────────────────────
 
 test_that("the demo data is an ORB with an amRml run", {
