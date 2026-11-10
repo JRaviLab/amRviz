@@ -4,11 +4,10 @@
 #'
 #' @param id Module id; must match the id passed to `modelPerfUI()`.
 #' @param core Shared data from setupServerCore().
-#' @param results_root User results root, or NULL for the packaged demo data.
 #' @return NULL, invisibly.
 #' @keywords internal
 #' @noRd
-modelPerfServer <- function(id, core, results_root = NULL) {
+modelPerfServer <- function(id, core) {
   shiny::moduleServer(id, function(input, output, session) {
     # Species choices come from the loaded ML results.
     shiny::observe({
@@ -57,14 +56,14 @@ modelPerfServer <- function(id, core, results_root = NULL) {
 
       if (input$drug_class_perf_id != "all") {
         sp_codes <- normalize_species(input$bug_perf_id)
-        sp_dirs <- core$queryData() |>
+        meta_paths <- core$queryData() |>
           dplyr::filter(normalize_species(.data$species) %in% sp_codes) |>
-          dplyr::pull(.data$species_label) |>
+          dplyr::pull(.data$metadata_path) |>
           unique()
-        meta <- dplyr::bind_rows(lapply(sp_dirs, function(sp_dir) {
-          fp <- get_metadata_path(sp_dir, results_root)
-          if (!is.null(fp)) .read_parquet_safe(fp, verbose = FALSE) else tibble::tibble()
-        }))
+        meta <- dplyr::bind_rows(lapply(
+          meta_paths[!is.na(meta_paths)], .read_parquet_safe,
+          verbose = FALSE
+        ))
         if (nrow(meta) && all(c("class_abbr", "drug_abbr") %in% names(meta))) {
           drugs_in_class <- meta |>
             dplyr::filter(.data$class_abbr %in% input$drug_class_perf_id) |>

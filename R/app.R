@@ -3,9 +3,10 @@
 #' Creates and returns a Shiny application for exploring antimicrobial
 #' resistance data and machine learning model results.
 #'
-#' @param results_root File path to the root directory containing amRml model
-#'        output results. If `NULL` (default), the application will attempt to
-#'        use example data bundled with the package, where available.
+#' @param results_root File path to a folder holding amRml results: an amRdata
+#'        ORB with amRml runs inside it, a folder of ORBs (such as the amRdata
+#'        data folder), or an amRml run. If `NULL` (default), the
+#'        application uses the demo ORB bundled with the package.
 #' @param amrdata_root File path to the root directory containing amRdata
 #'        annotation parquets (e.g. `cluster_feature.parquet`,
 #'        `gene_names.parquet`). If `NULL` (default), `~/amRdata/data` is used
@@ -252,19 +253,19 @@ launchAMRDashboard <- function(results_root = NULL,
   )
   ## Server
   server <- function(input, output, session) {
-    # Species result folders chosen on the Query Data tab (user mode only).
-    species_dirs <- resultsSourceServer("source", results_root)
+    # Result folders chosen on the Query Data tab (user mode only).
+    result_dirs <- resultsSourceServer("source", results_root)
 
     # ML results shared by the model tabs. `core` is a named list of reactive
     # accessors; each tab module fills its own selectors from it.
-    core <- setupServerCore(results_root, species_dirs)
+    core <- setupServerCore(results_root, result_dirs)
 
     # Metadata tab
     metadataServer("metadata", results_root)
 
     # Model Performance + Performance overview tabs (includes the bug/class/drug
     # cascading selector observers).
-    modelPerfServer("model_perf", core, results_root)
+    modelPerfServer("model_perf", core)
 
     # Bug/Drug feature comparison tab
     featureImportanceServer("features", core, results_root, amrdata_root)

@@ -1,11 +1,22 @@
-# ORB discovery: find amRdata output bundles (ORBs) registered on this machine.
+# ORB discovery: find amRdata output bundles (ORBs) and describe them from
+# their manifests.
 #
-# amRdata records every dataset's manifest (`{dataset}/orb/manifest_run_*.json`)
-# in the shared BiocFileCache under the resource name `amR_dataset_manifest_*`.
-# That registry, not a directory scan, is how amRdata itself finds ORBs (see
-# `.amr_resolve_export_orb()` in amRdata), so the Metadata tab does the same.
-# An ORB is addressed in the UI by an `orb:<orb_dir>` id so that it stays
-# unique even when two ORBs share a species name.
+# amRdata records every dataset's manifest (`manifest_run_*.json`) in the shared
+# BiocFileCache under the resource name `amR_dataset_manifest_*`, and writes it
+# next to the ORB's files. Everything amRviz knows about an ORB comes from that
+# manifest: its species (`dataset_id`, `dataset.selection.user_bacs`) and where
+# its metadata is (`artifacts.amRml_input.metadata_parquet`). Folder names are
+# never read for meaning, the same rule amRml's `readORB()` follows.
+
+
+# Names and formats set by amRdata, kept in one place.
+# The manifest type and schema version this code can read.
+.AMRDATA_MANIFEST_TYPE <- "amR_dataset"
+.AMRDATA_SCHEMA_VERSION <- 1L
+# The manifest entry that lists the files amRml reads.
+.AMRDATA_ML_ARTIFACT <- "amRml_input"
+# File names amRdata gives its manifests.
+.MANIFEST_PATTERN <- "^manifest_.*[.]json$"
 
 
 #' Empty ORB listing
@@ -14,7 +25,6 @@
 .empty_orbs <- function() {
   tibble::tibble(
     label = character(),
-    species_dir = character(),
     dataset_id = character(),
     orb_dir = character(),
     manifest_path = character(),
@@ -47,15 +57,51 @@
 }
 
 
+#' Manifests in a folder and the two levels below it
+#'
+#' Covers a folder that is an ORB, one that holds ORBs, and amRdata's data
+#' folder (`{data}/{dataset}/orb/`).
+#'
+#' @param root Folder to search.
+#' @return A character vector of manifest paths.
+#' @keywords internal
+#' @noRd
+.find_orb_manifests <- function(root) {
+  if (is.null(root) || !nzchar(root) || !dir.exists(root)) {
+    return(character(0))
+  }
+  level1 <- list.dirs(root, full.names = TRUE, recursive = FALSE)
+  level2 <- unlist(lapply(level1, list.dirs,
+    full.names = TRUE, recursive = FALSE
+  ))
+  unlist(lapply(c(root, level1, level2), list.files,
+    pattern = .MANIFEST_PATTERN, full.names = TRUE
+  ))
+}
+
+
+#' A path a manifest records, resolved against the manifest's folder
+#'
+#' amRdata writes paths relative to the manifest; older ORBs and ORBs written
+#' on Windows may record absolute or backslashed paths, so only the file name
+#' is kept, as amRml does.
+#'
+#' @keywords internal
+#' @noRd
+.orb_file_path <- function(path, manifest_path) {
+  file.path(dirname(manifest_path), basename(chartr("\\", "/", path)))
+}
+
+
 #' Describe one ORB from its manifest
 #'
-#' Applies the same checks amRdata does (parseable `amR_dataset` manifest,
-#' schema version 1, living in an `orb/` folder), plus that `metadata.parquet`
-#' exists, since that is all the Metadata tab needs.
+#' Applies the same checks amRml's `readORB()` does on the manifest (parseable
+#' `amR_dataset` manifest, schema version 1, an `amRml_input` entry naming the
+#' metadata file), plus that the metadata file exists, since every tab needs it.
 #'
 #' @param manifest_path Path to a `manifest_run_*.json`.
 #' @return A one-row tibble in the shape of `.empty_orbs()`, or NULL when the
-#'   manifest is missing, invalid, or its ORB has no `metadata.parquet`.
+#'   manifest is missing or invalid, or names no metadata file that exists.
 #' @keywords internal
 #' @noRd
 .describe_orb <- function(manifest_path) {
@@ -70,34 +116,43 @@
     error = function(e) NULL
   )
   if (!is.list(manifest) ||
-    !identical(manifest$manifest_type, "amR_dataset") ||
-    !identical(suppressWarnings(as.integer(manifest$schema_version)), 1L)) {
+    !identical(manifest[["manifest_type"]], .AMRDATA_MANIFEST_TYPE) ||
+    !identical(
+      suppressWarnings(as.integer(manifest[["schema_version"]])),
+      .AMRDATA_SCHEMA_VERSION
+    )) {
     return(NULL)
   }
 
   manifest_path <- normalizePath(manifest_path, winslash = "/", mustWork = TRUE)
-  orb_dir <- dirname(manifest_path)
-  metadata_path <- file.path(orb_dir, "metadata.parquet")
-  if (!identical(basename(orb_dir), "orb") || !file.exists(metadata_path)) {
+  artifact <- manifest[["artifacts"]][[.AMRDATA_ML_ARTIFACT]]
+  metadata <- artifact[["metadata_parquet"]]
+  if (!is.character(metadata) || length(metadata) != 1 || !nzchar(metadata)) {
+    return(NULL)
+  }
+  metadata_path <- .orb_file_path(metadata, manifest_path)
+  if (!file.exists(metadata_path)) {
     return(NULL)
   }
 
-  species_dir <- basename(dirname(orb_dir))
+  dataset_id <- as.character(manifest[["dataset_id"]] %||% "")
   user_bacs <- as.character(unlist(
-    manifest$dataset$selection$user_bacs,
+    manifest[["dataset"]][["selection"]][["user_bacs"]],
     use.names = FALSE
   ))
   label <- if (length(user_bacs)) {
     paste(user_bacs, collapse = ", ")
   } else {
-    gsub("_", " ", species_dir)
+    dataset_id
+  }
+  if (!nzchar(label)) {
+    return(NULL)
   }
 
   tibble::tibble(
     label = label,
-    species_dir = species_dir,
-    dataset_id = as.character(manifest$dataset_id %||% ""),
-    orb_dir = orb_dir,
+    dataset_id = dataset_id,
+    orb_dir = dirname(manifest_path),
     manifest_path = manifest_path,
     metadata_path = metadata_path,
     modified = file.info(manifest_path)$mtime
@@ -105,16 +160,16 @@
 }
 
 
-#' List the ORBs available on this machine
+#' List ORBs from their manifests
 #'
-#' Stale registry entries (deleted files, temp-dir runs, pre-`orb/` layouts)
-#' are dropped silently. When several manifests point at the same ORB, the
-#' newest wins.
+#' Stale registry entries (deleted files, temp-dir runs, manifests without a
+#' metadata file) are dropped silently. When several manifests describe the
+#' same ORB, the newest wins.
 #'
 #' @param manifest_paths Manifest paths to inspect. Defaults to those
 #'   registered in the amRdata BiocFileCache.
-#' @return A tibble with columns `label`, `species_dir`, `dataset_id`,
-#'   `orb_dir`, `manifest_path`, `metadata_path` and `modified`, newest first.
+#' @return A tibble with columns `label`, `dataset_id`, `orb_dir`,
+#'   `manifest_path`, `metadata_path` and `modified`, newest first.
 #' @keywords internal
 #' @noRd
 .list_available_orbs <- function(manifest_paths = .registered_orb_manifests()) {
@@ -128,20 +183,6 @@
 }
 
 
-#' Selector id for an ORB
-#' @keywords internal
-#' @noRd
-.orb_id <- function(orb_dir) paste0("orb:", orb_dir)
-
-
-#' Is `x` an ORB selector id?
-#' @keywords internal
-#' @noRd
-.is_orb_id <- function(x) {
-  is.character(x) && length(x) == 1 && !is.na(x) && startsWith(x, "orb:")
-}
-
-
 #' Selector choices for a set of ORBs
 #'
 #' Names are the display labels; labels shared by several ORBs get the
@@ -149,7 +190,7 @@
 #' they can be told apart.
 #'
 #' @param orbs Output of `.list_available_orbs()`.
-#' @return A named character vector of ORB ids, sorted by label.
+#' @return A named character vector of metadata paths, sorted by label.
 #' @keywords internal
 #' @noRd
 .orb_choices <- function(orbs) {
@@ -161,49 +202,6 @@
   labels[dup] <- paste0(
     labels[dup], " [", format(orbs$modified[dup], "%Y-%m-%d %H:%M"), "]"
   )
-  choices <- stats::setNames(.orb_id(orbs$orb_dir), make.unique(labels, " #"))
+  choices <- stats::setNames(orbs$metadata_path, make.unique(labels, " #"))
   choices[order(names(choices))]
-}
-
-
-#' Metadata parquet behind an ORB selector id
-#'
-#' @param id An ORB selector id (`orb:<orb_dir>`).
-#' @return The path to the ORB's `metadata.parquet`, or NULL when `id` is not an
-#'   ORB id or the file is missing.
-#' @keywords internal
-#' @noRd
-.orb_metadata_path <- function(id) {
-  if (!.is_orb_id(id)) {
-    return(NULL)
-  }
-  fp <- file.path(sub("^orb:", "", id), "metadata.parquet")
-  if (file.exists(fp)) fp else NULL
-}
-
-
-#' Species folder name behind a metadata selector id
-#'
-#' Plain species folders are their own id; an ORB id maps to the dataset
-#' folder that holds its `orb/` directory.
-#'
-#' @keywords internal
-#' @noRd
-.metadata_species_name <- function(id) {
-  if (.is_orb_id(id)) {
-    basename(dirname(sub("^orb:", "", id)))
-  } else {
-    id
-  }
-}
-
-
-#' Does a species folder hold a metadata parquet, flat or under `orb/`?
-#' @keywords internal
-#' @noRd
-.species_dir_has_metadata <- function(d) {
-  any(file.exists(c(
-    file.path(d, "metadata.parquet"),
-    file.path(d, "orb", "metadata.parquet")
-  )))
 }

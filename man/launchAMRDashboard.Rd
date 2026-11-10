@@ -7,9 +7,10 @@
 launchAMRDashboard(results_root = NULL, amrdata_root = NULL)
 }
 \arguments{
-\item{results_root}{File path to the root directory containing amRml model
-output results. If \code{NULL} (default), the application will attempt to
-use example data bundled with the package, where available.}
+\item{results_root}{File path to a folder holding amRml results: an amRdata
+ORB with amRml runs inside it, a folder of ORBs (such as the amRdata
+data folder), or an amRml run. If \code{NULL} (default), the
+application uses the demo ORB bundled with the package.}
 
 \item{amrdata_root}{File path to the root directory containing amRdata
 annotation parquets (e.g. \code{cluster_feature.parquet},

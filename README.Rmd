@@ -124,45 +124,45 @@ The dashboard is organized into tabs:
 
 ### Data requirements
 
-amRviz reads the parquet files produced by **amRml**. Files must be organized into per-species subdirectories:
+amRviz reads an **amRdata** ORB and the **amRml** runs saved inside it:
 
 ```
-results/
-├── Shigella_flexneri/
-│   ├── all_perf.parquet
-│   ├── country_perf.parquet
-│   ├── year_perf.parquet
-│   ├── cross_perf.parquet
-│   ├── all_top_features.parquet
-│   ├── country_top_features.parquet
-│   ├── year_top_features.parquet
-│   └── metadata.parquet
-├── Klebsiella_pneumoniae/
-│   ├── all_perf.parquet
-│   └── ...
-└── ...
+Shigella_flexneri/orb/
+├── manifest_run_*.json          # the amRdata record: species, files
+├── metadata.parquet
+├── ...                          # feature and annotation tables
+└── amRml/
+    └── 2026-10-18_130824/       # one amRml run
+        ├── run.json             # what was run, and on which ORB
+        ├── tasks.parquet        # each model: labels, seed, status
+        ├── matrices.parquet     # each model's data: type, drug, features
+        └── results/
+            ├── performance.parquet
+            └── importance.parquet
 ```
 
-- The **subdirectory name** (e.g. `Shigella_flexneri`) is used as the display label throughout the dashboard.
-- The **species code** (e.g. `Sfl`) inside each parquet is used for internal filtering.
-- Pass `results_root = "/path/to/results"` to `launchAMRDashboard()` to load your own data. Without this argument the dashboard loads the bundled demo data.
+- Nothing is read from file or folder names. The **species** and the **metadata file** come from the ORB manifest; each model's type, drug or drug class, feature type, encoding, labels and seed come from the run's `tasks.parquet` and `matrices.parquet`.
+- Pass `results_root` an ORB, a folder of ORBs (such as the amRdata data folder), or a single run to `launchAMRDashboard()` to load your own data. Without this argument the dashboard loads the bundled demo data.
+- The bundled demo data is a small copy of a *Shigella flexneri* ORB with one amRml run, made by `data-raw/demo_orb.R`.
 
 ## Data schema
 
-### Performance metrics (`*_perf.parquet`)
+The tabs read the run's results joined to its tasks and matrices, under these column names.
+
+### Performance metrics (`results/performance.parquet`)
 
 | Column | Description |
 |---|---|
 | `species` | Species code (e.g. `"Sfl"`) |
 | `drug_or_class` | Drug or drug class abbreviation |
 | `drug_label` | `"drug"` or `"drug_class"` |
-| `feature_type` | Molecular scale: `genes`, `proteins`, `domains`, `struct` |
+| `feature_type` | Molecular scale: `genes`, `proteins`, `domains`, `cogs`, `args`, `struct`, `DefenseCas` |
 | `feature_subtype` | Data encoding: `binary`, `counts` |
 | `strat_label` | Stratification: blank (baseline), `"country"`, or `"year"` |
 | `strat_value` / `strat_value_test` | Trained-on / tested-on country or year (stratified/cross models) |
 | `mcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics |
 
-### Top features (`*_top_features.parquet`)
+### Top features (`results/importance.parquet`)
 
 | Column | Description |
 |---|---|
@@ -175,7 +175,7 @@ results/
 | `Importance` | Feature importance score |
 | `Sign` | Direction of effect |
 
-### Metadata (`*_metadata.parquet`)
+### Metadata (`metadata.parquet` in the ORB)
 
 | Column | Description |
 |---|---|
@@ -212,7 +212,7 @@ amRviz/
 ├── inst/
 │   ├── app/www/                   # Static assets (CSS, images)
 │   └── extdata/
-│       └── Shigella_flexneri/     # Demo data (amRml output)
+│       └── Shigella_flexneri/     # Demo ORB with one amRml run
 ├── man/                           # Documentation
 ├── vignettes/                     # Usage vignette and figures
 └── DESCRIPTION

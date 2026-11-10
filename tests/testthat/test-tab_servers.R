@@ -27,7 +27,7 @@ test_that("setupServerCore loads the demo results and lists their species", {
     {
       session$flushReact()
       expect_gt(nrow(core$queryData()), 0)
-      expect_true(all(c("Sfl", "Sso") %in% core$available_species()))
+      expect_identical(unname(core$available_species()), "Sfl")
     }
   )
 })
@@ -57,11 +57,11 @@ test_that("resultsSourceServer returns no selection in demo mode", {
   })
 })
 
-test_that("resultsSourceServer offers the species folders under a results root", {
+test_that("resultsSourceServer offers the runs under a results root", {
   root <- system.file("extdata", package = "amRviz")
   shiny::testServer(resultsSourceServer, args = list(results_root = root), {
     expect_match(
-      output$results_species_selector_ui$html, "Shigella_flexneri"
+      output$results_species_selector_ui$html, "Shigella flexneri \\(amRml run"
     )
   })
 })
@@ -74,7 +74,7 @@ test_that("modelPerfServer renders the performance plots for a species", {
       session$setInputs(
         bug_perf_id = "Sfl", model_scale = "genes", data_type = "binary",
         model_metrics = "mcc", drug_class_perf_id = "all",
-        drug_perf_id = "GEN"
+        drug_perf_id = "AMP"
       )
       expect_true(nzchar(output$model_perfomance_plot))
       expect_true(nzchar(output$mcc_heatmap))
@@ -91,7 +91,7 @@ test_that("featureImportanceServer renders the across-bug plot and table", {
         across_bug_id = "drug", bug_search_amr_across_bug = "Sfl",
         bug_drug_comp_model_scale = "genes", feature_data_type = "binary",
         top_n_features = 10, feature_importance_tabset = "across_bug",
-        amr_drug_across_bug = "GEN"
+        amr_drug_across_bug = "AMP"
       )
       expect_identical(bug_norm_input(), "Sfl")
       expect_true(nzchar(output$across_bug_feature_importance_plot))
@@ -131,4 +131,22 @@ test_that("queryDataServer shows the chosen performance columns", {
       expect_true(nzchar(output$queryDataTable))
     }
   )
+})
+
+test_that("the model tabs show nothing, rather than errors, before results load", {
+  empty <- tibble::tibble()
+  core <- list(
+    queryData = function() empty, topFeatures = function() empty,
+    available_species = function() character(0),
+    filtered_top_features = function() empty,
+    loadDrugClassMapRec = function() tibble::tibble()
+  )
+  shiny::testServer(featureImportanceServer, args = list(core = core), {
+    session$setInputs(across_bug_id = "drug", across_drug_id = "drug")
+    expect_null(enriched_across_bug())
+    expect_null(enriched_across_drug())
+  })
+  shiny::testServer(crossModelComparisonServer, args = list(core = core), {
+    expect_no_error(output$cross_model_feature_importance_table)
+  })
 })

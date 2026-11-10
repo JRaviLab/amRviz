@@ -101,7 +101,11 @@ crossModelComparisonServer <- function(id, core) {
       } else {
         "year"
       }
-      tf <- core$topFeatures() |>
+      tf <- core$topFeatures()
+      if (!nrow(tf)) {
+        return(NULL)
+      }
+      tf <- tf |>
         dplyr::filter(
           normalize_species(.data$species) %in%
             normalize_species(input$bug_cross_model_comparison_id)
