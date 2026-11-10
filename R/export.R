@@ -633,8 +633,11 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
     )
   }
 
-  # Metadata species: label -> metadata parquet, from ORB manifests.
-  meta_species <- listMetadataSpecies(results_root)
+  # Metadata species: label -> metadata parquet, and each one's species code,
+  # from ORB manifests.
+  meta_orbs <- .metadata_orbs(results_root)
+  meta_species <- .orb_choices(meta_orbs)
+  meta_codes <- meta_orbs$dataset_id[match(meta_species, meta_orbs$metadata_path)]
 
   # Optional species filter (matched against labels, codes and folder names).
   if (!is.null(species)) {
@@ -644,6 +647,7 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
       code = ml_species$code[keep], label = ml_species$label[keep]
     )
     meta_species <- meta_species[names(meta_species) %in% species |
+      meta_codes %in% species |
       .export_folder(names(meta_species)) %in% species]
   }
 

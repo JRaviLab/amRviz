@@ -164,3 +164,23 @@ test_that("exportAMRVisualizations writes files for the demo data", {
   png_files <- list.files(out, pattern = "\\.png$", recursive = TRUE)
   expect_gt(length(png_files), 0)
 })
+
+test_that("exportAMRVisualizations keeps metadata figures when given a species code", {
+  skip_on_cran()
+  skip_if_not_installed("webshot2")
+  skip_if_not_installed("htmlwidgets")
+  skip_if(
+    tryCatch(!nzchar(chromote::find_chrome()), error = function(e) TRUE),
+    "No Chrome/Chromium available"
+  )
+
+  out <- tempfile("amrviz_export")
+  on.exit(unlink(out, recursive = TRUE), add = TRUE)
+
+  # The species code comes from the ORB manifest, like the label does.
+  res <- exportAMRVisualizations(
+    output_dir = out, formats = "png", species = "Sfl", verbose = FALSE
+  )
+  expect_true(any(grepl("^metadata_", res$name)))
+  expect_true(any(res$name == "model_performance"))
+})

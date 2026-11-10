@@ -590,12 +590,24 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 #' @keywords internal
 #' @noRd
 listMetadataSpecies <- function(results_root = NULL) {
+  .orb_choices(.metadata_orbs(results_root))
+}
+
+
+#' The ORBs that listMetadataSpecies() lists
+#'
+#' @param results_root User results root, or NULL for the packaged demo data.
+#' @return A `.list_available_orbs()` tibble, with each ORB's species code
+#'   (`dataset_id`), label and metadata path.
+#' @keywords internal
+#' @noRd
+.metadata_orbs <- function(results_root = NULL) {
   root <- if (!is.null(results_root) && nzchar(results_root)) {
     results_root
   } else {
     system.file("extdata", package = "amRviz")
   }
-  .orb_choices(.list_available_orbs(.find_orb_manifests(root)))
+  .list_available_orbs(.find_orb_manifests(root))
 }
 
 
