@@ -96,9 +96,8 @@ Shigella_flexneri/orb/
 ```
 
 Pass `results_root` an ORB, a folder of ORBs (such as the amRdata data folder),
-or a single run. amRviz also still reads results in the older amRml layout (one
-folder per species of `all_perf.parquet`, `country_top_features.parquet` and
-so on), which the bundled demo data uses.
+or a single run. The bundled demo data is a small copy of a *Shigella flexneri*
+ORB with one amRml run, made by `data-raw/demo_orb.R`.
 
 Three kinds of data drive the dashboard:
 
@@ -227,7 +226,7 @@ exportAMRVisualizations(
   output_dir   = "figures",
   formats      = c("png", "pdf", "jpg"),
   results_root = "/path/to/your/amRml/results",
-  species      = c("Shigella_flexneri", "Shigella_sonnei")
+  species      = "Shigella flexneri"
 )
 ```
 

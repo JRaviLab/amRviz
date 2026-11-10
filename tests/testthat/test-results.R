@@ -1,5 +1,5 @@
-## Tests for reading ML results: amRml runs (R/utils_amrml.R) and older-format
-## folders (R/utils_legacy.R). Folder and file names in these fixtures are
+## Tests for reading ML results: amRml runs (R/utils_amrml.R) and the
+## packaged demo. Folder and file names in these fixtures are
 ## deliberately misleading, so passing means nothing is read from them.
 
 # ── amRml runs ───────────────────────────────────────────────────────────────
@@ -108,35 +108,16 @@ test_that("listResultSources finds a run from its ORB, the ORB's folder, or the 
   }
 })
 
-# ── older-format folders ─────────────────────────────────────────────────────
+# ── packaged demo data ───────────────────────────────────────────────────────
 
-test_that("older-format files are told apart by their columns, not their names", {
-  demo <- system.file("extdata", "Shigella_sonnei", package = "amRviz")
-  dir <- file.path(withr::local_tempdir(), "Shigella_sonnei")
-  dir.create(dir)
-  file.copy(file.path(demo, "all_perf.parquet"), file.path(dir, "cross_drug_perf.parquet"))
-  file.copy(file.path(demo, "cross_drug_perf.parquet"), file.path(dir, "all_perf.parquet"))
-  file.copy(file.path(demo, "MDR_perf.parquet"), file.path(dir, "year_perf.parquet"))
-  file.copy(file.path(demo, "all_top_features.parquet"), file.path(dir, "MDR_top_features.parquet"))
+test_that("the demo data is an ORB with an amRml run", {
+  extdata <- system.file("extdata", package = "amRviz")
+  expect_length(listResultSources(extdata), 1)
 
-  files <- .legacy_result_files(dir)
-  kinds <- stats::setNames(files$kind, basename(files$path))
-  expect_equal(kinds[["cross_drug_perf.parquet"]], "perf")
-  expect_equal(kinds[["all_perf.parquet"]], "perf")
-  expect_equal(kinds[["MDR_top_features.parquet"]], "top")
-  expect_false("year_perf.parquet" %in% names(kinds))
-
-  perf <- loadMLResults(dirname(dir), dir, verbose = FALSE)
-  baseline <- arrow::read_parquet(file.path(demo, "all_perf.parquet"))
-  cross <- arrow::read_parquet(file.path(demo, "cross_drug_perf.parquet"))
-  expect_equal(sum(!perf$cross_test), nrow(.real_labels(baseline)))
-  expect_equal(sum(perf$cross_test), nrow(cross))
-  expect_equal(unique(perf$species_label), "Shigella sonnei")
-})
-
-test_that("the demo data loads as the older-format converter reads it", {
   perf <- loadMLResults(verbose = FALSE)
-  expect_true(all(c("Shigella flexneri", "Shigella sonnei") %in% perf$species_label))
+  expect_identical(unique(perf$species_label), "Shigella flexneri")
+  expect_identical(unique(perf$species), "Sfl")
   expect_true(all(file.exists(unique(perf$metadata_path))))
-  expect_true(any(perf$cross_test))
+  expect_false(any(perf$shuffled))
+  expect_gt(nrow(loadTopFeat(verbose = FALSE)), 0)
 })

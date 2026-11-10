@@ -13,3 +13,4 @@ $run_dev.*
 create_shiny_pkg.Rmd
 ^\.\.Rcheck$
 ^\.Rhistory$
+^data-raw$

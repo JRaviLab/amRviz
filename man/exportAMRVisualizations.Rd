@@ -28,8 +28,7 @@ overviews under \verb{output_dir/_overview} and \verb{output_dir/_across_species
 
 \item{results_root}{Folder holding amRml results, as for
 \code{\link[=launchAMRDashboard]{launchAMRDashboard()}}: an amRdata ORB with amRml runs, a folder of ORBs,
-an amRml run, or older per-species result folders. \code{NULL} uses the
-packaged demo data.}
+or an amRml run. \code{NULL} uses the packaged demo ORB.}
 
 \item{amrdata_root}{Directory of amRdata annotation parquets (for cluster
 enrichment). \code{NULL} tries \verb{~/amRdata/data}, else falls back to unenriched.}

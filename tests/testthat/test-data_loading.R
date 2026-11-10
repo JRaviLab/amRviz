@@ -12,7 +12,7 @@ test_that("listResultSources returns empty for NULL/invalid root", {
   )
 })
 
-test_that("listResultSources finds the older-format demo folders", {
+test_that("listResultSources finds the demo run", {
   extdata <- system.file("extdata", package = "amRviz")
   skip_if(!nzchar(extdata), "No extdata directory found")
 

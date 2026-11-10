@@ -580,9 +580,9 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 
 #' List the species that have metadata
 #'
-#' Under `results_root`: the ORBs whose manifests are found there (species and
-#' metadata file from each manifest), plus older-format species folders holding
-#' a `metadata.parquet`. Without `results_root`, the packaged demo folders.
+#' The ORBs whose manifests are found under `results_root` (species and
+#' metadata file from each manifest). Without `results_root`, the packaged demo
+#' ORB.
 #'
 #' @param results_root User results root, or NULL for the packaged demo data.
 #' @return A sorted named character vector (names = display labels, values =
@@ -590,21 +590,12 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 #' @keywords internal
 #' @noRd
 listMetadataSpecies <- function(results_root = NULL) {
-  if (!is.null(results_root) && nzchar(results_root)) {
-    orbs <- .orb_choices(
-      .list_available_orbs(.find_orb_manifests(results_root))
-    )
-    legacy <- .legacy_metadata_sources(results_root)
-    choices <- c(orbs, legacy[!legacy %in% orbs])
+  root <- if (!is.null(results_root) && nzchar(results_root)) {
+    results_root
   } else {
-    extdata <- system.file("extdata", package = "amRviz")
-    choices <- .legacy_metadata_sources(extdata)
+    system.file("extdata", package = "amRviz")
   }
-  if (!length(choices)) {
-    return(character(0))
-  }
-  names(choices) <- make.unique(names(choices), " #")
-  choices[order(names(choices))]
+  .orb_choices(.list_available_orbs(.find_orb_manifests(root)))
 }
 
 

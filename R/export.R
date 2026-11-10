@@ -510,8 +510,7 @@
 #' @param formats Any of `"png"`, `"pdf"`, `"jpg"`, `"svg"`.
 #' @param results_root Folder holding amRml results, as for
 #'   [launchAMRDashboard()]: an amRdata ORB with amRml runs, a folder of ORBs,
-#'   an amRml run, or older per-species result folders. `NULL` uses the
-#'   packaged demo data.
+#'   or an amRml run. `NULL` uses the packaged demo ORB.
 #' @param amrdata_root Directory of amRdata annotation parquets (for cluster
 #'   enrichment). `NULL` tries `~/amRdata/data`, else falls back to unenriched.
 #' @param species Optional character vector restricting which species to
@@ -634,8 +633,7 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
     )
   }
 
-  # Metadata species: label -> metadata parquet, from ORB manifests and
-  # older-format folders.
+  # Metadata species: label -> metadata parquet, from ORB manifests.
   meta_species <- listMetadataSpecies(results_root)
 
   # Optional species filter (matched against labels, codes and folder names).

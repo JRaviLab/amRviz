@@ -5,9 +5,8 @@
 #'
 #' @param results_root File path to a folder holding amRml results: an amRdata
 #'        ORB with amRml runs inside it, a folder of ORBs (such as the amRdata
-#'        data folder), an amRml run, or older amRml per-species result
-#'        folders. If `NULL` (default), the application will attempt to use
-#'        example data bundled with the package, where available.
+#'        data folder), or an amRml run. If `NULL` (default), the
+#'        application uses the demo ORB bundled with the package.
 #' @param amrdata_root File path to the root directory containing amRdata
 #'        annotation parquets (e.g. `cluster_feature.parquet`,
 #'        `gene_names.parquet`). If `NULL` (default), `~/amRdata/data` is used

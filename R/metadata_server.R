@@ -2,10 +2,9 @@
 
 #' Metadata tab server
 #'
-#' Fills the species selector from the ORBs and older-format folders under
-#' `results_root` (so the tab works without ML results), reads the selected
-#' species' metadata
-#' once, and renders every output on the tab from that one read.
+#' Fills the species selector from the ORBs under `results_root` (so the tab
+#' works without ML results), reads the selected species' metadata once, and
+#' renders every output on the tab from that one read.
 #'
 #' @param id Module id; must match the id passed to `metadataUI()`.
 #' @param results_root User results root, or NULL for the packaged demo data.

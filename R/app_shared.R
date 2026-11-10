@@ -19,7 +19,7 @@ resultsSourceUI <- function(id) {
 
 #' Results-folder selector server
 #'
-#' Lists the amRml runs and older-format species folders under `results_root`
+#' Lists the amRml runs under `results_root`
 #' (see listResultSources()) and lets the user pick which to load.
 #'
 #' @param id Module id; must match the id passed to `resultsSourceUI()`.

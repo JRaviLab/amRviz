@@ -1,7 +1,6 @@
 # Data loaders: ML results, top features, and finding them.
 #
-# A results source is one folder: an amRml run (read by utils_amrml.R) or an
-# older amRml species folder (read by utils_legacy.R).
+# A results source is one amRml run folder, read by utils_amrml.R.
 
 
 #' Normalise a results-root path
@@ -63,8 +62,7 @@
 #' Find the ML results under a root
 #'
 #' Finds amRml runs, inside the ORBs whose manifests sit in `results_root` or
-#' up to two levels below it, or in `results_root` or its subfolders directly;
-#' and older-format species folders among its subfolders.
+#' up to two levels below it, or in `results_root` or its subfolders directly.
 #'
 #' @param results_root Root directory to search.
 #' @param verbose Unused; kept for signature consistency with the loaders.
@@ -84,37 +82,26 @@ listResultSources <- function(results_root, verbose = TRUE) {
     unlist(lapply(orbs$orb_dir, .orb_amrml_runs)),
     Filter(.is_amrml_run, c(rr, subdirs))
   ))
-  legacy <- Filter(.is_legacy_results, setdiff(subdirs, runs))
-
-  if (!length(runs) && !length(legacy)) {
+  if (!length(runs)) {
     return(character(0))
   }
-  labels <- c(
-    vapply(runs, .amrml_run_label, character(1), USE.NAMES = FALSE),
-    if (length(legacy)) {
-      paste0(.legacy_label(legacy), " (older amRml results)")
-    }
-  )
-  stats::setNames(c(runs, legacy), make.unique(labels, " #"))
+  labels <- vapply(runs, .amrml_run_label, character(1), USE.NAMES = FALSE)
+  stats::setNames(runs, make.unique(labels, " #"))
 }
 
 
 #' Load one kind of result from one source
 #'
-#' @param dir An amRml run or older-format species folder.
+#' @param dir An amRml run folder.
 #' @param kind `"perf"` or `"top"`.
 #' @param verbose Passed through to the reader.
 #' @keywords internal
 #' @noRd
 .load_source <- function(dir, kind, verbose = TRUE) {
-  if (.is_amrml_run(dir)) {
-    if (kind == "perf") {
-      .load_amrml_perf(dir, verbose)
-    } else {
-      .load_amrml_top(dir, verbose)
-    }
+  if (kind == "perf") {
+    .load_amrml_perf(dir, verbose)
   } else {
-    .load_legacy(dir, kind, verbose)
+    .load_amrml_top(dir, verbose)
   }
 }
 
@@ -123,8 +110,8 @@ listResultSources <- function(results_root, verbose = TRUE) {
 #'
 #' Shared mode-selection used by loadMLResults() and loadTopFeat(): user mode
 #' loads from the selected result folders; if a results_root is set but nothing
-#' is selected, returns empty; otherwise falls back to the packaged demo
-#' parquets in extdata. Models fitted on shuffled labels (amRml's null
+#' is selected, returns empty; otherwise falls back to the packaged demo run
+#' in extdata. Models fitted on shuffled labels (amRml's null
 #' models) are left out; no tab shows them yet.
 #'
 #' @param kind `"perf"` or `"top"`.
@@ -150,14 +137,14 @@ listResultSources <- function(results_root, verbose = TRUE) {
     return(tibble::tibble())
   }
 
-  # Demo fallback: the packaged older-format species folders
+  # Demo fallback: the packaged demo ORB's run
   extdata <- system.file("extdata", package = "amRviz")
   if (!nzchar(extdata)) {
     return(tibble::tibble())
   }
-  subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
   if (isTRUE(verbose)) message(demo_msg)
-  .real_labels(dplyr::bind_rows(lapply(subdirs, .load_legacy,
+  .real_labels(dplyr::bind_rows(lapply(
+    unname(listResultSources(extdata)), .load_source,
     kind = kind, verbose = verbose
   )))
 }
@@ -165,7 +152,7 @@ listResultSources <- function(results_root, verbose = TRUE) {
 
 #' Drop models fitted on shuffled labels
 #'
-#' @param df Result rows; older results may lack `shuffled` or leave it NA.
+#' @param df Result rows.
 #' @return `df` without the rows whose `shuffled` is TRUE.
 #' @keywords internal
 #' @noRd
@@ -190,7 +177,7 @@ loadMLResults <- function(results_root = NULL, result_dirs = NULL,
                           verbose = TRUE) {
   .load_results(
     "perf", results_root, result_dirs, verbose,
-    "loadMLResults(): using packaged demo parquets"
+    "loadMLResults(): using the packaged demo run"
   )
 }
 
@@ -208,14 +195,14 @@ loadTopFeat <- function(results_root = NULL, result_dirs = NULL,
                         verbose = TRUE) {
   .load_results(
     "top", results_root, result_dirs, verbose,
-    "loadTopFeat(): using packaged demo parquets"
+    "loadTopFeat(): using the packaged demo run"
   )
 }
 
 
 #' Find a file by name within the immediate subdirectories of a root
 #'
-#' Used only by the annotation lookups, which still read older-format files.
+#' Used only by the annotation lookups, which still find their files by name.
 #'
 #' @param root Directory whose immediate subdirectories are searched, or NULL.
 #' @param fname File name to look for in each subdirectory.
