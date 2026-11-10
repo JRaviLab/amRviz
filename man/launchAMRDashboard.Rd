@@ -8,8 +8,8 @@ launchAMRDashboard(results_root = NULL, amrdata_root = NULL)
 }
 \arguments{
 \item{results_root}{File path to a folder holding amRml results: an amRdata
-ORB with amRml runs inside it, a folder of ORBs (such as the amRdata
-data folder), or an amRml run. If \code{NULL} (default), the
+ORB with amRml runs inside it (at \verb{\{orb\}/amRml/\{run\}/}), or a folder
+of ORBs (such as the amRdata data folder). If \code{NULL} (default), the
 application uses the demo ORB bundled with the package.}
 
 \item{amrdata_root}{File path to the root directory containing amRdata

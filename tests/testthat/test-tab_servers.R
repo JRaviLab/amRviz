@@ -9,7 +9,7 @@ demo_core <- function() {
   list(
     queryData = function() perf,
     topFeatures = function() top,
-    available_species = function() c("Shigella flexneri" = "Sfl"),
+    available_species = function() c("Shigella sonnei" = "Sso"),
     filtered_top_features = function() {
       top[is.na(top$strat_label) & !top$cross_test, ]
     },
@@ -27,7 +27,7 @@ test_that("setupServerCore loads the demo results and lists their species", {
     {
       session$flushReact()
       expect_gt(nrow(core$queryData()), 0)
-      expect_identical(unname(core$available_species()), "Sfl")
+      expect_identical(unname(core$available_species()), "Sso")
     }
   )
 })
@@ -61,7 +61,7 @@ test_that("resultsSourceServer offers the runs under a results root", {
   root <- system.file("extdata", package = "amRviz")
   shiny::testServer(resultsSourceServer, args = list(results_root = root), {
     expect_match(
-      output$results_species_selector_ui$html, "Shigella flexneri \\(amRml run"
+      output$results_species_selector_ui$html, "Shigella sonnei \\(amRml run"
     )
   })
 })
@@ -72,7 +72,7 @@ test_that("modelPerfServer renders the performance plots for a species", {
     args = list(core = demo_core()),
     {
       session$setInputs(
-        bug_perf_id = "Sfl", model_scale = "genes", data_type = "binary",
+        bug_perf_id = "Sso", model_scale = "genes", data_type = "binary",
         model_metrics = "mcc", drug_class_perf_id = "all",
         drug_perf_id = "AMP"
       )
@@ -88,12 +88,12 @@ test_that("featureImportanceServer renders the across-bug plot and table", {
     args = list(core = demo_core()),
     {
       session$setInputs(
-        across_bug_id = "drug", bug_search_amr_across_bug = "Sfl",
+        across_bug_id = "drug", bug_search_amr_across_bug = "Sso",
         bug_drug_comp_model_scale = "genes", feature_data_type = "binary",
         top_n_features = 10, feature_importance_tabset = "across_bug",
         amr_drug_across_bug = "AMP"
       )
-      expect_identical(bug_norm_input(), "Sfl")
+      expect_identical(bug_norm_input(), "Sso")
       expect_true(nzchar(output$across_bug_feature_importance_plot))
       expect_gt(nrow(enriched_across_bug()), 0)
     }
@@ -105,7 +105,7 @@ test_that("crossModelComparisonServer renders the holdout plots", {
     crossModelComparisonServer,
     args = list(core = demo_core()),
     {
-      session$setInputs(bug_cross_model_comparison_id = "Sfl")
+      session$setInputs(bug_cross_model_comparison_id = "Sso")
       expect_true(nzchar(output$cross_model_ridge_country))
     }
   )
@@ -116,7 +116,7 @@ test_that("networkServer renders the drug-feature network", {
     networkServer,
     args = list(core = demo_core()),
     {
-      session$setInputs(network_bug_id = "Sfl", network_top_n = 5)
+      session$setInputs(network_bug_id = "Sso", network_top_n = 5)
       expect_true(nzchar(output$drug_feature_network))
     }
   )

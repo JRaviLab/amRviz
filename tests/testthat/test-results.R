@@ -60,30 +60,69 @@ test_that("a run's species and metadata come from its ORB's manifest", {
   expect_equal(unique(top$species), "Hin")
 })
 
-test_that("run.json links a run written outside its ORB", {
+test_that("a run's tables are found through its manifest", {
   root <- withr::local_tempdir()
   mp <- make_orb(root, user_bacs = "Haemophilus influenzae")
-  run <- make_amrml_run(
-    file.path(root, "elsewhere", "run"),
-    run_json = list(
-      species = "Hin", started_at = "2026-11-02 10:00:00",
-      orb = list(directory = dirname(mp), manifest = basename(mp))
-    )
+  run <- make_amrml_run(file.path(dirname(mp), "amRml", "run"))
+  # Move the performance table and say so in the manifest.
+  dir.create(file.path(run, "elsewhere"))
+  file.rename(
+    file.path(run, "results", "performance.parquet"),
+    file.path(run, "elsewhere", "perf.parquet")
+  )
+  manifest <- jsonlite::read_json(file.path(run, "manifest.json"))
+  manifest$artifacts$amRviz_input$results$performance <- "elsewhere/perf.parquet"
+  jsonlite::write_json(manifest, file.path(run, "manifest.json"), auto_unbox = TRUE)
+
+  expect_equal(nrow(loadMLResults(root, run, verbose = FALSE)), 2)
+})
+
+test_that("only folders with an amRml manifest inside an ORB are runs", {
+  root <- withr::local_tempdir()
+  mp <- make_orb(root, user_bacs = "Haemophilus influenzae")
+  run <- make_amrml_run(file.path(dirname(mp), "amRml", "run"))
+
+  # A run outside any ORB's amRml/ folder isn't found.
+  make_amrml_run(file.path(root, "elsewhere", "run"))
+  expect_equal(normalizePath(unname(listResultSources(root))), normalizePath(run))
+
+  # A manifest of another type, or none at all, isn't a run.
+  manifest <- jsonlite::read_json(file.path(run, "manifest.json"))
+  manifest$manifest_type <- "amR_dataset"
+  jsonlite::write_json(manifest, file.path(run, "manifest.json"), auto_unbox = TRUE)
+  expect_length(listResultSources(root), 0)
+  unlink(file.path(run, "manifest.json"))
+  expect_length(listResultSources(root), 0)
+})
+
+test_that("feature importance keeps the most important features of each model", {
+  root <- withr::local_tempdir()
+  mp <- make_orb(root)
+  importance <- tibble::tibble(
+    task_id = rep(c("t1", "t3"), each = 150),
+    Variable = paste0("f", seq_len(300)),
+    Importance = c(seq(-1.5, 0, length.out = 150), seq_len(150) / 100),
+    Sign = "POS"
+  )
+  run <- make_amrml_run(file.path(dirname(mp), "amRml", "run"),
+    importance = importance
   )
 
-  perf <- loadMLResults(root, run, verbose = FALSE)
-  expect_equal(unique(perf$species_label), "Haemophilus influenzae")
-  expect_true(file.exists(unique(perf$metadata_path)))
-  expect_match(names(listResultSources(run)), "2026-11-02 10:00:00", fixed = TRUE)
+  top <- loadTopFeat(root, run, verbose = FALSE)
+  expect_equal(as.vector(table(top$task_id)), c(100, 100))
+  # Ranked by absolute importance, so large negative values are kept.
+  expect_true(all(abs(top$Importance[top$task_id == "t1"]) >= 0.5))
+  expect_equal(min(top$Importance[top$task_id == "t3"]), 0.51)
 })
 
 test_that("leave-one-out modes, MDR targets and unknown modes are left out", {
   root <- withr::local_tempdir()
   mp <- make_orb(root)
   run <- make_amrml_run(file.path(dirname(mp), "amRml", "run"))
-  matrices <- arrow::read_parquet(file.path(run, "matrices.parquet"))
+  matrices_path <- file.path(run, "metadata", "matrices.parquet")
+  matrices <- arrow::read_parquet(matrices_path)
   matrices$mode_id <- c("logo", "a_future_mode")
-  arrow::write_parquet(matrices, file.path(run, "matrices.parquet"))
+  arrow::write_parquet(matrices, matrices_path)
   expect_message(
     perf <- loadMLResults(root, run, verbose = TRUE),
     "a_future_mode"
@@ -92,19 +131,19 @@ test_that("leave-one-out modes, MDR targets and unknown modes are left out", {
 
   matrices$mode_id <- "vanilla"
   matrices$unit <- c("mdr", "drug")
-  arrow::write_parquet(matrices, file.path(run, "matrices.parquet"))
+  arrow::write_parquet(matrices, matrices_path)
   expect_equal(unique(loadMLResults(root, run, verbose = FALSE)$drug_label), "drug")
 })
 
-test_that("listResultSources finds a run from its ORB, the ORB's folder, or the run", {
+test_that("listResultSources finds a run from its ORB or a folder above it", {
   root <- withr::local_tempdir()
   mp <- make_orb(root, user_bacs = "Haemophilus influenzae")
   run <- make_amrml_run(file.path(dirname(mp), "amRml", "2026-10-18_130824"))
 
-  for (r in c(root, dirname(dirname(mp)), dirname(mp), run)) {
+  for (r in c(root, dirname(dirname(mp)), dirname(mp))) {
     sources <- listResultSources(r)
     expect_equal(normalizePath(unname(sources)), normalizePath(run))
-    expect_equal(names(sources), "Haemophilus influenzae (amRml run 2026-10-18_130824)")
+    expect_equal(names(sources), "Haemophilus influenzae (amRml run 2026-11-09 12:48:10)")
   }
 })
 
@@ -124,8 +163,9 @@ test_that("the demo data is an ORB with an amRml run", {
   expect_length(listResultSources(extdata), 1)
 
   perf <- loadMLResults(verbose = FALSE)
-  expect_identical(unique(perf$species_label), "Shigella flexneri")
-  expect_identical(unique(perf$species), "Sfl")
+  expect_identical(unique(perf$species_label), "Shigella sonnei")
+  expect_identical(unique(perf$species), "Sso")
+  expect_true(any(perf$cross_test))
   expect_true(all(file.exists(unique(perf$metadata_path))))
   expect_false(any(perf$shuffled))
   expect_gt(nrow(loadTopFeat(verbose = FALSE)), 0)

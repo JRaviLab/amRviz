@@ -32,7 +32,7 @@ This is the final package in the **AMR package suite**,
     stratifications (country, year)
 -   **Dynamic species selection**: Dropdowns automatically populate from
     loaded data — no hardcoded species lists
--   **Demo mode**: Ships with example *Shigella flexneri* data; swap in
+-   **Demo mode**: Ships with example *Shigella sonnei* data; swap in
     your own amRml output with one argument
 -   **Headless figure export**: Render every visualization to PNG/PDF/JPG
     files without launching the dashboard, with one call to
@@ -60,11 +60,11 @@ devtools::install_github("JRaviLab/amRviz")
 ``` r
 library(amRviz)
 
-# Launch with built-in Shigella flexneri demo data
+# Launch with built-in Shigella sonnei demo data
 launchAMRDashboard()
 
 # Launch with your own amRml output
-launchAMRDashboard(results_root = "/path/to/your/amRml/results")
+launchAMRDashboard(results_root = "/path/to/your/orb")
 ```
 
 The dashboard will open in your default web browser. Species dropdowns
@@ -87,8 +87,8 @@ exportAMRVisualizations()
 exportAMRVisualizations(
   output_dir   = "figures",
   formats      = c("png", "jpg"),
-  results_root = "/path/to/your/amRml/results",
-  species      = "Shigella_flexneri"
+  results_root = "/path/to/your/orb",
+  species      = "Shigella_sonnei"
 )
 ```
 
@@ -155,28 +155,30 @@ The dashboard is organized into tabs:
 
 amRviz reads an **amRdata** ORB and the **amRml** runs saved inside it:
 
-    Shigella_flexneri/orb/
+    Shigella_sonnei/orb/
     ├── manifest_run_*.json          # the amRdata record: species, files
     ├── metadata.parquet
     ├── ...                          # feature and annotation tables
     └── amRml/
-        └── 2026-10-18_130824/       # one amRml run
-            ├── run.json             # what was run, and on which ORB
-            ├── tasks.parquet        # each model: labels, seed, status
-            ├── matrices.parquet     # each model's data: type, drug, features
+        └── test-full/               # one amRml run (any folder name)
+            ├── manifest.json        # the amRml record: lists the run's tables
+            ├── metadata/
+            │   └── matrices.parquet # each model's data: type, drug, features
             └── results/
+                ├── tasks.parquet    # each model: labels, seed, status
                 ├── performance.parquet
                 └── importance.parquet
 
 -   Nothing is read from file or folder names. The **species** and the
     **metadata file** come from the ORB manifest; each model’s type,
     drug or drug class, feature type, encoding, labels and seed come
-    from the run’s `tasks.parquet` and `matrices.parquet`.
--   Pass `results_root` an ORB, a folder of ORBs (such as the amRdata data
-    folder), or a single run to `launchAMRDashboard()` to load your own
-    data. Without this argument the dashboard loads the bundled demo
+    from the run’s tasks and matrices tables, found through its
+    `manifest.json`.
+-   Runs are read only from inside an ORB, at `{orb}/amRml/{run}/`. Pass
+    `results_root` an ORB or a folder of ORBs (such as the amRdata data
+    folder) to `launchAMRDashboard()` to load your own data. Without this argument the dashboard loads the bundled demo
     data.
--   The bundled demo data is a small copy of a *Shigella flexneri* ORB
+-   The bundled demo data is a small copy of a *Shigella sonnei* ORB
     with one amRml run, made by `data-raw/demo_orb.R`.
 
 ## Data schema
@@ -246,7 +248,7 @@ these column names.
     ├── inst/
     │   ├── app/www/                   # Static assets (CSS, images)
     │   └── extdata/
-    │       └── Shigella_flexneri/     # Demo ORB with one amRml run
+    │       └── Shigella_sonnei/     # Demo ORB with one amRml run
     ├── man/                           # Documentation
     ├── vignettes/                     # Usage vignette and figures
     └── DESCRIPTION
@@ -272,7 +274,7 @@ This package is being prepared for Bioconductor submission. It includes:
 -   **R version requirement**: R &gt;= 4.5.0
 -   **Documentation**: Function documentation with examples, plus a
     usage vignette
--   **Data**: Pre-computed amRml results for *Shigella flexneri*
+-   **Data**: Pre-computed amRml results for *Shigella sonnei*
     included in `inst/extdata/`
 
 ## Contributing

@@ -509,8 +509,8 @@
 #'   overviews under `output_dir/_overview` and `output_dir/_across_species`.
 #' @param formats Any of `"png"`, `"pdf"`, `"jpg"`, `"svg"`.
 #' @param results_root Folder holding amRml results, as for
-#'   [launchAMRDashboard()]: an amRdata ORB with amRml runs, a folder of ORBs,
-#'   or an amRml run. `NULL` uses the packaged demo ORB.
+#'   [launchAMRDashboard()]: an amRdata ORB with amRml runs inside it, or a
+#'   folder of ORBs. `NULL` uses the packaged demo ORB.
 #' @param amrdata_root Directory of amRdata annotation parquets (for cluster
 #'   enrichment). `NULL` tries `~/amRdata/data`, else falls back to unenriched.
 #' @param species Optional character vector restricting which species to

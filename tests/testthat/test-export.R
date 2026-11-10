@@ -150,7 +150,7 @@ test_that("exportAMRVisualizations writes files for the demo data", {
   res <- exportAMRVisualizations(
     output_dir = out,
     formats = "png",
-    species = "Shigella_flexneri",
+    species = "Shigella_sonnei",
     verbose = FALSE
   )
 
@@ -179,7 +179,7 @@ test_that("exportAMRVisualizations keeps metadata figures when given a species c
 
   # The species code comes from the ORB manifest, like the label does.
   res <- exportAMRVisualizations(
-    output_dir = out, formats = "png", species = "Sfl", verbose = FALSE
+    output_dir = out, formats = "png", species = "Sso", verbose = FALSE
   )
   expect_true(any(grepl("^metadata_", res$name)))
   expect_true(any(res$name == "model_performance"))

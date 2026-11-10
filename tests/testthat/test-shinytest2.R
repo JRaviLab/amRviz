@@ -2,7 +2,7 @@
 #
 # These open the real dashboard in a hidden browser and check that the app
 # starts up and that every tab shows its plots using the built-in Shigella
-# flexneri demo data, with no errors. The other test files check the helper
+# sonnei demo data, with no errors. The other test files check the helper
 # functions on their own; these check the whole app running together.
 #
 # By default these run only on a developer's machine. They are skipped on CRAN,
@@ -142,6 +142,6 @@ test_that("model tabs load a results folder without visiting Query Data first", 
 
   app$set_inputs(tabselected = "model_perf_tab")
   app$wait_for_idle(timeout = 60 * 1000)
-  expect_identical(app$get_value(input = "model_perf-bug_perf_id"), "Sfl")
+  expect_identical(app$get_value(input = "model_perf-bug_perf_id"), "Sso")
   expect_output_ok(app, "model_perf-mcc_strip_plot")
 })

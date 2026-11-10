@@ -60,12 +60,12 @@ launchAMRDashboard()
 
 `launchAMRDashboard()` returns a Shiny application object and opens the
 dashboard in your default browser. With no arguments it loads the bundled demo
-data for *Shigella flexneri*, so you can explore every tab immediately.
+data for *Shigella sonnei*, so you can explore every tab immediately.
 
 To explore your own results, point the app at an amRml output directory:
 
 ```{r, eval = FALSE}
-launchAMRDashboard(results_root = "/path/to/your/amRml/results")
+launchAMRDashboard(results_root = "/path/to/your/orb")
 ```
 
 The species dropdowns populate automatically from whichever data is loaded.
@@ -77,27 +77,29 @@ amRviz reads an **amRdata** ORB and the **amRml** runs saved inside it.
 Everything it shows about a dataset or a model comes from what those packages
 recorded, not from file or folder names: the species and the metadata file from
 the ORB manifest, and each model's type, drug or drug class, feature type,
-encoding, labels and seed from the run's `tasks.parquet` and
-`matrices.parquet`.
+encoding, labels and seed from the run's tasks and matrices tables, found
+through its `manifest.json`.
 
 ```
-Shigella_flexneri/orb/
+Shigella_sonnei/orb/
 ├── manifest_run_*.json          # the amRdata record: species, files
 ├── metadata.parquet             # isolate surveillance metadata
 ├── ...                          # feature and annotation tables
 └── amRml/
-    └── 2026-10-18_130824/       # one amRml run
-        ├── run.json             # what was run, and on which ORB
-        ├── tasks.parquet        # each model: labels, seed, status
-        ├── matrices.parquet     # each model's data: type, drug, features
+    └── test-full/               # one amRml run (any folder name)
+        ├── manifest.json        # the amRml record: lists the run's tables
+        ├── metadata/
+        │   └── matrices.parquet # each model's data: type, drug, features
         └── results/
+            ├── tasks.parquet    # each model: labels, seed, status
             ├── performance.parquet
             └── importance.parquet
 ```
 
-Pass `results_root` an ORB, a folder of ORBs (such as the amRdata data folder),
-or a single run. The bundled demo data is a small copy of a *Shigella flexneri*
-ORB with one amRml run, made by `data-raw/demo_orb.R`.
+Runs are read only from inside an ORB, at `{orb}/amRml/{run}/`. Pass
+`results_root` an ORB or a folder of ORBs (such as the amRdata data folder).
+The bundled demo data is a small copy of a *Shigella sonnei* ORB with one
+amRml run, made by `data-raw/demo_orb.R`.
 
 Three kinds of data drive the dashboard:
 
@@ -225,8 +227,8 @@ exportAMRVisualizations()
 exportAMRVisualizations(
   output_dir   = "figures",
   formats      = c("png", "pdf", "jpg"),
-  results_root = "/path/to/your/amRml/results",
-  species      = "Shigella flexneri"
+  results_root = "/path/to/your/orb",
+  species      = "Shigella sonnei"
 )
 ```
 
@@ -245,7 +247,7 @@ figures/
 │   └── mcc_heatmap_overview.png
 ├── _across_species/                  # cross-species feature importance
 │   └── feature_importance_GEN.png
-└── Shigella_flexneri/
+└── Shigella_sonnei/
     ├── model_performance.png
     ├── feature_importance_across_drugs.png
     ├── cog_categories.png

@@ -1,0 +1,1854 @@
+{
+  "schema_version": 1,
+  "manifest_type": "amR_ml",
+  "manifest_id": "manifest_run_20261109T194810529_pid2013558",
+  "manifest_created_at": "2026-11-09 12:48:10.529159",
+  "manifest_updated_at": "2026-11-10 12:46:08.923004",
+  "dataset_id": "Sso",
+  "dataset": {
+    "label": "Shigella sonnei",
+    "input_orb": {
+      "directory": "../.."
+    }
+  },
+  "artifacts": {
+    "amRviz_input": {
+      "status": "ready",
+      "producer": "amRml",
+      "producer_run_id": "run_20261110T194446382_pid3555106",
+      "directory": ".",
+      "path_mode": "relative_to_manifest",
+      "metadata": {
+        "matrices": "metadata/matrices.parquet"
+      },
+      "results": {
+        "tasks": "results/tasks.parquet",
+        "performance": "results/performance.parquet",
+        "importance": "results/importance.parquet"
+      },
+      "modes": [
+        "vanilla",
+        "stratified_country",
+        "stratified_year",
+        "cross_country",
+        "cross_year"
+      ],
+      "seeds": [
+        123
+      ]
+    }
+  },
+  "runs": [
+    {
+      "run_id": "run_20261109T194810529_pid2013558",
+      "status": "prepared",
+      "started_at": "2026-11-09 12:48:10.52974",
+      "finished_at": "2026-11-09 12:54:17.517446",
+      "command": [
+        "/projects/.xsede.org/ebrenner1/conda/envs/amrml/lib/R/bin/exec/R",
+        "--no-echo",
+        "--no-restore",
+        "--file=inst/examples/slurm/prepare-sonnei.R",
+        "--args",
+        "data/Shigella_sonnei/orb",
+        "data/Shigella_sonnei/test-full",
+        "full"
+      ],
+      "working_directory": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml",
+      "host": {
+        "sysname": "Linux",
+        "release": "4.18.0-553.92.1.el8_10.x86_64",
+        "version": "#1 SMP Thu Jan 15 12:07:46 UTC 2026",
+        "nodename": "c3cpu-a2-u32-1",
+        "machine": "x86_64",
+        "login": "unknown",
+        "user": "ebrenner1@xsede.org",
+        "effective_user": "ebrenner1@xsede.org"
+      },
+      "r": {
+        "version": "R version 4.5.3 (2026-03-11)",
+        "platform": "x86_64-conda-linux-gnu"
+      },
+      "git": {
+        "available": true,
+        "repository": true,
+        "commit": "14cf7f9e1836072fdda485fec4aa0896b5eea857",
+        "branch": "organization-updates",
+        "dirty": true
+      },
+      "packages": {
+        "amRml": "0.99.0",
+        "arrow": "25.0.1",
+        "assertthat": "0.2.1",
+        "base": "4.5.3",
+        "BiocParallel": "1.44.0",
+        "bit": "4.6.0",
+        "bit64": "4.8.6",
+        "cli": "3.6.6",
+        "codetools": "0.2.20",
+        "compiler": "4.5.3",
+        "datasets": "4.5.3",
+        "foreach": "1.5.2",
+        "glmnet": "5.0",
+        "glue": "1.8.1",
+        "graphics": "4.5.3",
+        "grDevices": "4.5.3",
+        "grid": "4.5.3",
+        "iterators": "1.0.14",
+        "jsonlite": "2.0.0",
+        "lattice": "0.23.1",
+        "lifecycle": "1.0.5",
+        "magrittr": "2.0.5",
+        "Matrix": "1.7.6",
+        "methods": "4.5.3",
+        "parallel": "4.5.3",
+        "pillar": "1.11.1",
+        "pkgconfig": "2.0.3",
+        "purrr": "1.2.2",
+        "R6": "2.6.1",
+        "Rcpp": "1.1.2",
+        "rlang": "1.3.0",
+        "shape": "1.4.6.1",
+        "splines": "4.5.3",
+        "stats": "4.5.3",
+        "survival": "3.8.12",
+        "tibble": "3.3.1",
+        "tidyselect": "1.2.1",
+        "tools": "4.5.3",
+        "utils": "4.5.3",
+        "vctrs": "0.7.3"
+      },
+      "parameters": {
+        "orb_dir": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb",
+        "model_types": null,
+        "seeds": [
+          123,
+          456,
+          789
+        ],
+        "labels": [
+          "real",
+          "shuffled"
+        ],
+        "min_genomes": 40,
+        "n_fold": 5,
+        "min_test_genomes": 5,
+        "min_test_minority": 2,
+        "min_fold_minority": 2,
+        "min_analysis_minority": 8,
+        "reuse_fits": true,
+        "feature_types": "standard",
+        "save_fits": false,
+        "min_mdr_label_genomes": 25,
+        "mdr_min_classes": 2,
+        "save_state": true,
+        "easy_mode": false,
+        "rescore": true
+      },
+      "stages": [
+        {
+          "name": "read_orb",
+          "status": "success",
+          "started_at": "2026-11-09 12:48:10.781907",
+          "parameters": [],
+          "inputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/manifest_run_20261104T011136029_pid77138.json",
+              "exists": true,
+              "size_bytes": 37974,
+              "modified_at": "2026-11-09 12:26:41.487395"
+            }
+          ],
+          "outputs": [],
+          "metrics": {
+            "dataset_id": "Sso",
+            "producer_run_id": "run_20261104T012625769_pid77138"
+          },
+          "finished_at": "2026-11-09 12:48:10.782267"
+        },
+        {
+          "name": "profile_orb",
+          "status": "success",
+          "started_at": "2026-11-09 12:48:10.785293",
+          "parameters": [],
+          "inputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/metadata.parquet",
+              "exists": true,
+              "size_bytes": 100989,
+              "modified_at": "2026-11-09 12:26:41.695395"
+            }
+          ],
+          "outputs": [],
+          "metrics": {
+            "n_genomes": 2009,
+            "n_targets": 1085
+          },
+          "finished_at": "2026-11-09 12:48:11.472098"
+        },
+        {
+          "name": "determine_eligibility",
+          "status": "success",
+          "started_at": "2026-11-09 12:48:11.475649",
+          "parameters": {
+            "min_genomes": 40,
+            "n_fold": 5,
+            "min_test_genomes": 5,
+            "min_test_minority": 2,
+            "min_mdr_label_genomes": 25,
+            "min_fold_minority": 2,
+            "min_analysis_minority": 8,
+            "holdout": 0.2
+          },
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/eligibility.parquet",
+              "exists": true,
+              "size_bytes": 58139,
+              "modified_at": "2026-11-09 12:54:10.01614"
+            }
+          ],
+          "metrics": {
+            "n_scopes": 31564,
+            "n_eligible": 972
+          },
+          "finished_at": "2026-11-09 12:54:10.027535"
+        },
+        {
+          "name": "build_matrices",
+          "status": "success",
+          "started_at": "2026-11-09 12:48:29.68277",
+          "parameters": {
+            "feature_types": "standard",
+            "storage": "shared_sparse"
+          },
+          "inputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/protein_AMRFinder_count.parquet",
+              "exists": true,
+              "size_bytes": 23608,
+              "modified_at": "2026-11-09 12:26:41.988396"
+            },
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/protein_COG_count.parquet",
+              "exists": true,
+              "size_bytes": 2807811,
+              "modified_at": "2026-11-09 12:26:41.929396"
+            },
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/protein_Pfam_count.parquet",
+              "exists": true,
+              "size_bytes": 9360500,
+              "modified_at": "2026-11-09 12:26:41.627395"
+            },
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/gene_count.parquet",
+              "exists": true,
+              "size_bytes": 3081504,
+              "modified_at": "2026-11-09 12:26:39.079387"
+            },
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/protein_count.parquet",
+              "exists": true,
+              "size_bytes": 12003026,
+              "modified_at": "2026-11-09 12:26:38.982387"
+            }
+          ],
+          "outputs": [
+            {
+              "path": "metadata/matrices.parquet",
+              "exists": true,
+              "size_bytes": 75807,
+              "modified_at": "2026-11-09 12:54:09.979422"
+            }
+          ],
+          "metrics": {
+            "n_built": 9720,
+            "n_skipped": 0
+          },
+          "finished_at": "2026-11-09 12:54:10.037791"
+        },
+        {
+          "name": "expand_tasks",
+          "status": "success",
+          "started_at": "2026-11-09 12:54:10.695175",
+          "parameters": {
+            "seeds": [
+              123,
+              456,
+              789
+            ],
+            "labels": [
+              "real",
+              "shuffled"
+            ]
+          },
+          "inputs": [],
+          "outputs": [],
+          "metrics": {
+            "n_tasks": 58320
+          },
+          "finished_at": "2026-11-09 12:54:10.695387"
+        },
+        {
+          "name": "fit_models",
+          "status": "running",
+          "started_at": "2026-11-09 12:54:10.701153",
+          "parameters": {
+            "save_fits": false,
+            "save_state": true,
+            "reuse_fits": true,
+            "backend": "SerialParam",
+            "workers": 1,
+            "resume": false
+          },
+          "inputs": [],
+          "outputs": [],
+          "metrics": []
+        }
+      ],
+      "events": [
+        {
+          "timestamp": "2026-11-09 12:54:17.508382",
+          "level": "info",
+          "message": "Array prepared; waiting for workers and collection.",
+          "details": {
+            "n_chunks": 200
+          }
+        }
+      ]
+    },
+    {
+      "run_id": "run_20261110T170000081_pid3311531",
+      "status": "running",
+      "started_at": "2026-11-10 10:00:00.082214",
+      "finished_at": null,
+      "command": "/projects/.xsede.org/ebrenner1/conda/envs/amrml/lib/R/bin/exec/R",
+      "working_directory": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml",
+      "host": {
+        "sysname": "Linux",
+        "release": "4.18.0-553.92.1.el8_10.x86_64",
+        "version": "#1 SMP Thu Jan 15 12:07:46 UTC 2026",
+        "nodename": "c3cpu-a2-u3-4",
+        "machine": "x86_64",
+        "login": "unknown",
+        "user": "ebrenner1@xsede.org",
+        "effective_user": "ebrenner1@xsede.org"
+      },
+      "r": {
+        "version": "R version 4.5.3 (2026-03-11)",
+        "platform": "x86_64-conda-linux-gnu"
+      },
+      "git": {
+        "available": true,
+        "repository": true,
+        "commit": "14cf7f9e1836072fdda485fec4aa0896b5eea857",
+        "branch": "organization-updates",
+        "dirty": true
+      },
+      "packages": {
+        "amRml": "0.99.0",
+        "base": "4.5.3",
+        "BiocParallel": "1.44.0",
+        "cli": "3.6.6",
+        "codetools": "0.2.20",
+        "compiler": "4.5.3",
+        "datasets": "4.5.3",
+        "foreach": "1.5.2",
+        "glmnet": "5.0",
+        "graphics": "4.5.3",
+        "grDevices": "4.5.3",
+        "grid": "4.5.3",
+        "iterators": "1.0.14",
+        "jsonlite": "2.0.0",
+        "lattice": "0.23.1",
+        "Matrix": "1.7.6",
+        "methods": "4.5.3",
+        "parallel": "4.5.3",
+        "Rcpp": "1.1.2",
+        "rlang": "1.3.0",
+        "shape": "1.4.6.1",
+        "splines": "4.5.3",
+        "stats": "4.5.3",
+        "survival": "3.8.12",
+        "tools": "4.5.3",
+        "utils": "4.5.3"
+      },
+      "parameters": {
+        "orb_dir": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb",
+        "model_types": null,
+        "seeds": [
+          123,
+          456,
+          789
+        ],
+        "labels": [
+          "real",
+          "shuffled"
+        ],
+        "min_genomes": 40,
+        "n_fold": 5,
+        "min_test_genomes": 5,
+        "min_test_minority": 2,
+        "min_fold_minority": 2,
+        "min_analysis_minority": 8,
+        "reuse_fits": true,
+        "feature_types": "standard",
+        "save_fits": false,
+        "min_mdr_label_genomes": 25,
+        "mdr_min_classes": 2,
+        "save_state": true,
+        "easy_mode": false,
+        "rescore": true
+      },
+      "stages": [
+        {
+          "name": "read_orb",
+          "status": "success",
+          "started_at": "2026-11-10 10:00:01.295328",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/manifest_run_20261104T011136029_pid77138.json",
+              "exists": true,
+              "size_bytes": 37974,
+              "modified_at": "2026-11-09 12:26:41.487395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 10:00:01.296488"
+        },
+        {
+          "name": "profile_orb",
+          "status": "success",
+          "started_at": "2026-11-10 10:00:01.304968",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/metadata.parquet",
+              "exists": true,
+              "size_bytes": 100989,
+              "modified_at": "2026-11-09 12:26:41.695395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 10:00:01.305705"
+        },
+        {
+          "name": "determine_eligibility",
+          "status": "success",
+          "started_at": "2026-11-10 10:00:01.314541",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/eligibility.parquet",
+              "exists": true,
+              "size_bytes": 58139,
+              "modified_at": "2026-11-09 12:54:10.01614"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 10:00:01.315937"
+        },
+        {
+          "name": "build_matrices",
+          "status": "success",
+          "started_at": "2026-11-10 10:00:01.324838",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/matrices.parquet",
+              "exists": true,
+              "size_bytes": 75807,
+              "modified_at": "2026-11-09 12:54:09.979422"
+            },
+            {
+              "path": "state/matrix_index.rds",
+              "exists": true,
+              "size_bytes": 194115034,
+              "modified_at": "2026-11-09 12:54:09.94818"
+            },
+            {
+              "path": "state/features/0001.rds",
+              "exists": true,
+              "size_bytes": 434125,
+              "modified_at": "2026-11-09 12:48:30.836164"
+            },
+            {
+              "path": "state/features/0002.rds",
+              "exists": true,
+              "size_bytes": 52348338,
+              "modified_at": "2026-11-09 12:48:33.57128"
+            },
+            {
+              "path": "state/features/0003.rds",
+              "exists": true,
+              "size_bytes": 82061083,
+              "modified_at": "2026-11-09 12:49:23.457946"
+            },
+            {
+              "path": "state/features/0004.rds",
+              "exists": true,
+              "size_bytes": 110471595,
+              "modified_at": "2026-11-09 12:50:42.300117"
+            },
+            {
+              "path": "state/features/0005.rds",
+              "exists": true,
+              "size_bytes": 108985340,
+              "modified_at": "2026-11-09 12:52:28.075148"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 10:00:01.333181"
+        },
+        {
+          "name": "expand_tasks",
+          "status": "success",
+          "started_at": "2026-11-10 10:00:01.401932",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "state/workflow.rds",
+              "exists": true,
+              "size_bytes": 102412242,
+              "modified_at": "2026-11-09 12:54:10.647187"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 10:00:01.402341"
+        },
+        {
+          "name": "fit_models",
+          "status": "running",
+          "started_at": "2026-11-10 10:00:05.431251",
+          "parameters": {
+            "save_fits": false,
+            "save_state": true,
+            "reuse_fits": true,
+            "backend": "SerialParam",
+            "workers": 1,
+            "resume": true
+          },
+          "inputs": [],
+          "outputs": [],
+          "metrics": []
+        }
+      ],
+      "events": [
+        {
+          "timestamp": "2026-11-10 10:00:01.272842",
+          "level": "info",
+          "message": "Started resumed modeling workflow.",
+          "details": []
+        }
+      ]
+    },
+    {
+      "run_id": "run_20261110T192823541_pid3555106",
+      "status": "failed",
+      "started_at": "2026-11-10 12:28:23.54199",
+      "finished_at": "2026-11-10 12:43:03.166256",
+      "command": "/projects/.xsede.org/ebrenner1/conda/envs/amrml/lib/R/bin/exec/R",
+      "working_directory": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml",
+      "host": {
+        "sysname": "Linux",
+        "release": "4.18.0-553.92.1.el8_10.x86_64",
+        "version": "#1 SMP Thu Jan 15 12:07:46 UTC 2026",
+        "nodename": "c3cpu-a2-u3-4",
+        "machine": "x86_64",
+        "login": "unknown",
+        "user": "ebrenner1@xsede.org",
+        "effective_user": "ebrenner1@xsede.org"
+      },
+      "r": {
+        "version": "R version 4.5.3 (2026-03-11)",
+        "platform": "x86_64-conda-linux-gnu"
+      },
+      "git": {
+        "available": true,
+        "repository": true,
+        "commit": "14cf7f9e1836072fdda485fec4aa0896b5eea857",
+        "branch": "organization-updates",
+        "dirty": true
+      },
+      "packages": {
+        "amRml": "0.99.0",
+        "base": "4.5.3",
+        "BiocParallel": "1.44.0",
+        "cli": "3.6.6",
+        "codetools": "0.2.20",
+        "compiler": "4.5.3",
+        "datasets": "4.5.3",
+        "foreach": "1.5.2",
+        "glmnet": "5.0",
+        "graphics": "4.5.3",
+        "grDevices": "4.5.3",
+        "grid": "4.5.3",
+        "iterators": "1.0.14",
+        "jsonlite": "2.0.0",
+        "lattice": "0.23.1",
+        "Matrix": "1.7.6",
+        "methods": "4.5.3",
+        "parallel": "4.5.3",
+        "Rcpp": "1.1.2",
+        "rlang": "1.3.0",
+        "shape": "1.4.6.1",
+        "splines": "4.5.3",
+        "stats": "4.5.3",
+        "survival": "3.8.12",
+        "tools": "4.5.3",
+        "utils": "4.5.3"
+      },
+      "parameters": {
+        "orb_dir": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb",
+        "model_types": null,
+        "seeds": [
+          123,
+          456,
+          789
+        ],
+        "labels": [
+          "real",
+          "shuffled"
+        ],
+        "min_genomes": 40,
+        "n_fold": 5,
+        "min_test_genomes": 5,
+        "min_test_minority": 2,
+        "min_fold_minority": 2,
+        "min_analysis_minority": 8,
+        "reuse_fits": true,
+        "feature_types": "standard",
+        "save_fits": false,
+        "min_mdr_label_genomes": 25,
+        "mdr_min_classes": 2,
+        "save_state": true,
+        "easy_mode": false,
+        "rescore": true
+      },
+      "stages": [
+        {
+          "name": "read_orb",
+          "status": "success",
+          "started_at": "2026-11-10 12:28:23.946581",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/manifest_run_20261104T011136029_pid77138.json",
+              "exists": true,
+              "size_bytes": 37974,
+              "modified_at": "2026-11-09 12:26:41.487395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:28:23.947105"
+        },
+        {
+          "name": "profile_orb",
+          "status": "success",
+          "started_at": "2026-11-10 12:28:23.959301",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/metadata.parquet",
+              "exists": true,
+              "size_bytes": 100989,
+              "modified_at": "2026-11-09 12:26:41.695395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:28:23.95962"
+        },
+        {
+          "name": "determine_eligibility",
+          "status": "success",
+          "started_at": "2026-11-10 12:28:24.031624",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/eligibility.parquet",
+              "exists": true,
+              "size_bytes": 58139,
+              "modified_at": "2026-11-09 12:54:10.01614"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:28:24.032114"
+        },
+        {
+          "name": "build_matrices",
+          "status": "success",
+          "started_at": "2026-11-10 12:28:24.04526",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/matrices.parquet",
+              "exists": true,
+              "size_bytes": 75807,
+              "modified_at": "2026-11-09 12:54:09.979422"
+            },
+            {
+              "path": "state/matrix_index.rds",
+              "exists": true,
+              "size_bytes": 194115034,
+              "modified_at": "2026-11-09 12:54:09.94818"
+            },
+            {
+              "path": "state/features/0001.rds",
+              "exists": true,
+              "size_bytes": 434125,
+              "modified_at": "2026-11-09 12:48:30.836164"
+            },
+            {
+              "path": "state/features/0002.rds",
+              "exists": true,
+              "size_bytes": 52348338,
+              "modified_at": "2026-11-09 12:48:33.57128"
+            },
+            {
+              "path": "state/features/0003.rds",
+              "exists": true,
+              "size_bytes": 82061083,
+              "modified_at": "2026-11-09 12:49:23.457946"
+            },
+            {
+              "path": "state/features/0004.rds",
+              "exists": true,
+              "size_bytes": 110471595,
+              "modified_at": "2026-11-09 12:50:42.300117"
+            },
+            {
+              "path": "state/features/0005.rds",
+              "exists": true,
+              "size_bytes": 108985340,
+              "modified_at": "2026-11-09 12:52:28.075148"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:28:24.048158"
+        },
+        {
+          "name": "expand_tasks",
+          "status": "success",
+          "started_at": "2026-11-10 12:28:24.209501",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "state/workflow.rds",
+              "exists": true,
+              "size_bytes": 102412242,
+              "modified_at": "2026-11-09 12:54:10.647187"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:28:24.209923"
+        },
+        {
+          "name": "fit_models",
+          "status": "success",
+          "started_at": "2026-11-10 12:28:24.988128",
+          "parameters": {
+            "save_fits": false,
+            "save_state": true,
+            "reuse_fits": true,
+            "backend": "SerialParam",
+            "workers": 1,
+            "resume": true
+          },
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "results/tasks.parquet",
+              "exists": true,
+              "size_bytes": 366475,
+              "modified_at": "2026-11-10 12:40:42.919287"
+            },
+            {
+              "path": "results/performance.parquet",
+              "exists": true,
+              "size_bytes": 1267123,
+              "modified_at": "2026-11-10 12:40:42.997177"
+            },
+            {
+              "path": "results/importance.parquet",
+              "exists": true,
+              "size_bytes": 235301090,
+              "modified_at": "2026-11-10 12:40:55.160638"
+            },
+            {
+              "path": "results/predictions.parquet",
+              "exists": true,
+              "size_bytes": 94353247,
+              "modified_at": "2026-11-10 12:41:02.129189"
+            },
+            {
+              "path": "results/notes.parquet",
+              "exists": true,
+              "size_bytes": 51740,
+              "modified_at": "2026-11-10 12:40:42.931124"
+            }
+          ],
+          "metrics": {
+            "n_tasks": 58320,
+            "n_fitted": 57855,
+            "n_failed": 465,
+            "n_notes": 6208,
+            "n_collapsed": 13248,
+            "n_all_susceptible": 5510,
+            "n_all_resistant": 7198,
+            "elapsed_seconds": 809.5879
+          },
+          "finished_at": "2026-11-10 12:41:54.789305"
+        },
+        {
+          "name": "export_merged_results",
+          "status": "success",
+          "started_at": "2026-11-10 12:41:54.814067",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "results/merged/all_perf.parquet",
+              "exists": true,
+              "size_bytes": 32891,
+              "modified_at": "2026-11-10 12:41:54.881644"
+            },
+            {
+              "path": "results/merged/all_top_features.parquet",
+              "exists": true,
+              "size_bytes": 8691397,
+              "modified_at": "2026-11-10 12:41:57.088093"
+            },
+            {
+              "path": "results/merged/country_perf.parquet",
+              "exists": true,
+              "size_bytes": 33625,
+              "modified_at": "2026-11-10 12:41:59.902007"
+            },
+            {
+              "path": "results/merged/country_top_features.parquet",
+              "exists": true,
+              "size_bytes": 4763788,
+              "modified_at": "2026-11-10 12:42:01.924573"
+            },
+            {
+              "path": "results/merged/cross_country_perf.parquet",
+              "exists": true,
+              "size_bytes": 110589,
+              "modified_at": "2026-11-10 12:42:01.966243"
+            },
+            {
+              "path": "results/merged/cross_drug_perf.parquet",
+              "exists": true,
+              "size_bytes": 193834,
+              "modified_at": "2026-11-10 12:42:02.000442"
+            },
+            {
+              "path": "results/merged/cross_year_perf.parquet",
+              "exists": true,
+              "size_bytes": 35972,
+              "modified_at": "2026-11-10 12:42:01.941704"
+            },
+            {
+              "path": "results/merged/LOO_country_perf.parquet",
+              "exists": true,
+              "size_bytes": 97216,
+              "modified_at": "2026-11-10 12:42:04.771739"
+            },
+            {
+              "path": "results/merged/LOO_country_top_features.parquet",
+              "exists": true,
+              "size_bytes": 39401455,
+              "modified_at": "2026-11-10 12:42:09.095486"
+            },
+            {
+              "path": "results/merged/LOO_year_perf.parquet",
+              "exists": true,
+              "size_bytes": 45302,
+              "modified_at": "2026-11-10 12:42:02.015989"
+            },
+            {
+              "path": "results/merged/LOO_year_top_features.parquet",
+              "exists": true,
+              "size_bytes": 14539718,
+              "modified_at": "2026-11-10 12:42:04.749184"
+            },
+            {
+              "path": "results/merged/year_perf.parquet",
+              "exists": true,
+              "size_bytes": 15249,
+              "modified_at": "2026-11-10 12:41:57.100501"
+            },
+            {
+              "path": "results/merged/year_top_features.parquet",
+              "exists": true,
+              "size_bytes": 1997299,
+              "modified_at": "2026-11-10 12:41:59.886601"
+            }
+          ],
+          "metrics": {
+            "n_files": 13
+          },
+          "finished_at": "2026-11-10 12:42:09.122187"
+        },
+        {
+          "name": "rescore_features",
+          "status": "failed",
+          "started_at": "2026-11-10 12:42:09.198583",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [],
+          "metrics": [],
+          "finished_at": "2026-11-10 12:43:03.166402",
+          "error": "runModelingWorkflow() exited before successful completion."
+        }
+      ],
+      "events": [
+        {
+          "timestamp": "2026-11-10 12:28:23.934026",
+          "level": "info",
+          "message": "Started resumed modeling workflow.",
+          "details": []
+        },
+        {
+          "timestamp": "2026-11-10 12:38:02.006136",
+          "level": "info",
+          "message": "58320 of 58320 models complete. 09:36 elapsed.",
+          "details": {
+            "n_completed": 58320,
+            "n_tasks": 58320,
+            "elapsed_seconds": 576.802
+          }
+        }
+      ],
+      "error": "runModelingWorkflow() exited before successful completion."
+    },
+    {
+      "run_id": "run_20261110T194424635_pid3555106",
+      "status": "failed",
+      "started_at": "2026-11-10 12:44:24.63548",
+      "finished_at": "2026-11-10 12:44:39.851502",
+      "command": "/projects/.xsede.org/ebrenner1/conda/envs/amrml/lib/R/bin/exec/R",
+      "working_directory": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml",
+      "host": {
+        "sysname": "Linux",
+        "release": "4.18.0-553.92.1.el8_10.x86_64",
+        "version": "#1 SMP Thu Jan 15 12:07:46 UTC 2026",
+        "nodename": "c3cpu-a2-u3-4",
+        "machine": "x86_64",
+        "login": "unknown",
+        "user": "ebrenner1@xsede.org",
+        "effective_user": "ebrenner1@xsede.org"
+      },
+      "r": {
+        "version": "R version 4.5.3 (2026-03-11)",
+        "platform": "x86_64-conda-linux-gnu"
+      },
+      "git": {
+        "available": true,
+        "repository": true,
+        "commit": "14cf7f9e1836072fdda485fec4aa0896b5eea857",
+        "branch": "organization-updates",
+        "dirty": true
+      },
+      "packages": {
+        "amRml": "0.99.0",
+        "arrow": "25.0.1",
+        "assertthat": "0.2.1",
+        "base": "4.5.3",
+        "BiocParallel": "1.44.0",
+        "bit": "4.6.0",
+        "bit64": "4.8.6",
+        "cli": "3.6.6",
+        "codetools": "0.2.20",
+        "compiler": "4.5.3",
+        "datasets": "4.5.3",
+        "DBI": "1.3.0",
+        "dplyr": "1.2.1",
+        "duckdb": "1.5.5",
+        "foreach": "1.5.2",
+        "generics": "0.1.4",
+        "glmnet": "5.0",
+        "glue": "1.8.1",
+        "graphics": "4.5.3",
+        "grDevices": "4.5.3",
+        "grid": "4.5.3",
+        "iterators": "1.0.14",
+        "jsonlite": "2.0.0",
+        "lattice": "0.23.1",
+        "lifecycle": "1.0.5",
+        "magrittr": "2.0.5",
+        "Matrix": "1.7.6",
+        "methods": "4.5.3",
+        "otel": "0.2.0",
+        "parallel": "4.5.3",
+        "pillar": "1.11.1",
+        "pkgconfig": "2.0.3",
+        "purrr": "1.2.2",
+        "R6": "2.6.1",
+        "Rcpp": "1.1.2",
+        "rlang": "1.3.0",
+        "shape": "1.4.6.1",
+        "splines": "4.5.3",
+        "stats": "4.5.3",
+        "survival": "3.8.12",
+        "tibble": "3.3.1",
+        "tidyselect": "1.2.1",
+        "tools": "4.5.3",
+        "utils": "4.5.3",
+        "vctrs": "0.7.3"
+      },
+      "parameters": {
+        "orb_dir": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb",
+        "model_types": null,
+        "seeds": [
+          123,
+          456,
+          789
+        ],
+        "labels": [
+          "real",
+          "shuffled"
+        ],
+        "min_genomes": 40,
+        "n_fold": 5,
+        "min_test_genomes": 5,
+        "min_test_minority": 2,
+        "min_fold_minority": 2,
+        "min_analysis_minority": 8,
+        "reuse_fits": true,
+        "feature_types": "standard",
+        "save_fits": false,
+        "min_mdr_label_genomes": 25,
+        "mdr_min_classes": 2,
+        "save_state": true,
+        "easy_mode": false,
+        "rescore": true
+      },
+      "stages": [
+        {
+          "name": "read_orb",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:25.081236",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/manifest_run_20261104T011136029_pid77138.json",
+              "exists": true,
+              "size_bytes": 37974,
+              "modified_at": "2026-11-09 12:26:41.487395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:25.081706"
+        },
+        {
+          "name": "profile_orb",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:25.098668",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/metadata.parquet",
+              "exists": true,
+              "size_bytes": 100989,
+              "modified_at": "2026-11-09 12:26:41.695395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:25.099126"
+        },
+        {
+          "name": "determine_eligibility",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:25.116394",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/eligibility.parquet",
+              "exists": true,
+              "size_bytes": 58139,
+              "modified_at": "2026-11-09 12:54:10.01614"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:25.116858"
+        },
+        {
+          "name": "build_matrices",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:25.134221",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/matrices.parquet",
+              "exists": true,
+              "size_bytes": 75807,
+              "modified_at": "2026-11-09 12:54:09.979422"
+            },
+            {
+              "path": "state/matrix_index.rds",
+              "exists": true,
+              "size_bytes": 194115034,
+              "modified_at": "2026-11-09 12:54:09.94818"
+            },
+            {
+              "path": "state/features/0001.rds",
+              "exists": true,
+              "size_bytes": 434125,
+              "modified_at": "2026-11-09 12:48:30.836164"
+            },
+            {
+              "path": "state/features/0002.rds",
+              "exists": true,
+              "size_bytes": 52348338,
+              "modified_at": "2026-11-09 12:48:33.57128"
+            },
+            {
+              "path": "state/features/0003.rds",
+              "exists": true,
+              "size_bytes": 82061083,
+              "modified_at": "2026-11-09 12:49:23.457946"
+            },
+            {
+              "path": "state/features/0004.rds",
+              "exists": true,
+              "size_bytes": 110471595,
+              "modified_at": "2026-11-09 12:50:42.300117"
+            },
+            {
+              "path": "state/features/0005.rds",
+              "exists": true,
+              "size_bytes": 108985340,
+              "modified_at": "2026-11-09 12:52:28.075148"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:25.13556"
+        },
+        {
+          "name": "expand_tasks",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:25.153774",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "state/workflow.rds",
+              "exists": true,
+              "size_bytes": 102412242,
+              "modified_at": "2026-11-09 12:54:10.647187"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:25.154242"
+        },
+        {
+          "name": "fit_models",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:25.21028",
+          "parameters": {
+            "save_fits": false,
+            "save_state": true,
+            "reuse_fits": true,
+            "backend": "SerialParam",
+            "workers": 1,
+            "resume": true
+          },
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "results/tasks.parquet",
+              "exists": true,
+              "size_bytes": 366475,
+              "modified_at": "2026-11-10 12:40:42.919287"
+            },
+            {
+              "path": "results/performance.parquet",
+              "exists": true,
+              "size_bytes": 1267123,
+              "modified_at": "2026-11-10 12:40:42.997177"
+            },
+            {
+              "path": "results/importance.parquet",
+              "exists": true,
+              "size_bytes": 235301090,
+              "modified_at": "2026-11-10 12:40:55.160638"
+            },
+            {
+              "path": "results/predictions.parquet",
+              "exists": true,
+              "size_bytes": 94353247,
+              "modified_at": "2026-11-10 12:41:02.129189"
+            },
+            {
+              "path": "results/notes.parquet",
+              "exists": true,
+              "size_bytes": 51740,
+              "modified_at": "2026-11-10 12:40:42.931124"
+            }
+          ],
+          "metrics": {
+            "n_tasks": 58320,
+            "n_fitted": 57855,
+            "n_failed": 465,
+            "n_notes": 6208,
+            "n_collapsed": 13248,
+            "n_all_susceptible": 5510,
+            "n_all_resistant": 7198,
+            "elapsed_seconds": 10.0648
+          },
+          "finished_at": "2026-11-10 12:44:35.293322"
+        },
+        {
+          "name": "export_merged_results",
+          "status": "failed",
+          "started_at": "2026-11-10 12:44:35.317269",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [],
+          "metrics": [],
+          "finished_at": "2026-11-10 12:44:39.851658",
+          "error": "runModelingWorkflow() exited before successful completion."
+        }
+      ],
+      "events": [
+        {
+          "timestamp": "2026-11-10 12:44:25.064699",
+          "level": "info",
+          "message": "Started resumed modeling workflow.",
+          "details": []
+        }
+      ],
+      "error": "runModelingWorkflow() exited before successful completion."
+    },
+    {
+      "run_id": "run_20261110T194446382_pid3555106",
+      "status": "success",
+      "started_at": "2026-11-10 12:44:46.382632",
+      "finished_at": "2026-11-10 12:46:08.922923",
+      "command": "/projects/.xsede.org/ebrenner1/conda/envs/amrml/lib/R/bin/exec/R",
+      "working_directory": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml",
+      "host": {
+        "sysname": "Linux",
+        "release": "4.18.0-553.92.1.el8_10.x86_64",
+        "version": "#1 SMP Thu Jan 15 12:07:46 UTC 2026",
+        "nodename": "c3cpu-a2-u3-4",
+        "machine": "x86_64",
+        "login": "unknown",
+        "user": "ebrenner1@xsede.org",
+        "effective_user": "ebrenner1@xsede.org"
+      },
+      "r": {
+        "version": "R version 4.5.3 (2026-03-11)",
+        "platform": "x86_64-conda-linux-gnu"
+      },
+      "git": {
+        "available": true,
+        "repository": true,
+        "commit": "14cf7f9e1836072fdda485fec4aa0896b5eea857",
+        "branch": "organization-updates",
+        "dirty": true
+      },
+      "packages": {
+        "amRml": "0.99.0",
+        "arrow": "25.0.1",
+        "assertthat": "0.2.1",
+        "base": "4.5.3",
+        "BiocParallel": "1.44.0",
+        "bit": "4.6.0",
+        "bit64": "4.8.6",
+        "cli": "3.6.6",
+        "codetools": "0.2.20",
+        "compiler": "4.5.3",
+        "datasets": "4.5.3",
+        "DBI": "1.3.0",
+        "dplyr": "1.2.1",
+        "duckdb": "1.5.5",
+        "foreach": "1.5.2",
+        "generics": "0.1.4",
+        "glmnet": "5.0",
+        "glue": "1.8.1",
+        "graphics": "4.5.3",
+        "grDevices": "4.5.3",
+        "grid": "4.5.3",
+        "iterators": "1.0.14",
+        "jsonlite": "2.0.0",
+        "lattice": "0.23.1",
+        "lifecycle": "1.0.5",
+        "magrittr": "2.0.5",
+        "Matrix": "1.7.6",
+        "methods": "4.5.3",
+        "otel": "0.2.0",
+        "parallel": "4.5.3",
+        "pillar": "1.11.1",
+        "pkgconfig": "2.0.3",
+        "purrr": "1.2.2",
+        "R6": "2.6.1",
+        "Rcpp": "1.1.2",
+        "rlang": "1.3.0",
+        "shape": "1.4.6.1",
+        "splines": "4.5.3",
+        "stats": "4.5.3",
+        "survival": "3.8.12",
+        "tibble": "3.3.1",
+        "tidyselect": "1.2.1",
+        "tools": "4.5.3",
+        "utils": "4.5.3",
+        "vctrs": "0.7.3"
+      },
+      "parameters": {
+        "orb_dir": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb",
+        "model_types": null,
+        "seeds": [
+          123,
+          456,
+          789
+        ],
+        "labels": [
+          "real",
+          "shuffled"
+        ],
+        "min_genomes": 40,
+        "n_fold": 5,
+        "min_test_genomes": 5,
+        "min_test_minority": 2,
+        "min_fold_minority": 2,
+        "min_analysis_minority": 8,
+        "reuse_fits": true,
+        "feature_types": "standard",
+        "save_fits": false,
+        "min_mdr_label_genomes": 25,
+        "mdr_min_classes": 2,
+        "save_state": true,
+        "easy_mode": false,
+        "rescore": true
+      },
+      "stages": [
+        {
+          "name": "read_orb",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:46.714257",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/manifest_run_20261104T011136029_pid77138.json",
+              "exists": true,
+              "size_bytes": 37974,
+              "modified_at": "2026-11-09 12:26:41.487395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:46.71484"
+        },
+        {
+          "name": "profile_orb",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:46.738139",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "/gpfs/alpine1/scratch/ebrenner1@xsede.org/Prod_amR/amRml/data/Shigella_sonnei/orb/metadata.parquet",
+              "exists": true,
+              "size_bytes": 100989,
+              "modified_at": "2026-11-09 12:26:41.695395"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:46.738644"
+        },
+        {
+          "name": "determine_eligibility",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:46.760273",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/eligibility.parquet",
+              "exists": true,
+              "size_bytes": 58139,
+              "modified_at": "2026-11-09 12:54:10.01614"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:46.760781"
+        },
+        {
+          "name": "build_matrices",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:46.782442",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "metadata/matrices.parquet",
+              "exists": true,
+              "size_bytes": 75807,
+              "modified_at": "2026-11-09 12:54:09.979422"
+            },
+            {
+              "path": "state/matrix_index.rds",
+              "exists": true,
+              "size_bytes": 194115034,
+              "modified_at": "2026-11-09 12:54:09.94818"
+            },
+            {
+              "path": "state/features/0001.rds",
+              "exists": true,
+              "size_bytes": 434125,
+              "modified_at": "2026-11-09 12:48:30.836164"
+            },
+            {
+              "path": "state/features/0002.rds",
+              "exists": true,
+              "size_bytes": 52348338,
+              "modified_at": "2026-11-09 12:48:33.57128"
+            },
+            {
+              "path": "state/features/0003.rds",
+              "exists": true,
+              "size_bytes": 82061083,
+              "modified_at": "2026-11-09 12:49:23.457946"
+            },
+            {
+              "path": "state/features/0004.rds",
+              "exists": true,
+              "size_bytes": 110471595,
+              "modified_at": "2026-11-09 12:50:42.300117"
+            },
+            {
+              "path": "state/features/0005.rds",
+              "exists": true,
+              "size_bytes": 108985340,
+              "modified_at": "2026-11-09 12:52:28.075148"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:46.78393"
+        },
+        {
+          "name": "expand_tasks",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:46.806545",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "state/workflow.rds",
+              "exists": true,
+              "size_bytes": 102412242,
+              "modified_at": "2026-11-09 12:54:10.647187"
+            }
+          ],
+          "metrics": [],
+          "message": "Resumed: reused successful output from a previous run.",
+          "finished_at": "2026-11-10 12:44:46.807045"
+        },
+        {
+          "name": "fit_models",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:46.864766",
+          "parameters": {
+            "save_fits": false,
+            "save_state": true,
+            "reuse_fits": true,
+            "backend": "SerialParam",
+            "workers": 1,
+            "resume": true
+          },
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "results/tasks.parquet",
+              "exists": true,
+              "size_bytes": 366475,
+              "modified_at": "2026-11-10 12:40:42.919287"
+            },
+            {
+              "path": "results/performance.parquet",
+              "exists": true,
+              "size_bytes": 1267123,
+              "modified_at": "2026-11-10 12:40:42.997177"
+            },
+            {
+              "path": "results/importance.parquet",
+              "exists": true,
+              "size_bytes": 235301090,
+              "modified_at": "2026-11-10 12:40:55.160638"
+            },
+            {
+              "path": "results/predictions.parquet",
+              "exists": true,
+              "size_bytes": 94353247,
+              "modified_at": "2026-11-10 12:41:02.129189"
+            },
+            {
+              "path": "results/notes.parquet",
+              "exists": true,
+              "size_bytes": 51740,
+              "modified_at": "2026-11-10 12:40:42.931124"
+            }
+          ],
+          "metrics": {
+            "n_tasks": 58320,
+            "n_fitted": 57855,
+            "n_failed": 465,
+            "n_notes": 6208,
+            "n_collapsed": 13248,
+            "n_all_susceptible": 5510,
+            "n_all_resistant": 7198,
+            "elapsed_seconds": 7.8747
+          },
+          "finished_at": "2026-11-10 12:44:54.762186"
+        },
+        {
+          "name": "export_merged_results",
+          "status": "success",
+          "started_at": "2026-11-10 12:44:54.811927",
+          "parameters": [],
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "results/merged/all_perf.parquet",
+              "exists": true,
+              "size_bytes": 32891,
+              "modified_at": "2026-11-10 12:44:54.906585"
+            },
+            {
+              "path": "results/merged/all_top_features.parquet",
+              "exists": true,
+              "size_bytes": 8691397,
+              "modified_at": "2026-11-10 12:44:59.790277"
+            },
+            {
+              "path": "results/merged/country_perf.parquet",
+              "exists": true,
+              "size_bytes": 33625,
+              "modified_at": "2026-11-10 12:45:01.696141"
+            },
+            {
+              "path": "results/merged/country_top_features.parquet",
+              "exists": true,
+              "size_bytes": 4763788,
+              "modified_at": "2026-11-10 12:45:03.821098"
+            },
+            {
+              "path": "results/merged/cross_country_perf.parquet",
+              "exists": true,
+              "size_bytes": 110589,
+              "modified_at": "2026-11-10 12:45:03.866062"
+            },
+            {
+              "path": "results/merged/cross_drug_perf.parquet",
+              "exists": true,
+              "size_bytes": 193834,
+              "modified_at": "2026-11-10 12:45:03.910118"
+            },
+            {
+              "path": "results/merged/cross_year_perf.parquet",
+              "exists": true,
+              "size_bytes": 35972,
+              "modified_at": "2026-11-10 12:45:03.837384"
+            },
+            {
+              "path": "results/merged/LOO_country_perf.parquet",
+              "exists": true,
+              "size_bytes": 97216,
+              "modified_at": "2026-11-10 12:45:07.383608"
+            },
+            {
+              "path": "results/merged/LOO_country_top_features.parquet",
+              "exists": true,
+              "size_bytes": 39401455,
+              "modified_at": "2026-11-10 12:45:12.457682"
+            },
+            {
+              "path": "results/merged/LOO_year_perf.parquet",
+              "exists": true,
+              "size_bytes": 45302,
+              "modified_at": "2026-11-10 12:45:03.925238"
+            },
+            {
+              "path": "results/merged/LOO_year_top_features.parquet",
+              "exists": true,
+              "size_bytes": 14539718,
+              "modified_at": "2026-11-10 12:45:07.359557"
+            },
+            {
+              "path": "results/merged/year_perf.parquet",
+              "exists": true,
+              "size_bytes": 15249,
+              "modified_at": "2026-11-10 12:44:59.802499"
+            },
+            {
+              "path": "results/merged/year_top_features.parquet",
+              "exists": true,
+              "size_bytes": 1997299,
+              "modified_at": "2026-11-10 12:45:01.681447"
+            }
+          ],
+          "metrics": {
+            "n_files": 13
+          },
+          "finished_at": "2026-11-10 12:45:12.461726"
+        },
+        {
+          "name": "rescore_features",
+          "status": "success",
+          "started_at": "2026-11-10 12:45:12.548313",
+          "parameters": {
+            "min_paired_seeds": 3
+          },
+          "inputs": [],
+          "outputs": [
+            {
+              "path": "results/rescoring/discovery.rds",
+              "exists": true,
+              "size_bytes": 838584,
+              "modified_at": "2026-11-10 12:46:08.478577"
+            },
+            {
+              "path": "results/rescoring/models_good_performance.parquet",
+              "exists": true,
+              "size_bytes": 8022,
+              "modified_at": "2026-11-10 12:46:08.493572"
+            },
+            {
+              "path": "results/rescoring/models_good_shuffled_separation.parquet",
+              "exists": true,
+              "size_bytes": 7783,
+              "modified_at": "2026-11-10 12:46:08.499345"
+            },
+            {
+              "path": "results/rescoring/models_qualified.parquet",
+              "exists": true,
+              "size_bytes": 7705,
+              "modified_at": "2026-11-10 12:46:08.506111"
+            },
+            {
+              "path": "results/rescoring/models_summary.parquet",
+              "exists": true,
+              "size_bytes": 6000,
+              "modified_at": "2026-11-10 12:46:08.510758"
+            },
+            {
+              "path": "results/rescoring/models_label_diagnostics.parquet",
+              "exists": true,
+              "size_bytes": 61110,
+              "modified_at": "2026-11-10 12:46:08.523201"
+            },
+            {
+              "path": "results/rescoring/features_top.parquet",
+              "exists": true,
+              "size_bytes": 111990,
+              "modified_at": "2026-11-10 12:46:08.531651"
+            },
+            {
+              "path": "results/rescoring/features_consistent.parquet",
+              "exists": true,
+              "size_bytes": 112337,
+              "modified_at": "2026-11-10 12:46:08.539796"
+            },
+            {
+              "path": "results/rescoring/features_high_contribution.parquet",
+              "exists": true,
+              "size_bytes": 31213,
+              "modified_at": "2026-11-10 12:46:08.546426"
+            },
+            {
+              "path": "results/rescoring/features_all_seeds.parquet",
+              "exists": true,
+              "size_bytes": 112320,
+              "modified_at": "2026-11-10 12:46:08.554513"
+            },
+            {
+              "path": "results/rescoring/features_sharedness.parquet",
+              "exists": true,
+              "size_bytes": 34852,
+              "modified_at": "2026-11-10 12:46:08.560684"
+            },
+            {
+              "path": "results/rescoring/features_shared.parquet",
+              "exists": true,
+              "size_bytes": 11361,
+              "modified_at": "2026-11-10 12:46:08.565848"
+            },
+            {
+              "path": "results/rescoring/features_unique.parquet",
+              "exists": true,
+              "size_bytes": 77559,
+              "modified_at": "2026-11-10 12:46:08.573087"
+            },
+            {
+              "path": "results/rescoring/features_membership.parquet",
+              "exists": true,
+              "size_bytes": 9991,
+              "modified_at": "2026-11-10 12:46:08.577991"
+            },
+            {
+              "path": "results/rescoring/features_outcomes.parquet",
+              "exists": true,
+              "size_bytes": 2649,
+              "modified_at": "2026-11-10 12:46:08.581605"
+            },
+            {
+              "path": "results/rescoring/features_cross_model_sharedness.parquet",
+              "exists": true,
+              "size_bytes": 10319,
+              "modified_at": "2026-11-10 12:46:08.586339"
+            },
+            {
+              "path": "results/rescoring/features_mdr_shared.parquet",
+              "exists": true,
+              "size_bytes": 4933,
+              "modified_at": "2026-11-10 12:46:08.590721"
+            },
+            {
+              "path": "results/rescoring/features_overlap.parquet",
+              "exists": true,
+              "size_bytes": 13922,
+              "modified_at": "2026-11-10 12:46:08.596338"
+            },
+            {
+              "path": "results/rescoring/dyads_top.parquet",
+              "exists": true,
+              "size_bytes": 77224,
+              "modified_at": "2026-11-10 12:46:08.606777"
+            },
+            {
+              "path": "results/rescoring/dyads_high_score.parquet",
+              "exists": true,
+              "size_bytes": 30188,
+              "modified_at": "2026-11-10 12:46:08.612934"
+            },
+            {
+              "path": "results/rescoring/dyads_sharedness.parquet",
+              "exists": true,
+              "size_bytes": 73244,
+              "modified_at": "2026-11-10 12:46:08.620839"
+            },
+            {
+              "path": "results/rescoring/dyads_shared.parquet",
+              "exists": true,
+              "size_bytes": 22728,
+              "modified_at": "2026-11-10 12:46:08.626168"
+            },
+            {
+              "path": "results/rescoring/dyads_unique.parquet",
+              "exists": true,
+              "size_bytes": 51628,
+              "modified_at": "2026-11-10 12:46:08.633567"
+            },
+            {
+              "path": "results/rescoring/dyads_membership.parquet",
+              "exists": true,
+              "size_bytes": 39295,
+              "modified_at": "2026-11-10 12:46:08.640659"
+            },
+            {
+              "path": "results/rescoring/dyads_outcomes.parquet",
+              "exists": true,
+              "size_bytes": 2779,
+              "modified_at": "2026-11-10 12:46:08.644193"
+            },
+            {
+              "path": "results/rescoring/dyads_cross_model_sharedness.parquet",
+              "exists": true,
+              "size_bytes": 35438,
+              "modified_at": "2026-11-10 12:46:08.649353"
+            },
+            {
+              "path": "results/rescoring/dyads_mdr_shared.parquet",
+              "exists": true,
+              "size_bytes": 8914,
+              "modified_at": "2026-11-10 12:46:08.653291"
+            },
+            {
+              "path": "results/rescoring/dyads_overlap.parquet",
+              "exists": true,
+              "size_bytes": 19972,
+              "modified_at": "2026-11-10 12:46:08.65859"
+            }
+          ],
+          "metrics": {
+            "n_eligible_scopes": 293
+          },
+          "message": "MAGIC feature/dyad rescoring completed.",
+          "finished_at": "2026-11-10 12:46:08.67378"
+        }
+      ],
+      "events": [
+        {
+          "timestamp": "2026-11-10 12:44:46.690829",
+          "level": "info",
+          "message": "Started resumed modeling workflow.",
+          "details": []
+        },
+        {
+          "timestamp": "2026-11-10 12:46:08.733085",
+          "level": "info",
+          "message": "MAGIC feature/dyad rescoring completed.",
+          "details": []
+        },
+        {
+          "timestamp": "2026-11-10 12:46:08.838035",
+          "level": "info",
+          "message": "Model diagnostics: 13248 collapsed models (5510 all-susceptible, 7198 all-resistant).",
+          "details": {
+            "collapsed_models": 13248,
+            "all_susceptible": 5510,
+            "all_resistant": 7198
+          }
+        },
+        {
+          "timestamp": "2026-11-10 12:46:08.890018",
+          "level": "info",
+          "message": "Modeling workflow complete: 57855 of 58320 models fitted; 465 failed. 01:23 elapsed.",
+          "details": {
+            "n_tasks": 58320,
+            "n_failed": 465,
+            "elapsed_seconds": 83.2114
+          }
+        }
+      ]
+    }
+  ]
+}
