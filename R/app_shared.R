@@ -119,7 +119,7 @@ setupServerCore <- function(results_root, species_dirs) {
     }
     tf |>
       dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
-      dplyr::filter(!isTRUE(.data$cross_test))
+      dplyr::filter(!.data$cross_test %in% TRUE)
   })
 
   loadDrugClassMapRec <- shiny::reactive({

@@ -370,7 +370,7 @@
             dplyr::filter(
               is.na(.data$strat_label) | !nzchar(.data$strat_label)
             ) |>
-            dplyr::filter(!isTRUE(.data$cross_test)) |>
+            dplyr::filter(!.data$cross_test %in% TRUE) |>
             dplyr::filter(
               normalize_species(.data$species) %in% normalize_species(code)
             ) |>
@@ -551,19 +551,6 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
       )
     }
   }
-  chrome_ok <- tryCatch(
-    nzchar(chromote::find_chrome()),
-    error = function(e) FALSE
-  )
-  if (!isTRUE(chrome_ok)) {
-    stop(
-      "A Chrome/Chromium browser is required to render the figures but none ",
-      "was found. Install Google Chrome or Chromium (webshot2/chromote use it ",
-      "to photograph the interactive plots).",
-      call. = FALSE
-    )
-  }
-
   formats <- tolower(formats)
   formats[formats == "jpeg"] <- "jpg"
   valid <- c("png", "pdf", "jpg", "svg")
@@ -585,6 +572,21 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
     if (!is.numeric(v) || length(v) != 1 || is.na(v) || v < 1) {
       stop("`", nm, "` must be a single positive number.", call. = FALSE)
     }
+  }
+
+  # Checked after the arguments, so a bad argument is reported even without
+  # a browser.
+  chrome_ok <- tryCatch(
+    nzchar(chromote::find_chrome()),
+    error = function(e) FALSE
+  )
+  if (!isTRUE(chrome_ok)) {
+    stop(
+      "A Chrome/Chromium browser is required to render the figures but none ",
+      "was found. Install Google Chrome or Chromium (webshot2/chromote use it ",
+      "to photograph the interactive plots).",
+      call. = FALSE
+    )
   }
 
   # Default amrdata_root: ~/amRdata/data when present (mirrors the dashboard).

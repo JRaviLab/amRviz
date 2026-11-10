@@ -32,6 +32,25 @@ test_that("setupServerCore loads the demo results and lists their species", {
   )
 })
 
+test_that("setupServerCore leaves cross-tested rows out of the baseline features", {
+  shiny::testServer(
+    function(id) {
+      shiny::moduleServer(id, function(input, output, session) {
+        core <- setupServerCore(NULL, shiny::reactive(NULL))
+      })
+    },
+    {
+      session$flushReact()
+      core$topFeatures(tibble::tibble(
+        Variable = c("a", "b", "c"),
+        strat_label = NA_character_,
+        cross_test = c(FALSE, TRUE, NA)
+      ))
+      expect_equal(core$filtered_top_features()$Variable, c("a", "c"))
+    }
+  )
+})
+
 test_that("resultsSourceServer returns no selection in demo mode", {
   shiny::testServer(resultsSourceServer, args = list(results_root = NULL), {
     expect_null(session$getReturned()())
