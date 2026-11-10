@@ -86,7 +86,7 @@ makeQuickStats <- function(data) {
     dplyr::pull(drug_class)
 
   top_n_countries <- data_with_drug_class |>
-    dplyr::filter(!is.na(genome.isolation_country)) |>
+    filter_valid_country() |>
     dplyr::group_by(genome.isolation_country) |>
     dplyr::summarize(n = n()) |>
     dplyr::arrange(desc(n)) |>
@@ -433,14 +433,13 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
   }
 
   df <- data |>
+    filter_valid_country() |>
     dplyr::filter(
       !is.na(.data$genome_drug.resistant_phenotype),
       !is.na(.data$genome_drug.antibiotic),
       !is.na(.data$drug_class),
-      !is.na(.data$genome.isolation_country),
       !is.na(.data$genome.host_common_name),
       !is.na(.data$genome.isolation_source),
-      nzchar(.data$genome.isolation_country),
       nzchar(.data$genome.host_common_name),
       nzchar(.data$genome.isolation_source),
       .data$genome_drug.resistant_phenotype %in%
@@ -662,7 +661,7 @@ readSpeciesMetadata <- function(sources) {
 #' @noRd
 metadataByCountry <- function(meta) {
   meta |>
-    dplyr::filter(.data$genome.isolation_country != "") |>
+    filter_valid_country() |>
     .add_evidence_column() |>
     dplyr::group_by(
       .data$genome.isolation_country, .data$genome_drug.antibiotic
