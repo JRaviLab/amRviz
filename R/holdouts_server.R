@@ -108,7 +108,7 @@ crossModelComparisonServer <- function(id, core) {
         ) |>
         dplyr::filter(.data$drug_or_class %in% input$drug_cross_model_comparison_id) |>
         dplyr::filter(.data$strat_label == strat) |>
-        dplyr::filter(!isTRUE(.data$cross_test))
+        dplyr::filter(!.data$cross_test %in% TRUE)
       if (!nrow(tf)) {
         return(NULL)
       }
