@@ -103,13 +103,18 @@
 #' Is a folder an amRml run?
 #'
 #' @param dir Folder to check.
-#' @return TRUE when `dir` has an amRml manifest listing tasks, matrices and
-#'   performance tables that exist.
+#' @return TRUE when `dir` has an amRml manifest marking its amRviz tables
+#'   ready, and listing tasks, matrices and performance tables that exist.
 #' @keywords internal
 #' @noRd
 .is_amrml_run <- function(dir) {
   manifest <- .amrml_manifest(dir)
   if (is.null(manifest)) {
+    return(FALSE)
+  }
+  # A run still in progress, or one that failed, isn't marked ready.
+  status <- manifest[["artifacts"]][[.AMRML_INPUT]][["status"]]
+  if (!is.null(status) && !identical(status, "ready")) {
     return(FALSE)
   }
   paths <- vapply(c("tasks", "matrices", "performance"), .amrml_table_path,
@@ -163,7 +168,15 @@
     list.files(orb_dir, pattern = .MANIFEST_PATTERN, full.names = TRUE)
   )
   orb <- if (nrow(orb)) orb[1, ] else NULL
-  run <- manifest[["runs"]][[1]]
+  # A run resumed after failures records each attempt; label it by the last
+  # successful one.
+  attempts <- manifest[["runs"]]
+  succeeded <- Filter(function(r) identical(r[["status"]], "success"), attempts)
+  run <- if (length(succeeded)) {
+    succeeded[[length(succeeded)]]
+  } else if (length(attempts)) {
+    attempts[[length(attempts)]]
+  }
   started_at <- run[["started_at"]] %||% manifest[["manifest_created_at"]]
 
   list(
@@ -269,16 +282,18 @@
 
 #' Load a run's feature importance rows
 #'
-#' Reads only the models the tabs show (see `.amrml_models()`), and keeps each
-#' one's `.AMRML_TOP_N` most important features.
+#' Reads only the real-label models the tabs show (see `.amrml_models()` and
+#' `.real_labels()`), and keeps each one's `.AMRML_TOP_N` most important
+#' features.
 #'
 #' @inheritParams .amrml_models
 #' @keywords internal
 #' @noRd
 .load_amrml_top <- function(run_dir, verbose = TRUE) {
   models <- .amrml_models(run_dir, verbose)
+  real <- models$task_id[!models$shuffled %in% TRUE]
   .amrml_rows(
-    .read_top_features(run_dir, models$task_id, verbose),
+    .read_top_features(run_dir, real, verbose),
     models,
     .amrml_run_record(run_dir)
   )

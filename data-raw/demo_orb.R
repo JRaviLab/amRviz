@@ -71,32 +71,51 @@ arrow::write_parquet(tasks, file.path(out_run, "results", "tasks.parquet"))
 arrow::write_parquet(performance, file.path(out_run, "results", "performance.parquet"))
 arrow::write_parquet(importance, file.path(out_run, "results", "importance.parquet"))
 
-# The run's manifest, listing only the tables written here.
-run_manifest$artifacts <- list(amRviz_input = c(
-  input[c("status", "producer", "producer_run_id")],
-  list(
-    directory = ".",
-    path_mode = "relative_to_manifest",
-    metadata = list(matrices = "metadata/matrices.parquet"),
-    results = list(
-      tasks = "results/tasks.parquet",
-      performance = "results/performance.parquet",
-      importance = "results/importance.parquet"
-    ),
-    modes = as.list(keep_modes),
-    seeds = list(keep_seed)
+# Both manifests keep only what amRviz reads and where the data came from.
+# The originals also record absolute paths on the machines that made them,
+# which have no place in the package.
+write_manifest <- function(manifest, path) {
+  jsonlite::write_json(manifest, path,
+    auto_unbox = TRUE, null = "null", pretty = TRUE, digits = NA
   )
-))
-run_manifest$dataset$input_orb <- list(directory = "../..")
-jsonlite::write_json(run_manifest, file.path(out_run, "manifest.json"),
-  auto_unbox = TRUE, null = "null", pretty = TRUE, digits = NA
-)
+}
+keep <- c("schema_version", "manifest_type", "manifest_id", "manifest_created_at", "dataset_id")
 
-# The ORB's manifest and metadata, as amRdata wrote them.
-file.copy(orb_manifest_path, out)
-file.copy(
-  file.path(orb, orb_manifest$artifacts$amRml_input$metadata_parquet), out
-)
+# The run's manifest, listing only the tables written here.
+write_manifest(c(run_manifest[keep], list(
+  dataset = list(label = run_manifest$dataset$label),
+  artifacts = list(amRviz_input = c(
+    input[c("status", "producer", "producer_run_id")],
+    list(
+      directory = ".",
+      path_mode = "relative_to_manifest",
+      metadata = list(matrices = "metadata/matrices.parquet"),
+      results = list(
+        tasks = "results/tasks.parquet",
+        performance = "results/performance.parquet",
+        importance = "results/importance.parquet"
+      ),
+      modes = as.list(keep_modes),
+      seeds = list(keep_seed)
+    )
+  )),
+  runs = lapply(run_manifest$runs, `[`, c("run_id", "status", "started_at", "finished_at"))
+)), file.path(out_run, "manifest.json"))
+
+# The ORB's manifest, listing only the metadata file copied here.
+orb_input <- orb_manifest$artifacts$amRml_input
+write_manifest(c(orb_manifest[keep], list(
+  dataset = list(selection = list(user_bacs = orb_manifest$dataset$selection$user_bacs)),
+  artifacts = list(amRml_input = c(
+    orb_input[c("status", "producer", "producer_run_id")],
+    list(
+      path_mode = "relative_to_manifest",
+      directory = ".",
+      metadata_parquet = "metadata.parquet"
+    )
+  ))
+)), file.path(out, basename(orb_manifest_path)))
+file.copy(file.path(orb, orb_input$metadata_parquet), file.path(out, "metadata.parquet"))
 
 # Names for the features kept. Older amRml wrote protein IDs with "." in
 # place of "|", so either form is matched.

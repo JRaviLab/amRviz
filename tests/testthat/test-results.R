@@ -95,6 +95,34 @@ test_that("only folders with an amRml manifest inside an ORB are runs", {
   expect_length(listResultSources(root), 0)
 })
 
+test_that("a run whose tables aren't marked ready is skipped", {
+  root <- withr::local_tempdir()
+  mp <- make_orb(root)
+  make_amrml_run(file.path(dirname(mp), "amRml", "run"),
+    manifest = list(artifacts = list(amRviz_input = list(status = "running")))
+  )
+  expect_length(listResultSources(root), 0)
+})
+
+test_that("a resumed run is labeled by its last successful attempt", {
+  root <- withr::local_tempdir()
+  mp <- make_orb(root, user_bacs = "Haemophilus influenzae")
+  attempts <- list(
+    list(status = "prepared", started_at = "2026-11-09 12:48:10.5"),
+    list(status = "success", started_at = "2026-11-10 12:44:46.3"),
+    list(status = "failed", started_at = "2026-11-11 09:00:00.1")
+  )
+  run <- make_amrml_run(file.path(dirname(mp), "amRml", "run"))
+  manifest <- jsonlite::read_json(file.path(run, "manifest.json"))
+  manifest$runs <- attempts
+  jsonlite::write_json(manifest, file.path(run, "manifest.json"), auto_unbox = TRUE)
+
+  expect_equal(
+    names(listResultSources(root)),
+    "Haemophilus influenzae (amRml run 2026-11-10 12:44:46)"
+  )
+})
+
 test_that("feature importance keeps the most important features of each model", {
   root <- withr::local_tempdir()
   mp <- make_orb(root)
