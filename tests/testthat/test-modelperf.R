@@ -65,6 +65,20 @@ test_that("mccHeatmapTable summarizes drug-class models by each panel", {
   expect_null(mccHeatmapTable(perf_rows()[perf_rows()$drug_label == "drug", ]))
 })
 
+test_that("a one-cell heatmap keeps its color instead of turning gray", {
+  one_class <- perf_rows()[perf_rows()$species == "Sfl", ]
+  p <- .fix_single_value_heatmap(plotly::ggplotly(
+    ggplot2::ggplot(
+      data.frame(x = "a", y = "b", z = 0.7),
+      ggplot2::aes(x, y, fill = z)
+    ) +
+      ggplot2::geom_tile() +
+      ggplot2::scale_fill_gradient(limits = c(0, 1))
+  ))
+  expect_length(p$x$data[[1]]$colorscale, 2)
+  expect_s3_class(makeMCCHeatmap(one_class), "plotly")
+})
+
 test_that("the scale selector offers only the scales in the results", {
   expect_equal(
     .scale_choices(c("genes", "DefenseCas")),

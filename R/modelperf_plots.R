@@ -43,6 +43,31 @@
 }
 
 
+#' Give a one-color heatmap a valid color scale
+#'
+#' When every tile has the same value (for example a single drug class and
+#' species), ggplotly() writes a color scale with one stop, which plotly
+#' ignores and draws in gray. Repeats that stop at both ends instead.
+#'
+#' @param p A plotly figure from ggplotly().
+#' @return The built figure, with each heatmap's color scale fixed.
+#' @keywords internal
+#' @noRd
+.fix_single_value_heatmap <- function(p) {
+  p <- plotly::plotly_build(p)
+  for (i in seq_along(p$x$data)) {
+    trace <- p$x$data[[i]]
+    if (!identical(trace$type, "heatmap")) next
+    colors <- unlist(trace$colorscale)
+    colors <- colors[grepl("^#|^rgb", colors)]
+    if (length(colors) == 1) {
+      p$x$data[[i]]$colorscale <- list(list(0, colors), list(1, colors))
+    }
+  }
+  p
+}
+
+
 #' Lower end of a metric axis
 #'
 #' @param values Metric values being plotted.
@@ -611,7 +636,7 @@ makeMCCHeatmap <- function(data, selected_drug_class = NULL) {
     g3 <- g3 + highlight_rect
   }
 
-  p1 <- plotly::ggplotly(g1, tooltip = "text")
+  p1 <- .fix_single_value_heatmap(plotly::ggplotly(g1, tooltip = "text"))
   p2 <- plotly::ggplotly(g2, tooltip = "text")
   p3 <- plotly::ggplotly(g3, tooltip = "text")
 
