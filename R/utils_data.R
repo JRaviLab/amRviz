@@ -1,4 +1,7 @@
-# Data loaders: ML results, top features, metadata, file discovery.
+# Data loaders: ML results, top features, and finding them.
+#
+# A results source is one folder: an amRml run (read by utils_amrml.R) or an
+# older amRml species folder (read by utils_legacy.R).
 
 
 #' Normalise a results-root path
@@ -42,199 +45,177 @@
 }
 
 
-#' Discover species subdirectories that contain amRml output
+#' Display label for an amRml run
 #'
-#' Files live in per-species subdirectories as
-#' `{root}/{SpeciesDir}/{code}_perf.parquet`. Only directories holding at
-#' least one baseline `all_perf.parquet` (not a country/year/MDR/cross variant)
-#' are kept.
-#'
-#' @param results_root Root directory to scan.
-#' @param verbose Unused; kept for signature consistency with the loaders.
-#' @return A named character vector (names = directory basenames used as display
-#'   labels, values = full species-subdirectory paths), or empty when nothing
-#'   matches.
+#' @param run_dir An amRml run folder.
+#' @return The ORB's species label and the run's start time (the folder name
+#'   when the run has no run.json).
 #' @keywords internal
 #' @noRd
-listAmRmlSpeciesFolders <- function(results_root, verbose = TRUE) {
+.amrml_run_label <- function(run_dir) {
+  record <- .amrml_run_record(run_dir)
+  when <- record$started_at
+  if (is.na(when)) when <- basename(run_dir)
+  paste0(record$species_label, " (amRml run ", when, ")")
+}
+
+
+#' Find the ML results under a root
+#'
+#' Finds amRml runs, inside the ORBs whose manifests sit in `results_root` or
+#' up to two levels below it, or in `results_root` or its subfolders directly;
+#' and older-format species folders among its subfolders.
+#'
+#' @param results_root Root directory to search.
+#' @param verbose Unused; kept for signature consistency with the loaders.
+#' @return A named character vector (names = display labels, values = result
+#'   folders), or empty when nothing is found.
+#' @keywords internal
+#' @noRd
+listResultSources <- function(results_root, verbose = TRUE) {
   rr <- .normalize_results_root(results_root)
   if (is.null(rr) || !dir.exists(rr)) {
     return(character(0))
   }
 
   subdirs <- list.dirs(rr, full.names = TRUE, recursive = FALSE)
-  if (!length(subdirs)) {
+  orbs <- .list_available_orbs(.find_orb_manifests(rr))
+  runs <- unique(c(
+    unlist(lapply(orbs$orb_dir, .orb_amrml_runs)),
+    Filter(.is_amrml_run, c(rr, subdirs))
+  ))
+  legacy <- Filter(.is_legacy_results, setdiff(subdirs, runs))
+
+  if (!length(runs) && !length(legacy)) {
     return(character(0))
   }
-
-  # Keep subdirs holding at least one baseline `all_perf.parquet` file, i.e. a
-  # `*_perf.parquet` that is not a country/year/MDR/cross_drug variant.
-  has_perf <- vapply(subdirs, function(d) {
-    fps <- list.files(d, pattern = "_perf\\.parquet$", full.names = FALSE)
-    any(!grepl("(country|year|MDR|cross_drug)_perf\\.parquet$", fps))
-  }, logical(1))
-
-  ok <- subdirs[has_perf]
-  if (!length(ok)) {
-    return(character(0))
-  }
-  setNames(ok, basename(ok))
+  labels <- c(
+    vapply(runs, .amrml_run_label, character(1), USE.NAMES = FALSE),
+    if (length(legacy)) {
+      paste0(.legacy_label(legacy), " (older amRml results)")
+    }
+  )
+  stats::setNames(c(runs, legacy), make.unique(labels, " #"))
 }
 
 
-#' Load all performance parquets from one species directory
+#' Load one kind of result from one source
 #'
-#' Reads baseline (`all_perf`), stratified (`country_perf`/`year_perf`), and
-#' cross-tested (`cross_*_perf`) parquet files, excluding the MDR and
-#' leave-one-out summaries. Cross-tested rows come in their own files in the
-#' amRml schema, so each row is tagged with `cross_test` from its source
-#' filename. Also tags `species_label = basename(species_dir)`.
-#'
-#' @param species_dir Full path to a species subdirectory.
-#' @param verbose Passed through to .read_parquet_safe().
-#' @return A tibble of combined performance rows, or an empty tibble.
+#' @param dir An amRml run or older-format species folder.
+#' @param kind `"perf"` or `"top"`.
+#' @param verbose Passed through to the reader.
 #' @keywords internal
 #' @noRd
-.load_one_species_perf <- function(species_dir, verbose = TRUE) {
-  fps <- list.files(
-    species_dir,
-    pattern = "_perf\\.parquet$", full.names = TRUE
-  )
-  fps <- fps[!grepl("(MDR|LOO)_perf\\.parquet$", basename(fps))]
-  if (!length(fps)) {
-    return(tibble::tibble())
+.load_source <- function(dir, kind, verbose = TRUE) {
+  if (.is_amrml_run(dir)) {
+    if (kind == "perf") {
+      .load_amrml_perf(dir, verbose)
+    } else {
+      .load_amrml_top(dir, verbose)
+    }
+  } else {
+    .load_legacy(dir, kind, verbose)
   }
-  df <- dplyr::bind_rows(lapply(fps, function(fp) {
-    d <- .read_parquet_safe(fp, verbose = verbose)
-    if (nrow(d)) d$cross_test <- grepl("^cross", basename(fp))
-    d
-  }))
-  if (!nrow(df)) {
-    return(df)
-  }
-  # Guarantee the columns the cross-model views read, even when a species ships
-  # only baseline / self-evaluation files (no cross_* parquets).
-  if (!"cross_test" %in% names(df)) df$cross_test <- FALSE
-  df$cross_test[is.na(df$cross_test)] <- FALSE
-  if (!"strat_value_test" %in% names(df)) df$strat_value_test <- NA
-  df$species_label <- basename(species_dir)
-  df
 }
 
 
-#' Load all top-feature parquets from one species directory
-#'
-#' Reads baseline (`all_top_features`), stratified (`country`/`year`), and
-#' cross-tested (`cross_*`) `*_top_features.parquet` files, excluding the MDR
-#' and leave-one-out summaries. Each row is tagged with `cross_test` from its
-#' filename and with `species_label = basename(species_dir)`.
-#'
-#' @param species_dir Full path to a species subdirectory.
-#' @param verbose Passed through to .read_parquet_safe().
-#' @return A tibble of combined top-feature rows, or an empty tibble.
-#' @keywords internal
-#' @noRd
-.load_one_species_top <- function(species_dir, verbose = TRUE) {
-  fps <- list.files(
-    species_dir,
-    pattern = "_top_features\\.parquet$", full.names = TRUE
-  )
-  fps <- fps[!grepl("(MDR|LOO)_top_features\\.parquet$", basename(fps))]
-  if (!length(fps)) {
-    return(tibble::tibble())
-  }
-  df <- dplyr::bind_rows(lapply(fps, function(fp) {
-    d <- .read_parquet_safe(fp, verbose = verbose)
-    if (nrow(d)) d$cross_test <- grepl("^cross", basename(fp))
-    d
-  }))
-  if (!nrow(df)) {
-    return(df)
-  }
-  if (!"cross_test" %in% names(df)) df$cross_test <- FALSE
-  df$cross_test[is.na(df$cross_test)] <- FALSE
-  df$species_label <- basename(species_dir)
-  df
-}
-
-
-#' Resolve and load multi-species amRml results
+#' Resolve and load results from several sources
 #'
 #' Shared mode-selection used by loadMLResults() and loadTopFeat(): user mode
-#' loads from the selected species subdirectories; if a results_root is set but
-#' nothing is selected, returns empty; otherwise falls back to the packaged demo
-#' parquets in extdata.
+#' loads from the selected result folders; if a results_root is set but nothing
+#' is selected, returns empty; otherwise falls back to the packaged demo
+#' parquets in extdata. Models fitted on shuffled labels (amRml's null
+#' models) are left out; no tab shows them yet.
 #'
-#' @param loader Per-species loader, e.g. .load_one_species_perf().
+#' @param kind `"perf"` or `"top"`.
 #' @param results_root User results root, or NULL for demo mode.
-#' @param species_dirs Selected species-subdirectory paths, or NULL.
-#' @param verbose Passed through to `loader`.
+#' @param result_dirs Selected result folders, or NULL.
+#' @param verbose Passed through to the readers.
 #' @param demo_msg Message emitted when falling back to the demo parquets.
-#' @return A tibble of combined results across the resolved directories.
+#' @return A tibble of combined results across the resolved folders.
 #' @keywords internal
 #' @noRd
-.load_species_results <- function(loader, results_root, species_dirs,
-                                  verbose, demo_msg) {
+.load_results <- function(kind, results_root, result_dirs, verbose, demo_msg) {
   rr <- .normalize_results_root(results_root)
 
-  # User mode: results_root + selected species -> load from those subdirs
-  if (!is.null(rr) && !is.null(species_dirs) && length(species_dirs) > 0) {
-    return(dplyr::bind_rows(lapply(species_dirs, loader, verbose = verbose)))
+  # User mode: results_root + selected folders -> load from those
+  if (!is.null(rr) && !is.null(result_dirs) && length(result_dirs) > 0) {
+    return(.real_labels(dplyr::bind_rows(lapply(result_dirs, .load_source,
+      kind = kind, verbose = verbose
+    ))))
   }
 
   # User mode: results_root set but nothing selected yet
-  if (!is.null(rr) && is.null(species_dirs)) {
+  if (!is.null(rr) && is.null(result_dirs)) {
     return(tibble::tibble())
   }
 
-  # Demo fallback: scan packaged extdata subdirectories
+  # Demo fallback: the packaged older-format species folders
   extdata <- system.file("extdata", package = "amRviz")
   if (!nzchar(extdata)) {
     return(tibble::tibble())
   }
   subdirs <- list.dirs(extdata, full.names = TRUE, recursive = FALSE)
   if (isTRUE(verbose)) message(demo_msg)
-  dplyr::bind_rows(lapply(subdirs, loader, verbose = verbose))
+  .real_labels(dplyr::bind_rows(lapply(subdirs, .load_legacy,
+    kind = kind, verbose = verbose
+  )))
 }
 
 
-#' Load multi-species model performance results
+#' Drop models fitted on shuffled labels
+#'
+#' @param df Result rows; older results may lack `shuffled` or leave it NA.
+#' @return `df` without the rows whose `shuffled` is TRUE.
+#' @keywords internal
+#' @noRd
+.real_labels <- function(df) {
+  if (!"shuffled" %in% names(df)) {
+    return(df)
+  }
+  df[!df$shuffled %in% TRUE, , drop = FALSE]
+}
+
+
+#' Load model performance results
 #'
 #' @param results_root User results root, or NULL for the packaged demo data.
-#' @param species_dirs Full paths to the species subdirectories selected by the
-#'   user, or NULL.
+#' @param result_dirs Result folders selected by the user (from
+#'   listResultSources()), or NULL.
 #' @param verbose Whether to emit progress/diagnostic messages.
 #' @return A tibble of combined performance rows.
 #' @keywords internal
 #' @noRd
-loadMLResults <- function(results_root = NULL, species_dirs = NULL,
+loadMLResults <- function(results_root = NULL, result_dirs = NULL,
                           verbose = TRUE) {
-  .load_species_results(
-    .load_one_species_perf, results_root, species_dirs, verbose,
+  .load_results(
+    "perf", results_root, result_dirs, verbose,
     "loadMLResults(): using packaged demo parquets"
   )
 }
 
 
-#' Load multi-species top-feature results
+#' Load top-feature results
 #'
 #' @param results_root User results root, or NULL for the packaged demo data.
-#' @param species_dirs Full paths to the species subdirectories selected by the
-#'   user, or NULL.
+#' @param result_dirs Result folders selected by the user (from
+#'   listResultSources()), or NULL.
 #' @param verbose Whether to emit progress/diagnostic messages.
 #' @return A tibble of combined top-feature rows.
 #' @keywords internal
 #' @noRd
-loadTopFeat <- function(results_root = NULL, species_dirs = NULL,
+loadTopFeat <- function(results_root = NULL, result_dirs = NULL,
                         verbose = TRUE) {
-  .load_species_results(
-    .load_one_species_top, results_root, species_dirs, verbose,
+  .load_results(
+    "top", results_root, result_dirs, verbose,
     "loadTopFeat(): using packaged demo parquets"
   )
 }
 
 
 #' Find a file by name within the immediate subdirectories of a root
+#'
+#' Used only by the annotation lookups, which still read older-format files.
 #'
 #' @param root Directory whose immediate subdirectories are searched, or NULL.
 #' @param fname File name to look for in each subdirectory.
@@ -252,37 +233,4 @@ loadTopFeat <- function(results_root = NULL, species_dirs = NULL,
     }
   }
   NULL
-}
-
-
-#' Locate a species metadata parquet
-#'
-#' Each species subdirectory holds a single `metadata.parquet`, so a species is
-#' addressed by its subdirectory name. Looks for
-#' `{results_root}/{species_dir}/metadata.parquet` (user mode) and then
-#' `{extdata}/{species_dir}/metadata.parquet` (demo mode). When `species_dir` is
-#' NULL, falls back to the first `metadata.parquet` found under any subdir.
-#'
-#' @param species_dir Species subdirectory basename (e.g. "Shigella_flexneri"),
-#'   or NULL to return the first metadata parquet found.
-#' @param results_root User results root, or NULL to search demo data only.
-#' @return The full path to the metadata parquet, or NULL when not found.
-#' @keywords internal
-#' @noRd
-get_metadata_path <- function(species_dir = NULL, results_root = NULL) {
-  fname <- "metadata.parquet"
-
-  if (!is.null(species_dir) && nzchar(species_dir)) {
-    roots <- c(results_root, system.file("extdata", package = "amRviz"))
-    for (root in roots) {
-      if (is.null(root) || !nzchar(root)) next
-      fp <- file.path(root, species_dir, fname)
-      if (file.exists(fp)) {
-        return(fp)
-      }
-    }
-    return(NULL)
-  }
-
-  find_parquet(fname, results_root)
 }

@@ -15,14 +15,7 @@ test_that(".exportPlanSpecs builds figure specs from the bundled demo data", {
     code = as.character(pairs$species),
     label = as.character(pairs$species_label)
   )
-  extdata <- system.file("extdata", package = "amRviz")
-  meta_species <- basename(
-    list.dirs(extdata, full.names = TRUE, recursive = FALSE)
-  )
-  meta_species <- meta_species[vapply(
-    file.path(extdata, meta_species, "metadata.parquet"),
-    file.exists, logical(1)
-  )]
+  meta_species <- listMetadataSpecies()
 
   specs <- .exportPlanSpecs(
     perf, top, ml_species, meta_species,

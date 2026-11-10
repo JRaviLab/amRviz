@@ -578,49 +578,50 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 
 # ---- Data prep ----
 
-#' List species that have a metadata parquet
+#' List the species that have metadata
 #'
-#' Each species subdirectory holds a single `metadata.parquet`, so a species is
-#' identified by its subdirectory name. Scans `results_root` when given, else
-#' the packaged extdata.
+#' Under `results_root`: the ORBs whose manifests are found there (species and
+#' metadata file from each manifest), plus older-format species folders holding
+#' a `metadata.parquet`. Without `results_root`, the packaged demo folders.
 #'
 #' @param results_root User results root, or NULL for the packaged demo data.
-#' @return A sorted named character vector (names = display labels with
-#'   underscores replaced by spaces, values = subdirectory basenames), or empty
-#'   when none are found.
+#' @return A sorted named character vector (names = display labels, values =
+#'   metadata parquet paths), or empty when none are found.
 #' @keywords internal
 #' @noRd
 listMetadataSpecies <- function(results_root = NULL) {
-  scan_root <- if (!is.null(results_root) && nzchar(results_root)) {
-    results_root
+  if (!is.null(results_root) && nzchar(results_root)) {
+    orbs <- .orb_choices(
+      .list_available_orbs(.find_orb_manifests(results_root))
+    )
+    legacy <- .legacy_metadata_sources(results_root)
+    choices <- c(orbs, legacy[!legacy %in% orbs])
   } else {
-    system.file("extdata", package = "amRviz")
+    extdata <- system.file("extdata", package = "amRviz")
+    choices <- .legacy_metadata_sources(extdata)
   }
-  if (!nzchar(scan_root)) {
+  if (!length(choices)) {
     return(character(0))
   }
-  dirs <- list.dirs(scan_root, full.names = TRUE, recursive = FALSE)
-  dirs <- dirs[file.exists(file.path(dirs, "metadata.parquet"))]
-  if (!length(dirs)) {
-    return(character(0))
-  }
-  sort(stats::setNames(basename(dirs), gsub("_", " ", basename(dirs))))
+  names(choices) <- make.unique(names(choices), " #")
+  choices[order(names(choices))]
 }
 
 
 #' Read and row-bind metadata parquets for one or more species
 #'
-#' @param species_dirs Species subdirectory basename(s).
-#' @param results_root User results root, or NULL for the packaged demo data.
-#' @return A tibble with a `species` column set to the subdirectory name, or an
+#' @param sources Named character vector of metadata parquet paths, as
+#'   listMetadataSpecies() returns; names are the species labels.
+#' @return A tibble with a `species` column set to each source's label, or an
 #'   empty tibble when no metadata parquet is found.
 #' @keywords internal
 #' @noRd
-readSpeciesMetadata <- function(species_dirs, results_root = NULL) {
-  purrr::map_dfr(species_dirs, function(x) {
-    fp <- get_metadata_path(x, results_root)
-    if (!is.null(fp) && file.exists(fp)) {
-      arrow::read_parquet(fp) |> dplyr::mutate(species = x)
+readSpeciesMetadata <- function(sources) {
+  labels <- names(sources) %||% rep(NA_character_, length(sources))
+  purrr::map_dfr(seq_along(sources), function(i) {
+    fp <- sources[[i]]
+    if (!is.na(fp) && file.exists(fp)) {
+      arrow::read_parquet(fp) |> dplyr::mutate(species = labels[[i]])
     } else {
       tibble::tibble()
     }

@@ -153,31 +153,32 @@ The dashboard is organized into tabs:
 
 ### Data requirements
 
-amRviz reads the parquet files produced by **amRml**. Files must be
-organized into per-species subdirectories:
+amRviz reads an **amRdata** ORB and the **amRml** runs saved inside it:
 
-    results/
-    ├── Shigella_flexneri/
-    │   ├── Sfl_ML_perf.parquet
-    │   ├── Sfl_country_ML_perf.parquet
-    │   ├── Sfl_year_ML_perf.parquet
-    │   ├── Sfl_cross_ML_perf.parquet
-    │   ├── Sfl_ML_top_features.parquet
-    │   ├── Sfl_country_ML_top_features.parquet
-    │   ├── Sfl_year_ML_top_features.parquet
-    │   └── Sfl_metadata.parquet
-    ├── Klebsiella_pneumoniae/
-    │   ├── Kpn_ML_perf.parquet
-    │   └── ...
-    └── ...
+    Shigella_flexneri/orb/
+    ├── manifest_run_*.json          # the amRdata record: species, files
+    ├── metadata.parquet
+    ├── ...                          # feature and annotation tables
+    └── amRml/
+        └── 2026-10-18_130824/       # one amRml run
+            ├── run.json             # what was run, and on which ORB
+            ├── tasks.parquet        # each model: labels, seed, status
+            ├── matrices.parquet     # each model's data: type, drug, features
+            └── results/
+                ├── performance.parquet
+                └── importance.parquet
 
--   The **subdirectory name** (e.g. `Shigella_flexneri`) is used as the
-    display label throughout the dashboard.
--   The **species code** (e.g. `Sfl`) inside each parquet is used for
-    internal filtering.
--   Pass `results_root = "/path/to/results"` to `launchAMRDashboard()`
-    to load your own data. Without this argument the dashboard loads the
-    bundled demo data.
+-   Nothing is read from file or folder names. The **species** and the
+    **metadata file** come from the ORB manifest; each model’s type,
+    drug or drug class, feature type, encoding, labels and seed come
+    from the run’s `tasks.parquet` and `matrices.parquet`.
+-   Pass `results_root` an ORB, a folder of ORBs (such as the amRdata data
+    folder), or a single run to `launchAMRDashboard()` to load your own
+    data. Without this argument the dashboard loads the bundled demo
+    data.
+-   Results in the older amRml layout (one folder per species of
+    `all_perf.parquet`, `country_top_features.parquet` and so on, as in
+    the demo data) still load.
 
 ## Data schema
 

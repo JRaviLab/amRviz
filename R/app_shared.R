@@ -4,7 +4,7 @@
 
 #' Results-folder selector UI
 #'
-#' Placeholder for the species result-folder selector, which is only shown when
+#' Placeholder for the result-folder selector, which is only shown when
 #' the app is given a `results_root`. Placed inside the Query Data tab by
 #' launchAMRDashboard().
 #'
@@ -19,12 +19,12 @@ resultsSourceUI <- function(id) {
 
 #' Results-folder selector server
 #'
-#' Lists the amRml species folders under `results_root` and lets the user pick
-#' which to load.
+#' Lists the amRml runs and older-format species folders under `results_root`
+#' (see listResultSources()) and lets the user pick which to load.
 #'
 #' @param id Module id; must match the id passed to `resultsSourceUI()`.
 #' @param results_root User results root, or NULL for the packaged demo data.
-#' @return A reactive returning the selected species-folder paths (NULL until
+#' @return A reactive returning the selected result folders (NULL until
 #'   the user's selection is available, and always NULL in demo mode).
 #' @keywords internal
 #' @noRd
@@ -35,23 +35,23 @@ resultsSourceServer <- function(id, results_root) {
         return(NULL)
       }
 
-      choices <- listAmRmlSpeciesFolders(results_root)
+      choices <- listResultSources(results_root)
       if (!length(choices)) {
         return(shiny::div(
           class = "note-box",
-          paste("No amRml species folders found under:", results_root)
+          paste("No amRml results found under:", results_root)
         ))
       }
 
       shiny::selectizeInput(
         inputId = session$ns("results_species_dirs"),
-        label = "Select species result folders",
+        label = "Select results",
         choices = choices,
         selected = unname(choices),
         multiple = TRUE,
         options = list(
           plugins = list("remove_button"),
-          placeholder = "Select species..."
+          placeholder = "Select results..."
         )
       )
     })
@@ -64,31 +64,31 @@ resultsSourceServer <- function(id, results_root) {
 #' Load the ML results shared by the model tabs
 #'
 #' @param results_root User results root, or NULL for the packaged demo data.
-#' @param species_dirs Reactive returning the selected species-folder paths,
-#'   from resultsSourceServer().
+#' @param result_dirs Reactive returning the selected result folders, from
+#'   resultsSourceServer().
 #' @return A named list of reactives: `queryData`, `topFeatures`,
 #'   `available_species`, `filtered_top_features`, `loadDrugClassMapRec`.
 #' @keywords internal
 #' @noRd
-setupServerCore <- function(results_root, species_dirs) {
-  # Performance metrics + top features, refreshed when the species selection changes.
+setupServerCore <- function(results_root, result_dirs) {
+  # Performance metrics + top features, refreshed when the selection changes.
   queryData <- shiny::reactiveVal(tibble::tibble())
   topFeatures <- shiny::reactiveVal(tibble::tibble())
 
   shiny::observeEvent(
-    list(results_root, species_dirs()),
+    list(results_root, result_dirs()),
     {
       if (!is.null(results_root) && nzchar(results_root)) {
-        shiny::req(species_dirs())
+        shiny::req(result_dirs())
       }
 
       queryData(loadMLResults(
         results_root = results_root,
-        species_dirs = species_dirs()
+        result_dirs = result_dirs()
       ))
       topFeatures(loadTopFeat(
         results_root = results_root,
-        species_dirs = species_dirs()
+        result_dirs = result_dirs()
       ))
     },
     ignoreInit = FALSE

@@ -73,28 +73,37 @@ There are no hardcoded species lists.
 
 ## The data amRviz reads
 
-amRviz reads the Parquet files written by **amRml**, organized into one
-subdirectory per species. The subdirectory name (e.g. `Shigella_flexneri`)
-becomes the display label throughout the dashboard, while a short species code
-(e.g. `Sfl`) inside each file is used for internal filtering.
+amRviz reads an **amRdata** ORB and the **amRml** runs saved inside it.
+Everything it shows about a dataset or a model comes from what those packages
+recorded, not from file or folder names: the species and the metadata file from
+the ORB manifest, and each model's type, drug or drug class, feature type,
+encoding, labels and seed from the run's `tasks.parquet` and
+`matrices.parquet`.
 
 ```
-results/
-└── Shigella_flexneri/
-    ├── perf.parquet              # baseline model performance
-    ├── country_perf.parquet      # country-stratified models
-    ├── year_perf.parquet         # year-stratified models
-    ├── cross_perf.parquet        # cross-tested models
-    ├── top_features.parquet      # top predictive features
-    ├── country_top_features.parquet
-    ├── year_top_features.parquet
-    ├── metadata.parquet             # isolate surveillance metadata
-    └── cluster_feature.parquet      # optional COG/annotation lookup
+Shigella_flexneri/orb/
+├── manifest_run_*.json          # the amRdata record: species, files
+├── metadata.parquet             # isolate surveillance metadata
+├── ...                          # feature and annotation tables
+└── amRml/
+    └── 2026-10-18_130824/       # one amRml run
+        ├── run.json             # what was run, and on which ORB
+        ├── tasks.parquet        # each model: labels, seed, status
+        ├── matrices.parquet     # each model's data: type, drug, features
+        └── results/
+            ├── performance.parquet
+            └── importance.parquet
 ```
 
-Three file types drive the dashboard:
+Pass `results_root` an ORB, a folder of ORBs (such as the amRdata data folder),
+or a single run. amRviz also still reads results in the older amRml layout (one
+folder per species of `all_perf.parquet`, `country_top_features.parquet` and
+so on), which the bundled demo data uses.
 
-**Performance metrics** (`*_perf.parquet`) has one row per model. Key columns:
+Three kinds of data drive the dashboard:
+
+**Performance metrics** have one row per model. Key columns, as the tabs see
+them:
 
 | Column | Description |
 |---|---|
@@ -107,11 +116,10 @@ Three file types drive the dashboard:
 | `strat_value` / `strat_value_test` | Trained-on / tested-on stratum |
 | `mcc`, `bal_acc`, `f1`, `sens`, `spec` | Performance metrics |
 
-**Top features** (`*_top_features.parquet`), ranked predictive features per
-model, with `Variable` (feature ID), `Importance` (score), and `Sign`
-(direction of effect).
+**Top features**, ranked predictive features per model, with `Variable`
+(feature ID), `Importance` (score), and `Sign` (direction of effect).
 
-**Metadata** (`*_metadata.parquet`) contains one row per genome–drug test, with
+**Metadata** (`metadata.parquet`) contains one row per genome–drug test, with
 `genome_drug.resistant_phenotype` (Resistant/Susceptible),
 `genome.isolation_country`, `genome.collection_year`,
 `genome.host_common_name`, `genome.isolation_source`, and `drug_class`.

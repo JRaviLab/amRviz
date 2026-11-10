@@ -2,8 +2,9 @@
 
 #' Metadata tab server
 #'
-#' Fills the species selector from the metadata parquets under `results_root`
-#' (so the tab works without ML results), reads the selected species' metadata
+#' Fills the species selector from the ORBs and older-format folders under
+#' `results_root` (so the tab works without ML results), reads the selected
+#' species' metadata
 #' once, and renders every output on the tab from that one read.
 #'
 #' @param id Module id; must match the id passed to `metadataUI()`.
@@ -24,7 +25,7 @@ metadataServer <- function(id, results_root = NULL) {
     # One read per species change, shared by every output below.
     meta <- shiny::reactive({
       shiny::req(input$bug_metadata_id)
-      readSpeciesMetadata(input$bug_metadata_id, results_root)
+      readSpeciesMetadata(choices[choices == input$bug_metadata_id])
     })
 
     output$geo_isolate_plot_ui <- shiny::renderUI({

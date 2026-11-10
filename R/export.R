@@ -260,6 +260,18 @@
 }
 
 
+#' Output folder name for a species label
+#'
+#' @param label A species label, e.g. "Shigella flexneri".
+#' @return The label with runs of characters unsafe in file names replaced by
+#'   `_`, e.g. "Shigella_flexneri".
+#' @keywords internal
+#' @noRd
+.export_folder <- function(label) {
+  gsub("[^A-Za-z0-9._-]+", "_", label)
+}
+
+
 #' Assemble the list of figures to export
 #'
 #' Returns a list of specs; each is `list(group, name, build)` where `build()`
@@ -325,7 +337,7 @@
   # ---- Per ML species: performance, feature importance, holdouts, network ----
   for (i in seq_along(ml_species$code)) {
     code <- ml_species$code[i]
-    folder <- ml_species$label[i]
+    folder <- .export_folder(ml_species$label[i])
 
     # Model performance box/point plot.
     drugs <- .export_ml_drugs(perf_data, code)
@@ -445,12 +457,11 @@
   }
 
   # ---- Per metadata species: distributions + sankey ----
-  for (sp in meta_species) {
-    folder <- sp
+  for (i in seq_along(meta_species)) {
     local({
-      sp <- sp
-      folder <- folder
-      meta_raw <- function() readSpeciesMetadata(sp, results_root)
+      source <- meta_species[i]
+      folder <- .export_folder(names(source))
+      meta_raw <- function() readSpeciesMetadata(source)
 
       add(folder, "metadata_data_availability", function() {
         makeDataAvailabilityPlot(meta_raw())
@@ -497,13 +508,15 @@
 #'   are organized as `output_dir/<species>/<panel>.<ext>`, with global
 #'   overviews under `output_dir/_overview` and `output_dir/_across_species`.
 #' @param formats Any of `"png"`, `"pdf"`, `"jpg"`, `"svg"`.
-#' @param results_root Directory of amRml model outputs (per-species subdirs
-#'   of `*_perf.parquet` / `*_top_features.parquet` / `metadata.parquet`).
-#'   `NULL` uses the packaged demo data.
+#' @param results_root Folder holding amRml results, as for
+#'   [launchAMRDashboard()]: an amRdata ORB with amRml runs, a folder of ORBs,
+#'   an amRml run, or older per-species result folders. `NULL` uses the
+#'   packaged demo data.
 #' @param amrdata_root Directory of amRdata annotation parquets (for cluster
 #'   enrichment). `NULL` tries `~/amRdata/data`, else falls back to unenriched.
-#' @param species Optional character vector restricting which species folders
-#'   to export.
+#' @param species Optional character vector restricting which species to
+#'   export, by label ("Shigella flexneri"), output folder name
+#'   ("Shigella_flexneri") or species code ("Sfl").
 #' @param top_n_features,network_top_n Feature counts for the
 #'   feature-importance panels and the drug-feature network.
 #' @param width,height Viewport size in pixels.
@@ -594,13 +607,13 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
   }
 
   # Load model results (user results_root, else packaged demo data).
-  species_dirs <- if (!is.null(results_root) && nzchar(results_root)) {
-    unname(listAmRmlSpeciesFolders(results_root))
+  result_dirs <- if (!is.null(results_root) && nzchar(results_root)) {
+    unname(listResultSources(results_root))
   } else {
     NULL
   }
-  perf_data <- loadMLResults(results_root, species_dirs, verbose = verbose)
-  top_features <- loadTopFeat(results_root, species_dirs, verbose = verbose)
+  perf_data <- loadMLResults(results_root, result_dirs, verbose = verbose)
+  top_features <- loadTopFeat(results_root, result_dirs, verbose = verbose)
 
   # ML species: (code, folder label) pairs, excluding cross/MDR pseudo-species.
   ml_species <- list(code = character(0), label = character(0))
@@ -621,16 +634,19 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
     )
   }
 
-  # Metadata species: subdirectories that hold a metadata.parquet.
-  meta_species <- sort(unname(listMetadataSpecies(results_root)))
+  # Metadata species: label -> metadata parquet, from ORB manifests and
+  # older-format folders.
+  meta_species <- listMetadataSpecies(results_root)
 
-  # Optional species filter (matched against folder labels).
+  # Optional species filter (matched against labels, codes and folder names).
   if (!is.null(species)) {
-    keep <- ml_species$label %in% species | ml_species$code %in% species
+    keep <- ml_species$label %in% species | ml_species$code %in% species |
+      .export_folder(ml_species$label) %in% species
     ml_species <- list(
       code = ml_species$code[keep], label = ml_species$label[keep]
     )
-    meta_species <- meta_species[meta_species %in% species]
+    meta_species <- meta_species[names(meta_species) %in% species |
+      .export_folder(names(meta_species)) %in% species]
   }
 
   if (!length(ml_species$code) && !length(meta_species)) {
