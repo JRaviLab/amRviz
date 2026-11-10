@@ -26,15 +26,16 @@ overviews under \verb{output_dir/_overview} and \verb{output_dir/_across_species
 
 \item{formats}{Any of \code{"png"}, \code{"pdf"}, \code{"jpg"}, \code{"svg"}.}
 
-\item{results_root}{Directory of amRml model outputs (per-species subdirs
-of \verb{*_perf.parquet} / \verb{*_top_features.parquet} / \code{metadata.parquet}).
-\code{NULL} uses the packaged demo data.}
+\item{results_root}{Folder holding amRml results, as for
+\code{\link[=launchAMRDashboard]{launchAMRDashboard()}}: an amRdata ORB with amRml runs, a folder of ORBs,
+or an amRml run. \code{NULL} uses the packaged demo ORB.}
 
 \item{amrdata_root}{Directory of amRdata annotation parquets (for cluster
 enrichment). \code{NULL} tries \verb{~/amRdata/data}, else falls back to unenriched.}
 
-\item{species}{Optional character vector restricting which species folders
-to export.}
+\item{species}{Optional character vector restricting which species to
+export, by label ("Shigella flexneri"), output folder name
+("Shigella_flexneri") or species code ("Sfl").}
 
 \item{top_n_features, network_top_n}{Feature counts for the
 feature-importance panels and the drug-feature network.}

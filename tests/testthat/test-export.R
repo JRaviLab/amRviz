@@ -15,14 +15,7 @@ test_that(".exportPlanSpecs builds figure specs from the bundled demo data", {
     code = as.character(pairs$species),
     label = as.character(pairs$species_label)
   )
-  extdata <- system.file("extdata", package = "amRviz")
-  meta_species <- basename(
-    list.dirs(extdata, full.names = TRUE, recursive = FALSE)
-  )
-  meta_species <- meta_species[vapply(
-    file.path(extdata, meta_species, "metadata.parquet"),
-    file.exists, logical(1)
-  )]
+  meta_species <- listMetadataSpecies()
 
   specs <- .exportPlanSpecs(
     perf, top, ml_species, meta_species,
@@ -52,21 +45,16 @@ test_that(".exportPlanSpecs builds figure specs from the bundled demo data", {
 test_that("exportAMRVisualizations drops species with no code (no phantom folder)", {
   perf <- loadMLResults(verbose = FALSE)
   skip_if(!nrow(perf), "No demo performance data available")
-  # The demo Shigella_sonnei parquets carry some rows with a blank/NA species
-  # code; those must not produce their own export iteration.
-  skip_if(
-    !any(is.na(perf$species) | !nzchar(perf$species)),
-    "Demo data has no blank species codes to exercise the guard"
-  )
+  # Rows with a blank/NA species code must not produce their own export
+  # iteration. Add a phantom NA-code entry sharing the real species' label to
+  # prove .exportPlanSpecs drops it defensively.
   top <- loadTopFeat(verbose = FALSE)
-  # Deliberately build ml_species the naive way, INCLUDING the phantom
-  # NA/blank-code entry, to prove .exportPlanSpecs drops it defensively.
   pairs <- perf |>
     dplyr::filter(!(species %in% c("cross", "MDR"))) |>
     dplyr::distinct(species, species_label)
   ml_species <- list(
-    code = as.character(pairs$species),
-    label = as.character(pairs$species_label)
+    code = c(as.character(pairs$species), NA_character_),
+    label = c(as.character(pairs$species_label), pairs$species_label[1])
   )
   expect_true(any(is.na(ml_species$code) | !nzchar(ml_species$code)))
 
@@ -175,4 +163,24 @@ test_that("exportAMRVisualizations writes files for the demo data", {
   expect_equal(anyDuplicated(paste(res$group, res$name)), 0L)
   png_files <- list.files(out, pattern = "\\.png$", recursive = TRUE)
   expect_gt(length(png_files), 0)
+})
+
+test_that("exportAMRVisualizations keeps metadata figures when given a species code", {
+  skip_on_cran()
+  skip_if_not_installed("webshot2")
+  skip_if_not_installed("htmlwidgets")
+  skip_if(
+    tryCatch(!nzchar(chromote::find_chrome()), error = function(e) TRUE),
+    "No Chrome/Chromium available"
+  )
+
+  out <- tempfile("amrviz_export")
+  on.exit(unlink(out, recursive = TRUE), add = TRUE)
+
+  # The species code comes from the ORB manifest, like the label does.
+  res <- exportAMRVisualizations(
+    output_dir = out, formats = "png", species = "Sfl", verbose = FALSE
+  )
+  expect_true(any(grepl("^metadata_", res$name)))
+  expect_true(any(res$name == "model_performance"))
 })

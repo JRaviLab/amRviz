@@ -1,28 +1,28 @@
 ## Tests for data loading functions: loadMLResults, loadTopFeat,
-## listAmRmlSpeciesFolders, get_metadata_path, loadDrugClassMap
+## listResultSources, loadDrugClassMap
 
-# ── listAmRmlSpeciesFolders ──────────────────────────────────────────────────
+# ── listResultSources ──────────────────────────────────────────────────
 
-test_that("listAmRmlSpeciesFolders returns empty for NULL/invalid root", {
-  expect_equal(listAmRmlSpeciesFolders(NULL), character(0))
-  expect_equal(listAmRmlSpeciesFolders(""), character(0))
+test_that("listResultSources returns empty for NULL/invalid root", {
+  expect_equal(listResultSources(NULL), character(0))
+  expect_equal(listResultSources(""), character(0))
   expect_equal(
-    listAmRmlSpeciesFolders("/nonexistent/path"),
+    listResultSources("/nonexistent/path"),
     character(0)
   )
 })
 
-test_that("listAmRmlSpeciesFolders discovers species dirs in extdata", {
+test_that("listResultSources finds the demo run", {
   extdata <- system.file("extdata", package = "amRviz")
   skip_if(!nzchar(extdata), "No extdata directory found")
 
-  result <- listAmRmlSpeciesFolders(extdata, verbose = FALSE)
+  result <- listResultSources(extdata, verbose = FALSE)
   expect_type(result, "character")
   expect_true(length(result) > 0)
   expect_true(all(nzchar(names(result))))
 })
 
-test_that("listAmRmlSpeciesFolders ignores dirs without perf parquets", {
+test_that("listResultSources ignores dirs without results", {
   tmp <- tempfile("test_species_")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE))
@@ -30,18 +30,18 @@ test_that("listAmRmlSpeciesFolders ignores dirs without perf parquets", {
   empty_dir <- file.path(tmp, "Empty_species")
   dir.create(empty_dir)
 
-  result <- listAmRmlSpeciesFolders(tmp, verbose = FALSE)
+  result <- listResultSources(tmp, verbose = FALSE)
   expect_equal(length(result), 0)
 })
 
 # ── loadMLResults ────────────────────────────────────────────────────────────
 
-test_that("loadMLResults returns empty tibble when results_root given but no species_dirs", {
+test_that("loadMLResults returns empty tibble when results_root given but no result_dirs", {
   tmp <- tempdir()
   result <- suppressMessages(
     loadMLResults(
       results_root = tmp,
-      species_dirs = NULL,
+      result_dirs = NULL,
       verbose = FALSE
     )
   )
@@ -56,11 +56,11 @@ test_that("loadMLResults loads demo data in fallback mode", {
   expect_true("species" %in% names(result))
 })
 
-test_that("loadMLResults loads from specific species_dirs", {
+test_that("loadMLResults loads from specific result_dirs", {
   extdata <- system.file("extdata", package = "amRviz")
   skip_if(!nzchar(extdata), "No extdata directory found")
 
-  folders <- listAmRmlSpeciesFolders(extdata, verbose = FALSE)
+  folders <- listResultSources(extdata, verbose = FALSE)
   skip_if(
     length(folders) == 0,
     "No species dirs with baseline perf in extdata"
@@ -69,7 +69,7 @@ test_that("loadMLResults loads from specific species_dirs", {
   result <- suppressMessages(
     loadMLResults(
       results_root = extdata,
-      species_dirs = folders[1],
+      result_dirs = folders[1],
       verbose = FALSE
     )
   )
@@ -80,12 +80,12 @@ test_that("loadMLResults loads from specific species_dirs", {
 
 # ── loadTopFeat ──────────────────────────────────────────────────────────────
 
-test_that("loadTopFeat returns empty tibble when results_root given but no species_dirs", {
+test_that("loadTopFeat returns empty tibble when results_root given but no result_dirs", {
   tmp <- tempdir()
   result <- suppressMessages(
     loadTopFeat(
       results_root = tmp,
-      species_dirs = NULL,
+      result_dirs = NULL,
       verbose = FALSE
     )
   )
@@ -99,24 +99,6 @@ test_that("loadTopFeat loads demo data in fallback mode", {
   expect_gt(nrow(result), 0)
   expect_true("Variable" %in% names(result))
   expect_true("Importance" %in% names(result))
-})
-
-# ── get_metadata_path ────────────────────────────────────────────────────────
-
-test_that("get_metadata_path returns NULL for nonexistent species dir", {
-  result <- get_metadata_path("Zzz_nonexistent")
-  expect_null(result)
-})
-
-test_that("get_metadata_path finds demo metadata parquet", {
-  extdata <- system.file("extdata", package = "amRviz")
-  skip_if(!nzchar(extdata), "No extdata directory found")
-
-  result <- get_metadata_path("Shigella_flexneri")
-  if (!is.null(result)) {
-    expect_true(file.exists(result))
-    expect_true(grepl("metadata\\.parquet$", result))
-  }
 })
 
 # ── loadDrugClassMap ─────────────────────────────────────────────────────────

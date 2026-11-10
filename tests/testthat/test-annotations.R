@@ -66,17 +66,13 @@ test_that("enrich_with_annotations adds cluster/COG columns when annotations exi
 
 # ── load_feature_name_map ───────────────────────────────────────────────────
 
-test_that("load_feature_name_map returns NULL when name file is absent", {
-  # The demo data does not ship gene_names.parquet / protein_names.parquet, so
-  # this should be NULL without an amrdata_root pointing at one.
+test_that("load_feature_name_map reads the demo ORB's gene names", {
   result <- load_feature_name_map("Sfl", "genes")
-  expect_null(result)
+  expect_named(result, c("Variable", "label"))
+  expect_gt(nrow(result), 0)
 })
 
-test_that("load_feature_name_map returns NULL for unrecognised species", {
-  result <- load_feature_name_map(
-    "ZZZ", "genes",
-    amrdata_root = tempdir()
-  )
-  expect_null(result)
+test_that("load_feature_name_map returns NULL when no name file exists", {
+  # No *_names.parquet exists for structural features.
+  expect_null(load_feature_name_map("Sfl", "struct", amrdata_root = tempdir()))
 })

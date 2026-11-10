@@ -1,6 +1,24 @@
 # Misc cross-cutting helpers.
 
 
+#' Drop rows with a missing or blank isolation country
+#'
+#' Single definition of "has a usable country name" so every country-based
+#' view (map, top-5 summary, Sankey) excludes both `NA` and `""`.
+#'
+#' @param data Tibble with a `genome.isolation_country` column.
+#' @return `data` without rows whose country is `NA` or an empty string.
+#' @keywords internal
+#' @noRd
+filter_valid_country <- function(data) {
+  dplyr::filter(
+    data,
+    !is.na(.data$genome.isolation_country),
+    nzchar(trimws(.data$genome.isolation_country))
+  )
+}
+
+
 #' Locate a parquet by filename, preferring `results_root` over packaged extdata
 #'
 #' @param fname File name to look for.

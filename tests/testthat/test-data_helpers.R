@@ -42,7 +42,7 @@ test_that(".read_parquet_safe reads a valid parquet file", {
   extdata <- system.file("extdata", package = "amRviz")
   perf_files <- list.files(
     extdata,
-    pattern = "_perf\\.parquet$",
+    pattern = "\\.parquet$",
     recursive = TRUE, full.names = TRUE
   )
   skip_if(length(perf_files) == 0, "No demo parquet files found")

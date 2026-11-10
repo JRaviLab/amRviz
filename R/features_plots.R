@@ -193,13 +193,19 @@ makeFeatureImportancePlot <- function(
 
   # Enrich per-species so each subset uses its own species_code, then drop
   # features that didn't match an annotation (nothing to place on the y-axis).
+  # Without any cluster annotations (amRml runs on ORBs have no
+  # cluster_feature.parquet yet), label each feature by its ID instead.
   top_features_df <- dplyr::bind_rows(lapply(
     unique(top_features_df$species),
     function(sp) enrich_with_annotations(
       top_features_df[top_features_df$species == sp, ],
       species_code = sp, results_root = results_root
     )
-  )) |>
+  ))
+  if (!"cluster_name" %in% names(top_features_df)) {
+    top_features_df$cluster_name <- top_features_df$Variable
+  }
+  top_features_df <- top_features_df |>
     dplyr::filter(!is.na(.data$cluster_name)) |>
     dplyr::group_by(!!rlang::sym(group_column), .data$cluster_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")

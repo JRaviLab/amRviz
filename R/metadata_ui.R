@@ -111,7 +111,7 @@ metadataUI <- function(id) {
               shiny::selectInput(
                 inputId = ns("metadata_sankey_classes"),
                 label = shiny::tags$label(
-                  "Drug classes (top 3 by default)",
+                  "Drug classes (top 3 by default) - the flow colors come from the drug classes",
                   style = "font-size: 13px;"
                 ),
                 choices = NULL,

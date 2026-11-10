@@ -86,7 +86,7 @@ makeQuickStats <- function(data) {
     dplyr::pull(drug_class)
 
   top_n_countries <- data_with_drug_class |>
-    dplyr::filter(!is.na(genome.isolation_country)) |>
+    filter_valid_country() |>
     dplyr::group_by(genome.isolation_country) |>
     dplyr::summarize(n = n()) |>
     dplyr::arrange(desc(n)) |>
@@ -433,14 +433,13 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
   }
 
   df <- data |>
+    filter_valid_country() |>
     dplyr::filter(
       !is.na(.data$genome_drug.resistant_phenotype),
       !is.na(.data$genome_drug.antibiotic),
       !is.na(.data$drug_class),
-      !is.na(.data$genome.isolation_country),
       !is.na(.data$genome.host_common_name),
       !is.na(.data$genome.isolation_source),
-      nzchar(.data$genome.isolation_country),
       nzchar(.data$genome.host_common_name),
       nzchar(.data$genome.isolation_source),
       .data$genome_drug.resistant_phenotype %in%
@@ -578,49 +577,53 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 
 # ---- Data prep ----
 
-#' List species that have a metadata parquet
+#' List the species that have metadata
 #'
-#' Each species subdirectory holds a single `metadata.parquet`, so a species is
-#' identified by its subdirectory name. Scans `results_root` when given, else
-#' the packaged extdata.
+#' The ORBs whose manifests are found under `results_root` (species and
+#' metadata file from each manifest). Without `results_root`, the packaged demo
+#' ORB.
 #'
 #' @param results_root User results root, or NULL for the packaged demo data.
-#' @return A sorted named character vector (names = display labels with
-#'   underscores replaced by spaces, values = subdirectory basenames), or empty
-#'   when none are found.
+#' @return A sorted named character vector (names = display labels, values =
+#'   metadata parquet paths), or empty when none are found.
 #' @keywords internal
 #' @noRd
 listMetadataSpecies <- function(results_root = NULL) {
-  scan_root <- if (!is.null(results_root) && nzchar(results_root)) {
+  .orb_choices(.metadata_orbs(results_root))
+}
+
+
+#' The ORBs that listMetadataSpecies() lists
+#'
+#' @param results_root User results root, or NULL for the packaged demo data.
+#' @return A `.list_available_orbs()` tibble, with each ORB's species code
+#'   (`dataset_id`), label and metadata path.
+#' @keywords internal
+#' @noRd
+.metadata_orbs <- function(results_root = NULL) {
+  root <- if (!is.null(results_root) && nzchar(results_root)) {
     results_root
   } else {
     system.file("extdata", package = "amRviz")
   }
-  if (!nzchar(scan_root)) {
-    return(character(0))
-  }
-  dirs <- list.dirs(scan_root, full.names = TRUE, recursive = FALSE)
-  dirs <- dirs[file.exists(file.path(dirs, "metadata.parquet"))]
-  if (!length(dirs)) {
-    return(character(0))
-  }
-  sort(stats::setNames(basename(dirs), gsub("_", " ", basename(dirs))))
+  .list_available_orbs(.find_orb_manifests(root))
 }
 
 
 #' Read and row-bind metadata parquets for one or more species
 #'
-#' @param species_dirs Species subdirectory basename(s).
-#' @param results_root User results root, or NULL for the packaged demo data.
-#' @return A tibble with a `species` column set to the subdirectory name, or an
+#' @param sources Named character vector of metadata parquet paths, as
+#'   listMetadataSpecies() returns; names are the species labels.
+#' @return A tibble with a `species` column set to each source's label, or an
 #'   empty tibble when no metadata parquet is found.
 #' @keywords internal
 #' @noRd
-readSpeciesMetadata <- function(species_dirs, results_root = NULL) {
-  purrr::map_dfr(species_dirs, function(x) {
-    fp <- get_metadata_path(x, results_root)
-    if (!is.null(fp) && file.exists(fp)) {
-      arrow::read_parquet(fp) |> dplyr::mutate(species = x)
+readSpeciesMetadata <- function(sources) {
+  labels <- names(sources) %||% rep(NA_character_, length(sources))
+  purrr::map_dfr(seq_along(sources), function(i) {
+    fp <- sources[[i]]
+    if (!is.na(fp) && file.exists(fp)) {
+      arrow::read_parquet(fp) |> dplyr::mutate(species = labels[[i]])
     } else {
       tibble::tibble()
     }
@@ -658,7 +661,7 @@ readSpeciesMetadata <- function(species_dirs, results_root = NULL) {
 #' @noRd
 metadataByCountry <- function(meta) {
   meta |>
-    dplyr::filter(.data$genome.isolation_country != "") |>
+    filter_valid_country() |>
     .add_evidence_column() |>
     dplyr::group_by(
       .data$genome.isolation_country, .data$genome_drug.antibiotic
