@@ -26,6 +26,44 @@ test_that("makeDrugFeatureNetwork returns a forceNetwork for demo data", {
   expect_s3_class(result, "htmlwidget")
 })
 
+# ── networkTables ──────────────────────────────────────────────────────────
+
+# Baseline models for two drugs, plus a stratified and a cross-tested row the
+# network leaves out. One feature is named like a drug.
+network_rows <- function() {
+  tibble::tibble(
+    species = "Sso",
+    drug_or_class = c("AMP", "AMP", "AMP", "TET", "TET", "AMP", "AMP"),
+    feature_type = c("domains", "domains", "domains", "genes", "genes", "genes", "genes"),
+    Variable = c("DDE_Tnp_Tn3", "DDE_Tnp_1", "PF00001_IPR000001", "tetA", "AMP", "strat", "cross"),
+    Importance = c(0.9, 0.8, 0.7, 0.6, 0.5, 2, 3),
+    strat_label = c(NA, NA, NA, NA, NA, "country", NA),
+    cross_test = c(FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
+  )
+}
+
+test_that("networkTables links drugs to their baseline features", {
+  net <- networkTables(network_rows(), "Sso", top_n = 10)
+  expect_named(net$nodes, c("id", "label", "group"))
+  expect_named(net$links, c("from", "to", "importance"))
+  # Stratified and cross-tested models are left out.
+  expect_false(any(c("strat", "cross") %in% net$nodes$label))
+  expect_true(all(c(net$links$from, net$links$to) %in% net$nodes$id))
+})
+
+test_that("networkTables keeps current Pfam names whole", {
+  net <- networkTables(network_rows(), "Sso", top_n = 10)
+  domains <- net$nodes$label[net$nodes$group == "domains"]
+  expect_setequal(domains, c("DDE_Tnp_Tn3", "DDE_Tnp_1", "PF00001"))
+})
+
+test_that("networkTables keeps a feature named like a drug as its own node", {
+  net <- networkTables(network_rows(), "Sso", top_n = 10)
+  expect_equal(sum(net$nodes$label == "AMP"), 2)
+  expect_equal(nrow(networkTables(network_rows(), "Sso", top_n = 1)$links), 2)
+  expect_null(networkTables(network_rows(), "Sfl"))
+})
+
 # ── makeFeatureEgoNetwork ───────────────────────────────────────────────────
 
 test_that("makeFeatureEgoNetwork returns NULL for NULL input", {
