@@ -1,30 +1,27 @@
-# Force-directed network visualisations.
+# Force-directed network visualizations.
+#
+# The drug-feature network draws one table, built by networkTables(): its
+# nodes and links. The ego network is drawn on the Features tab.
 
 
-#' Interactive force-directed drug -> feature network
+#' Nodes and links for the drug-feature network
 #'
-#' Links drugs (or drug classes) to their top features (Variables), optionally
-#' extending to cluster tier when an annotations parquet is available.
+#' Links each drug or drug class to its `top_n` most important features in
+#' the baseline models (not stratified or cross-tested), and optionally each
+#' feature to its protein cluster when cluster annotations are available.
 #'
-#' @param top_data Pre-loaded top-features tibble from loadTopFeat().
-#' @param bug 3-letter species code.
-#' @param top_n Number of top features per drug to include as edges.
-#' @param include_clusters Add annotation tiers when TRUE.
-#' @param results_root Path for annotation lookup (falls back to extdata).
-#' @return A `networkD3` forceNetwork widget, or NULL when there is nothing to
-#'   plot.
+#' @param top_data Top-features tibble from loadTopFeat().
+#' @param bug Species code.
+#' @param top_n Number of top features per drug or drug class.
+#' @param include_clusters Add cluster nodes from the annotations when TRUE.
+#' @param results_root Path for the annotation lookup.
+#' @return A list of `nodes` (`id`, unique across node types, `label` and
+#'   `group`: "drug", a feature type, or "cluster") and `links` (`from` and
+#'   `to` node ids, and `importance`), or NULL when there is nothing to draw.
 #' @keywords internal
 #' @noRd
-makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
-                                   include_clusters = FALSE,
-                                  #  include_cogs = FALSE,
-                                   results_root = NULL) {
-  if (!requireNamespace("networkD3", quietly = TRUE)) {
-    stop(
-      "Package 'networkD3' is required. ",
-      "Install it with install.packages('networkD3')."
-    )
-  }
+networkTables <- function(top_data, bug, top_n = 10,
+                          include_clusters = FALSE, results_root = NULL) {
   if (is.null(top_data) || !is.data.frame(top_data) || !nrow(top_data)) {
     return(NULL)
   }
@@ -33,10 +30,14 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     dplyr::mutate(species = normalize_species(.data$species)) |>
     dplyr::filter(.data$species %in% normalize_species(bug)) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
+    dplyr::filter(!.data$cross_test %in% TRUE) |>
     dplyr::filter(!is.na(.data$Variable), !is.na(.data$drug_or_class)) |>
     dplyr::mutate(
       Variable = dplyr::case_when(
-        feature_type == "domains" ~ sub("_.+$", "", Variable),
+        # Older amRml named domains "PF23840_IPR056912"; keep the Pfam ID.
+        # Current Pfam names ("DDE_Tnp_Tn3") are kept whole.
+        feature_type == "domains" & grepl("^PF[0-9]+_", Variable) ~
+          sub("_.+$", "", Variable),
         feature_type == "proteins" ~ sub("fig.", "fig|", Variable, fixed = TRUE),
         feature_type == "args" ~ sub(
           "^X", "",
@@ -45,126 +46,89 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
         TRUE ~ Variable
       )
     )
-
   if (!nrow(df)) {
     return(NULL)
   }
 
-  # Take top N features per drug/class by max importance. Keep feature_type so
-  # variable nodes can be coloured by molecular scale downstream.
-  edges_df <- df |>
+  # Top N features per drug or class, by their highest importance across
+  # seeds and encodings.
+  top <- df |>
     dplyr::group_by(.data$drug_or_class, .data$Variable, .data$feature_type) |>
     dplyr::summarise(
-      Importance = max(.data$Importance, na.rm = TRUE),
+      importance = max(.data$Importance, na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::group_by(.data$drug_or_class) |>
-    dplyr::slice_max(order_by = .data$Importance, n = top_n) |>
+    dplyr::slice_max(order_by = .data$importance, n = top_n) |>
     dplyr::ungroup()
-
-  if (!nrow(edges_df)) {
+  if (!nrow(top)) {
     return(NULL)
   }
 
-  drugs <- unique(edges_df$drug_or_class)
-  variables <- unique(edges_df$Variable)
-  # Molecular scale (feature_type) for each variable node, used for colouring.
-  variables_scale <- edges_df$feature_type[match(variables, edges_df$Variable)]
-
-  drug_var_edges <- edges_df |>
-    dplyr::transmute(
-      source_name = .data$drug_or_class,
-      target_name = .data$Variable,
-      value = .data$Importance
-    )
-
-  extra_nodes_cluster <- character(0)
-  # extra_nodes_cog <- character(0)
-  var_cluster_edges <- NULL
-  # cluster_cog_edges <- NULL
+  # A node's id includes its type, so a feature named like a drug, or the
+  # same name in two feature types, stays a separate node.
+  drug_id <- paste0("drug:", top$drug_or_class)
+  feature_id <- paste0(top$feature_type, ":", top$Variable)
+  nodes <- dplyr::bind_rows(
+    tibble::tibble(id = drug_id, label = top$drug_or_class, group = "drug"),
+    tibble::tibble(id = feature_id, label = top$Variable, group = top$feature_type)
+  ) |>
+    dplyr::distinct(.data$id, .keep_all = TRUE)
+  links <- tibble::tibble(from = drug_id, to = feature_id, importance = top$importance)
 
   if (include_clusters) {
     ann <- load_feature_annotations(bug, results_root)
     if (!is.null(ann) && nrow(ann)) {
-      # Match Variable ("PF23840_IPR056912") against ann$feature ("PF23840")
-      # variables_key <- stringr::str_split_i(variables, "_", 1)
-      # var_key_map <- stats::setNames(variables, variables_key)
-      ann_sub <- ann |>
-        dplyr::filter(.data$feature %in% variables)
-
-      if (include_clusters && nrow(ann_sub)) {
-        cl_edges <- ann_sub |>
-          dplyr::filter(!is.na(.data$cluster)) |>
-          dplyr::distinct(.data$feature, .data$cluster) |>
-          dplyr::transmute(
-            source_name = .data$feature,
-            target_name = .data$cluster,
-            value = 0.5
-          )
-        if (nrow(cl_edges)) {
-          var_cluster_edges <- cl_edges
-          extra_nodes_cluster <- unique(cl_edges$target_name)
-        }
+      clusters <- ann |>
+        dplyr::filter(.data$feature %in% top$Variable, !is.na(.data$cluster)) |>
+        dplyr::distinct(.data$feature, .data$cluster)
+      if (nrow(clusters)) {
+        features <- nodes[nodes$group != "drug", ]
+        from <- features$id[match(clusters$feature, features$label)]
+        nodes <- dplyr::bind_rows(nodes, tibble::tibble(
+          id = paste0("cluster:", unique(clusters$cluster)),
+          label = unique(clusters$cluster), group = "cluster"
+        ))
+        links <- dplyr::bind_rows(links, tibble::tibble(
+          from = from, to = paste0("cluster:", clusters$cluster), importance = 0.5
+        ))
       }
-
-      # TODO(HMMER PR): restore the cluster -> COG / variable -> COG network
-      # tiers below once cross-scale features land.
-      # if (include_cogs && nrow(ann_sub)) {
-  #       if (include_clusters && !is.null(var_cluster_edges)) {
-  #         # cluster -> COG edges
-  #         cc_edges <- ann_sub |>
-  #           dplyr::filter(!is.na(.data$cluster), !is.na(.data$COG)) |>
-  #           dplyr::distinct(.data$cluster, .data$COG) |>
-  #           dplyr::transmute(
-  #             source_name = .data$cluster,
-  #             target_name = .data$COG,
-  #             value = 0.3
-  #           )
-  #         if (nrow(cc_edges)) {
-  #           cluster_cog_edges <- cc_edges
-  #           extra_nodes_cog <- unique(cc_edges$target_name)
-  #         }
-  #       } else {
-  #         # variable -> COG directly
-  #         cc_edges <- ann_sub |>
-  #           dplyr::filter(!is.na(.data$COG)) |>
-  #           dplyr::distinct(.data$feature, .data$COG) |>
-  #           dplyr::transmute(
-  #             source_name = var_key_map[.data$feature],
-  #             target_name = .data$COG,
-  #             value = 0.3
-  #           )
-  #         if (nrow(cc_edges)) {
-  #           cluster_cog_edges <- cc_edges
-  #           extra_nodes_cog <- unique(cc_edges$target_name)
-  #         }
-  #       }
-  #     }
     }
   }
 
-  # Variable nodes are grouped by their molecular scale (feature_type) so each
-  # scale - COGs included - gets its own colour from the shared SCALE_COLORS
-  # palette. Drug and cluster keep their own groups.
-  nodes <- data.frame(
-    name = c(drugs, variables, extra_nodes_cluster),
-    node_type = c(
-      rep("drug", length(drugs)),
-      variables_scale,
-      rep("cluster", length(extra_nodes_cluster))
-    ),
-    stringsAsFactors = FALSE
-  )
+  list(nodes = nodes, links = links)
+}
 
-  all_edges <- dplyr::bind_rows(
-    drug_var_edges, var_cluster_edges
-  )
-  edges <- all_edges |>
-    dplyr::transmute(
-      source = match(.data$source_name, nodes$name) - 1,
-      target = match(.data$target_name, nodes$name) - 1,
-      value = .data$value
+
+#' Interactive force-directed drug -> feature network
+#'
+#' Draws networkTables(): drugs (or drug classes) linked to their top
+#' features, optionally extended to protein clusters.
+#'
+#' @inheritParams networkTables
+#' @return A `networkD3` forceNetwork widget, or NULL when there is nothing to
+#'   plot.
+#' @keywords internal
+#' @noRd
+makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
+                                   include_clusters = FALSE,
+                                   results_root = NULL) {
+  if (!requireNamespace("networkD3", quietly = TRUE)) {
+    stop(
+      "Package 'networkD3' is required. ",
+      "Install it with install.packages('networkD3')."
     )
+  }
+  net <- networkTables(top_data, bug, top_n, include_clusters, results_root)
+  if (is.null(net)) {
+    return(NULL)
+  }
+  nodes <- as.data.frame(net$nodes)
+  edges <- data.frame(
+    source = match(net$links$from, nodes$id) - 1,
+    target = match(net$links$to, nodes$id) - 1,
+    value = net$links$importance
+  )
 
   # Colour domain: drug + every molecular scale + cluster, drawing scale colours
   # from the shared SCALE_COLORS palette so the network matches the other tabs.
@@ -182,8 +146,8 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     Source = "source",
     Target = "target",
     Value = "value",
-    NodeID = "name",
-    Group = "node_type",
+    NodeID = "label",
+    Group = "group",
     colourScale = networkD3::JS(color_scale),
     opacity = 0.9,
     zoom = TRUE,
