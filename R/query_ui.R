@@ -12,7 +12,12 @@ queryDataUI <- function(id, source_ui = NULL) {
     value = "query_datatable",
     shiny::fluidPage(
       shiny::h2("Query Data"),
-      shiny::p("The data table provides the ability to download the raw data for model performance metrics and top features. The table can be customized by adding/removing specific columns."),
+      shiny::p(paste(
+        "Browse and download the loaded results as CSV: every model's",
+        "performance, and each model's 100 most important features.",
+        "Choose the columns to show and download with the column picker;",
+        "clear it to show every column."
+      )),
       source_ui,
       shiny::tabsetPanel(
         id = ns("query_tabset"),
@@ -27,8 +32,8 @@ queryDataUI <- function(id, source_ui = NULL) {
               shiny::selectizeInput(
                 inputId = ns("query_data_columns"),
                 label = "Add/Remove Column(s)",
-                choices = NULL, # Dynamically updated in the server
-                selected = NULL, # Default: None selected
+                choices = NULL, # Filled by the server from the loaded results
+                selected = NULL, # The server selects the most useful columns
                 multiple = TRUE,
                 options = list(
                   placeholder = "Select columns...",
@@ -69,8 +74,8 @@ queryDataUI <- function(id, source_ui = NULL) {
               shiny::selectizeInput(
                 inputId = ns("top_features_columns"),
                 label = "Add/Remove Column(s)",
-                choices = NULL, # Dynamically updated in the server
-                selected = NULL, # Default: None selected
+                choices = NULL, # Filled by the server from the loaded results
+                selected = NULL, # The server selects the most useful columns
                 multiple = TRUE,
                 options = list(
                   placeholder = "Select columns...",
