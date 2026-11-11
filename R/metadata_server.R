@@ -105,7 +105,7 @@ metadataServer <- function(id, results_root = NULL) {
     })
 
     output$resistance_vs_susceptible_plot <- plotly::renderPlotly({
-      makeDataAvailabilityPlot(meta())
+      makeDataAvailabilityPlot(metadataAvailability(meta()))
     })
 
     output$geo_isolate_plot <- plotly::renderPlotly({
@@ -117,11 +117,11 @@ metadataServer <- function(id, results_root = NULL) {
     })
 
     output$host_isolate_plot <- plotly::renderPlotly({
-      makeHostIsolatePlot(metadataWithHost(meta()))
+      makeHostIsolatePlot(metadataByHost(meta()))
     })
 
     output$isolation_source_plot <- plotly::renderPlotly({
-      makeIsolationSourcesPlot(metadataWithHost(meta()))
+      makeIsolationSourcesPlot(metadataBySource(meta()))
     })
 
     invisible(NULL)

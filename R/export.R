@@ -464,7 +464,7 @@
       meta_raw <- function() readSpeciesMetadata(source)
 
       add(folder, "metadata_data_availability", function() {
-        makeDataAvailabilityPlot(meta_raw())
+        makeDataAvailabilityPlot(metadataAvailability(meta_raw()))
       })
       add(folder, "metadata_geographic", function() {
         makeGeoChloroPlot(metadataByCountry(meta_raw()))
@@ -473,10 +473,10 @@
         makeTimeSeriesAMRPlot(metadataByYear(meta_raw()), "all")
       })
       add(folder, "metadata_hosts", function() {
-        makeHostIsolatePlot(metadataWithHost(meta_raw()))
+        makeHostIsolatePlot(metadataByHost(meta_raw()))
       })
       add(folder, "metadata_isolation_sources", function() {
-        makeIsolationSourcesPlot(metadataWithHost(meta_raw()))
+        makeIsolationSourcesPlot(metadataBySource(meta_raw()))
       })
       add(folder, "metadata_resistance_sankey", function() {
         meta <- meta_raw()
