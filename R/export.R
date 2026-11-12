@@ -478,6 +478,24 @@
       add(folder, "metadata_isolation_sources", function() {
         makeIsolationSourcesPlot(metadataBySource(meta_raw()))
       })
+      add(folder, "metadata_resistance_by_drug", function() {
+        makeResistanceSharePlot(metadataResistance(meta_raw(), "drug"), "genome-drug records")
+      })
+      add(folder, "metadata_resistance_by_class", function() {
+        makeResistanceSharePlot(metadataResistance(meta_raw(), "class"), "genomes")
+      })
+      add(folder, "metadata_resistance_by_drug_year", function() {
+        makeDrugYearHeatmap(metadataDrugYear(meta_raw()))
+      })
+      add(folder, "metadata_country_year", function() {
+        makeCountryYearHeatmap(metadataCountryYear(meta_raw()))
+      })
+      add(folder, "metadata_multidrug_resistance", function() {
+        makeMdrPlot(metadataMdr(meta_raw()))
+      })
+      add(folder, "metadata_resistance_profiles", function() {
+        makeProfilesPlot(metadataProfiles(meta_raw()))
+      })
       add(folder, "metadata_resistance_sankey", function() {
         meta <- meta_raw()
         classes <- topDrugClasses(meta)

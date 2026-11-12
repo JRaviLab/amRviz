@@ -94,3 +94,87 @@ test_that("the tab's plots draw their tables", {
   # Empty tables show a message instead of an empty chart.
   expect_s3_class(makeHostIsolatePlot(metadataByHost(meta[0, ])), "plotly")
 })
+
+
+# ---- Resistance tables ----
+
+# Three genomes. G1: resistant to ampicillin and gentamicin, susceptible to
+# amoxicillin (same class as ampicillin). G2: susceptible to ampicillin,
+# intermediate to amoxicillin. G3: resistant to three classes, no year.
+resistance_rows <- function() {
+  tibble::tibble(
+    species = "Shigella sonnei",
+    genome.genome_id = c("G1", "G1", "G1", "G2", "G2", "G3"),
+    genome_drug.antibiotic = c("ampicillin", "amoxicillin", "gentamicin", "ampicillin", "amoxicillin", "ampicillin"),
+    drug_class = c("penicillins", "penicillins", "aminoglycosides", "penicillins", "penicillins", "penicillins"),
+    genome_drug.resistant_phenotype = c("Resistant", "Susceptible", "Resistant", "Susceptible", "Intermediate", "Resistant"),
+    genome.isolation_country = c("France", "France", "France", "Spain", "Spain", ""),
+    genome.collection_year = c(2015, 2015, 2015, 2016, 2016, NA),
+    num_resistant_classes = c(2, 2, 2, 0, 0, 3),
+    resistant_classes = c("AMG_PEN", "AMG_PEN", "AMG_PEN", "Susceptible", "Susceptible", "AMG_PEN_TET")
+  )
+}
+
+test_that("metadataResistance counts records per drug", {
+  tbl <- metadataResistance(resistance_rows(), "drug")
+  expect_named(tbl, c("label", "resistant", "intermediate", "susceptible", "total", "pct_resistant"))
+  amp <- tbl[tbl$label == "ampicillin", ]
+  expect_equal(c(amp$resistant, amp$susceptible, amp$total), c(2, 1, 3))
+  # Most resistant first.
+  expect_equal(tbl$label[1], "gentamicin")
+})
+
+test_that("metadataResistance counts each genome once per drug class", {
+  tbl <- metadataResistance(resistance_rows(), "class")
+  pen <- tbl[tbl$label == "penicillins", ]
+  # G1 resistant (ampicillin), G2 intermediate (amoxicillin), G3 resistant.
+  expect_equal(c(pen$resistant, pen$intermediate, pen$susceptible, pen$total), c(2, 1, 0, 3))
+  # No drug_class column: an empty table, not an error.
+  expect_equal(nrow(metadataResistance(resistance_rows()[, -4], "class")), 0)
+})
+
+test_that("metadataDrugYear leaves out undated records and rare drugs", {
+  tbl <- metadataDrugYear(resistance_rows(), min_records = 1)
+  expect_named(tbl, c("drug", "year", "resistant", "total", "pct_resistant"))
+  expect_false(anyNA(tbl$year))
+  expect_equal(sum(tbl$total), 5)
+  expect_equal(nrow(metadataDrugYear(resistance_rows(), min_records = 3)), 0)
+})
+
+test_that("metadataCountryYear counts genomes, not records", {
+  tbl <- metadataCountryYear(resistance_rows())
+  expect_equal(tbl$genomes[tbl$country == "France"], 1)
+  expect_equal(sum(tbl$genomes), 2)
+})
+
+test_that("metadataMdr counts genomes by resistant classes", {
+  tbl <- metadataMdr(resistance_rows())
+  expect_equal(tbl$classes, 0:3)
+  expect_equal(tbl$genomes, c(1, 0, 1, 1))
+  expect_equal(tbl$mdr, c(FALSE, FALSE, FALSE, TRUE))
+  expect_equal(nrow(metadataMdr(resistance_rows()[, 1:7])), 0)
+})
+
+test_that("metadataProfiles lists resistant-class combinations", {
+  tbl <- metadataProfiles(resistance_rows())
+  expect_equal(tbl$profile, c("AMG + PEN", "AMG + PEN + TET"))
+  expect_equal(tbl$genomes, c(1, 1))
+})
+
+test_that("the resistance plots draw, and draw a message when empty", {
+  m <- resistance_rows()
+  empty <- m[0, ]
+  for (p in list(
+    makeResistanceSharePlot(metadataResistance(m)),
+    makeDrugYearHeatmap(metadataDrugYear(m, min_records = 1)),
+    makeCountryYearHeatmap(metadataCountryYear(m)),
+    makeMdrPlot(metadataMdr(m)),
+    makeProfilesPlot(metadataProfiles(m)),
+    makeResistanceSharePlot(metadataResistance(empty)),
+    makeDrugYearHeatmap(metadataDrugYear(empty)),
+    makeMdrPlot(metadataMdr(empty)),
+    makeProfilesPlot(metadataProfiles(empty))
+  )) {
+    expect_s3_class(p, "plotly")
+  }
+})

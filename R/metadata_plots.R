@@ -372,6 +372,263 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
 }
 
 
+#' Share of resistant, intermediate and susceptible results per group
+#'
+#' Horizontal bars filled to 100%, most resistant on top. The resistant part
+#' starts at 0%, so its length reads straight off the axis.
+#'
+#' @param data Output of metadataResistance().
+#' @param unit What `total` counts, for the hover text and axis
+#'   ("genome-drug records" or "genomes").
+#' @param top_n Number of groups shown, by `total`.
+#' @return A plotly horizontal bar chart.
+#' @keywords internal
+#' @noRd
+makeResistanceSharePlot <- function(data, unit = "genome-drug records",
+                                    top_n = 30) {
+  if (is.null(data) || !nrow(data)) {
+    return(plotly_placeholder("No phenotype data"))
+  }
+  shown <- utils::head(data[order(-data$total), , drop = FALSE], top_n)
+  shown$label <- gsub("_", " ", shown$label, fixed = TRUE)
+  order <- shown$label[order(shown$pct_resistant, shown$total)]
+  long <- tidyr::pivot_longer(
+    shown, c("resistant", "intermediate", "susceptible"),
+    names_to = "phenotype", values_to = "n"
+  ) |>
+    dplyr::filter(.data$n > 0) |>
+    dplyr::mutate(
+      phenotype = factor(
+        stringr::str_to_sentence(.data$phenotype),
+        levels = c("Susceptible", "Intermediate", "Resistant")
+      ),
+      share = .data$n / .data$total,
+      label = factor(.data$label, levels = order)
+    )
+  g <- ggplot2::ggplot(
+    long,
+    ggplot2::aes(
+      x = .data$share,
+      y = .data$label,
+      fill = .data$phenotype,
+      text = paste0(
+        .data$label,
+        "<br>", .data$phenotype, ": ", .data$n, " of ", .data$total,
+        " ", unit, " (", round(100 * .data$share), "%)"
+      )
+    )
+  ) +
+    ggplot2::geom_col(width = 0.75) +
+    ggplot2::scale_x_continuous(
+      labels = function(x) paste0(round(100 * x), "%"),
+      breaks = seq(0, 1, 0.25), expand = c(0, 0)
+    ) +
+    ggplot2::scale_fill_manual(values = PHENOTYPE_COLORS, drop = TRUE) +
+    .metadata_theme(vertical_x = FALSE) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
+    ggplot2::labs(x = paste("Share of", unit), y = NULL, fill = "AMR phenotype")
+  plotly::ggplotly(g, tooltip = "text") |>
+    plotly::layout(legend = list(traceorder = "reversed"))
+}
+
+
+#' Rows x collection years heatmap, shared by the two metadata heatmaps
+#'
+#' Years sit at evenly spaced positions (labeled by year), so a gap in the
+#' years doesn't stretch the plot, and plotly can't read them as numbers.
+#' Cells with no data are blank. With more than `max_labeled_years` years the
+#' numbers in the cells are left to the hover text, and about 20 years are
+#' labeled on the axis.
+#'
+#' @param rows Row of each cell (a factor: its levels give the order, bottom
+#'   to top).
+#' @param years Year of each cell.
+#' @param value Color value of each cell.
+#' @param label Number written in each cell.
+#' @param hover Hover text of each cell.
+#' @param colorbar,colorscale,zmin,zmax Passed to plotly.
+#' @param max_labeled_years Most years whose cells still show their number.
+#' @return A plotly heatmap.
+#' @keywords internal
+#' @noRd
+.year_heatmap <- function(rows, years, value, label, hover, colorbar,
+                          colorscale, zmin = NULL, zmax = NULL,
+                          max_labeled_years = 25) {
+  row_levels <- levels(droplevels(rows))
+  year_levels <- sort(unique(years))
+  shape <- c(length(row_levels), length(year_levels))
+  idx <- cbind(match(as.character(rows), row_levels), match(years, year_levels))
+  z <- matrix(NA_real_, shape[1], shape[2])
+  text <- matrix("", shape[1], shape[2])
+  tip <- matrix("", shape[1], shape[2])
+  z[idx] <- value
+  text[idx] <- as.character(label)
+  tip[idx] <- hover
+  if (length(year_levels) > max_labeled_years) text[] <- ""
+  ticks <- seq(1, length(year_levels), by = ceiling(length(year_levels) / 20))
+  plotly::plot_ly(
+    x = seq_along(year_levels), y = seq_along(row_levels), z = z,
+    type = "heatmap", zmin = zmin, zmax = zmax, xgap = 1, ygap = 1,
+    colorscale = colorscale, colorbar = colorbar,
+    text = text, texttemplate = "%{text}", textfont = list(size = 10),
+    hovertext = tip, hoverinfo = "text"
+  ) |>
+    plotly::layout(
+      xaxis = list(
+        title = "Collection year", tickmode = "array",
+        tickvals = ticks, ticktext = year_levels[ticks],
+        tickangle = -45, showgrid = FALSE, zeroline = FALSE
+      ),
+      yaxis = list(
+        title = "", tickmode = "array",
+        tickvals = seq_along(row_levels), ticktext = row_levels,
+        showgrid = FALSE, zeroline = FALSE
+      ),
+      plot_bgcolor = "#ffffff"
+    )
+}
+
+
+#' Heatmap of the share of resistant records per drug and year
+#'
+#' @param data Output of metadataDrugYear().
+#' @return A plotly heatmap: color is the share resistant, from susceptible
+#'   blue to resistant amber, and each cell shows its number of records.
+#'   Years with no records for a drug are blank.
+#' @keywords internal
+#' @noRd
+makeDrugYearHeatmap <- function(data) {
+  if (is.null(data) || !nrow(data) || dplyr::n_distinct(data$year) < 2) {
+    return(plotly_placeholder("Too few collection years recorded"))
+  }
+  drug <- factor(
+    gsub("_", " ", data$drug, fixed = TRUE),
+    levels = gsub("_", " ", levels(data$drug), fixed = TRUE)
+  )
+  .year_heatmap(
+    rows = drug, years = data$year, value = data$pct_resistant,
+    label = data$total,
+    hover = paste0(
+      drug, ", ", data$year,
+      "<br>Resistant: ", data$resistant, " of ", data$total,
+      " genome-drug records (", round(100 * data$pct_resistant), "%)"
+    ),
+    colorbar = list(title = "% resistant", tickformat = ".0%"),
+    colorscale = list(
+      c(0, PHENOTYPE_COLORS[["Susceptible"]]),
+      c(0.5, "#f4f1ea"),
+      c(1, PHENOTYPE_COLORS[["Resistant"]])
+    ),
+    zmin = 0, zmax = 1
+  )
+}
+
+
+#' Heatmap of genomes per country and collection year
+#'
+#' @param data Output of metadataCountryYear().
+#' @return A plotly heatmap of genome counts; each cell shows its count.
+#' @keywords internal
+#' @noRd
+makeCountryYearHeatmap <- function(data) {
+  if (is.null(data) || !nrow(data) ||
+    dplyr::n_distinct(data$year) < 2 || dplyr::n_distinct(data$country) < 2) {
+    return(plotly_placeholder("Too few countries or years recorded"))
+  }
+  .year_heatmap(
+    rows = data$country, years = data$year, value = data$genomes,
+    label = data$genomes,
+    hover = paste0(data$country, ", ", data$year, "<br>Genomes: ", data$genomes),
+    colorbar = list(title = "Genomes"),
+    colorscale = list(c(0, "#fdf3e6"), c(0.5, "#e2ad6a"), c(1, "#9a5e1c"))
+  )
+}
+
+
+#' Bar chart of genomes by number of resistant drug classes
+#'
+#' @param data Output of metadataMdr().
+#' @return A plotly bar chart, with multidrug-resistant genomes in amber and
+#'   the share of them in the title.
+#' @keywords internal
+#' @noRd
+makeMdrPlot <- function(data) {
+  if (is.null(data) || !nrow(data) || !sum(data$genomes)) {
+    return(plotly_placeholder("No resistant-class counts recorded"))
+  }
+  mdr_label <- paste0("Multidrug resistant (", .MDR_MIN_CLASSES, " or more classes)")
+  data$group <- factor(
+    ifelse(data$mdr, mdr_label, "Not multidrug resistant"),
+    levels = c("Not multidrug resistant", mdr_label)
+  )
+  n_mdr <- sum(data$genomes[data$mdr])
+  total <- sum(data$genomes)
+  g <- ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = factor(.data$classes),
+      y = .data$genomes,
+      fill = .data$group,
+      text = paste0(
+        "Resistant to ", .data$classes, " drug class",
+        ifelse(.data$classes == 1, "", "es"),
+        "<br>Genomes: ", .data$genomes
+      )
+    )
+  ) +
+    ggplot2::geom_col(width = 0.8) +
+    ggplot2::scale_fill_manual(
+      values = stats::setNames(
+        c(PHENOTYPE_COLORS[["Susceptible"]], PHENOTYPE_COLORS[["Resistant"]]),
+        c("Not multidrug resistant", mdr_label)
+      ),
+      drop = FALSE
+    ) +
+    .metadata_theme(vertical_x = FALSE) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
+    ggplot2::labs(
+      title = sprintf(
+        "%s of %s genomes (%d%%) are multidrug resistant",
+        n_mdr, total, round(100 * n_mdr / total)
+      ),
+      x = "Number of drug classes resistant to", y = "Genomes", fill = NULL
+    )
+  plotly::ggplotly(g, tooltip = "text") |>
+    plotly::layout(legend = list(orientation = "h", y = -0.25))
+}
+
+
+#' Bar chart of the most common resistance profiles
+#'
+#' @param data Output of metadataProfiles().
+#' @return A plotly horizontal bar chart, most common profile on top.
+#' @keywords internal
+#' @noRd
+makeProfilesPlot <- function(data) {
+  if (is.null(data) || !nrow(data)) {
+    return(plotly_placeholder("No resistance profiles recorded"))
+  }
+  data$profile <- factor(data$profile, levels = rev(data$profile))
+  g <- ggplot2::ggplot(
+    data,
+    ggplot2::aes(
+      x = .data$genomes,
+      y = .data$profile,
+      text = paste0(
+        "Resistant to: ", .data$profile,
+        "<br>Drug classes: ", .data$classes,
+        "<br>Genomes: ", .data$genomes
+      )
+    )
+  ) +
+    ggplot2::geom_col(fill = PHENOTYPE_COLORS[["Resistant"]], width = 0.75) +
+    .metadata_theme(vertical_x = FALSE) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
+    ggplot2::labs(x = "Genomes", y = "Resistant drug classes")
+  plotly::ggplotly(g, tooltip = "text")
+}
+
+
 # ---- Reading metadata ----
 
 #' List the species that have metadata
@@ -687,4 +944,209 @@ topDrugClasses <- function(meta, n = 3) {
     dplyr::arrange(dplyr::desc(.data$records)) |>
     dplyr::slice_head(n = n) |>
     dplyr::pull(.data$drug_class)
+}
+
+
+# ---- Resistance tables (shares, heatmaps, multidrug resistance) ----
+
+# Fewest records a drug needs to get its own row in the drug x year heatmap.
+.METADATA_MIN_RECORDS <- 10L
+
+# A genome is multidrug resistant (MDR) when it is resistant to at least this
+# many drug classes (Magiorakos et al. 2012).
+.MDR_MIN_CLASSES <- 3L
+
+
+#' Resistant, intermediate and susceptible counts per group
+#'
+#' @param df Tibble with a `phenotype` column and the grouping columns.
+#' @param ... Grouping columns.
+#' @return One row per group, with `resistant`, `intermediate`,
+#'   `susceptible`, `total` and `pct_resistant` (0 to 1).
+#' @keywords internal
+#' @noRd
+.phenotype_counts <- function(df, ...) {
+  df |>
+    dplyr::group_by(...) |>
+    dplyr::summarise(
+      resistant = sum(.data$phenotype == "Resistant"),
+      intermediate = sum(.data$phenotype == "Intermediate"),
+      susceptible = sum(.data$phenotype == "Susceptible"),
+      total = dplyr::n(),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(pct_resistant = .data$resistant / .data$total)
+}
+
+
+#' Records with a resistant, intermediate or susceptible phenotype
+#' @keywords internal
+#' @noRd
+.phenotype_records <- function(meta) {
+  meta |>
+    dplyr::mutate(phenotype = .data$genome_drug.resistant_phenotype) |>
+    dplyr::filter(.data$phenotype %in% c("Resistant", "Intermediate", "Susceptible"))
+}
+
+
+#' One row per genome: its year, country and resistant drug classes
+#'
+#' Genome-level fields are the same on each of a genome's records, so the
+#' first recorded value is kept.
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @return A tibble with `genome`, `year`, `country`, `classes` (number of
+#'   resistant drug classes) and `profile` (the resistant classes, joined by
+#'   "_", as amRdata writes them).
+#' @keywords internal
+#' @noRd
+.metadata_genomes <- function(meta) {
+  first <- function(x) x[!is.na(x)][1]
+  col <- function(name, empty) if (name %in% names(meta)) meta[[name]] else empty
+  country <- as.character(col("genome.isolation_country", NA_character_))
+  country[!is.na(country) & !nzchar(trimws(country))] <- NA_character_
+  profile <- as.character(col("resistant_classes", NA_character_))
+  profile[!is.na(profile) & !nzchar(trimws(profile))] <- NA_character_
+  tibble::tibble(
+    genome = meta$genome.genome_id,
+    year = suppressWarnings(as.numeric(col("genome.collection_year", NA_real_))),
+    country = country,
+    classes = suppressWarnings(as.numeric(col("num_resistant_classes", NA_real_))),
+    profile = profile
+  ) |>
+    dplyr::group_by(.data$genome) |>
+    dplyr::summarise(dplyr::across(dplyr::everything(), first), .groups = "drop")
+}
+
+
+#' Share of resistant results per drug or per drug class
+#'
+#' Per drug, each genome-drug record counts once. Per drug class, a genome
+#' counts once per class: resistant if it is resistant to any drug in the
+#' class, otherwise intermediate if any is intermediate, otherwise
+#' susceptible.
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @param by "drug" or "class".
+#' @return A tibble with `label` (drug or drug class), `resistant`,
+#'   `intermediate`, `susceptible`, `total` (records per drug, genomes per
+#'   class) and `pct_resistant`, most resistant first. The input to
+#'   makeResistanceSharePlot().
+#' @keywords internal
+#' @noRd
+metadataResistance <- function(meta, by = c("drug", "class")) {
+  by <- match.arg(by)
+  df <- .phenotype_records(meta)
+  if (by == "class") {
+    if (!"drug_class" %in% names(df)) {
+      return(.phenotype_counts(df[0, ], label = character(0)))
+    }
+    df <- df |>
+      dplyr::filter(!is.na(.data$drug_class), nzchar(.data$drug_class)) |>
+      dplyr::group_by(.data$genome.genome_id, label = .data$drug_class) |>
+      dplyr::summarise(
+        phenotype = dplyr::case_when(
+          any(.data$phenotype == "Resistant") ~ "Resistant",
+          any(.data$phenotype == "Intermediate") ~ "Intermediate",
+          TRUE ~ "Susceptible"
+        ),
+        .groups = "drop"
+      )
+  } else {
+    df <- dplyr::mutate(df, label = .data$genome_drug.antibiotic)
+  }
+  df |>
+    dplyr::filter(!is.na(.data$label)) |>
+    .phenotype_counts(.data$label) |>
+    dplyr::arrange(dplyr::desc(.data$pct_resistant), dplyr::desc(.data$total))
+}
+
+
+#' Share of resistant records per drug and collection year
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @param min_records Drugs with fewer dated records than this are left out.
+#' @return A tibble with `drug`, `year`, `resistant`, `total` (records) and
+#'   `pct_resistant`, the input to makeDrugYearHeatmap(). `drug` is a factor,
+#'   least resistant overall first. Rows without a year are left out.
+#' @keywords internal
+#' @noRd
+metadataDrugYear <- function(meta, min_records = .METADATA_MIN_RECORDS) {
+  dated <- .phenotype_records(meta) |>
+    dplyr::mutate(
+      drug = .data$genome_drug.antibiotic,
+      year = suppressWarnings(as.numeric(.data$genome.collection_year))
+    ) |>
+    dplyr::filter(!is.na(.data$year), !is.na(.data$drug))
+  overall <- .phenotype_counts(dated, .data$drug) |>
+    dplyr::filter(.data$total >= min_records) |>
+    dplyr::arrange(.data$pct_resistant, .data$total)
+  dated |>
+    dplyr::filter(.data$drug %in% overall$drug) |>
+    .phenotype_counts(.data$drug, .data$year) |>
+    dplyr::select("drug", "year", "resistant", "total", "pct_resistant") |>
+    dplyr::mutate(drug = factor(.data$drug, levels = overall$drug))
+}
+
+
+#' Genomes per isolation country and collection year
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @param top_n Number of countries shown by name; the rest are "other".
+#' @return A tibble with `country` (a factor: fewest genomes first, "other"
+#'   before all of them), `year` and `genomes`, the input to
+#'   makeCountryYearHeatmap(). Genomes without a country or year are left out.
+#' @keywords internal
+#' @noRd
+metadataCountryYear <- function(meta, top_n = 15) {
+  g <- .metadata_genomes(meta) |>
+    dplyr::filter(!is.na(.data$country), !is.na(.data$year))
+  ranked <- names(sort(table(g$country), decreasing = TRUE))
+  named <- utils::head(ranked, top_n)
+  g$country <- ifelse(g$country %in% named, g$country, "other")
+  levels <- rev(intersect(c(named, "other"), g$country))
+  g |>
+    dplyr::count(.data$country, .data$year, name = "genomes") |>
+    dplyr::mutate(country = factor(.data$country, levels = levels))
+}
+
+
+#' Genomes by number of resistant drug classes
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @return A tibble with `classes` (0 to the most seen), `genomes` and `mdr`
+#'   (TRUE at `.MDR_MIN_CLASSES` or more), the input to makeMdrPlot(). Empty
+#'   when the metadata has no resistant-class counts.
+#' @keywords internal
+#' @noRd
+metadataMdr <- function(meta) {
+  g <- .metadata_genomes(meta) |>
+    dplyr::filter(!is.na(.data$classes))
+  if (!nrow(g)) {
+    return(tibble::tibble(classes = numeric(0), genomes = integer(0), mdr = logical(0)))
+  }
+  tibble::tibble(classes = seq(0, max(g$classes))) |>
+    dplyr::left_join(dplyr::count(g, .data$classes, name = "genomes"), by = "classes") |>
+    dplyr::mutate(
+      genomes = dplyr::coalesce(.data$genomes, 0L),
+      mdr = .data$classes >= .MDR_MIN_CLASSES
+    )
+}
+
+
+#' Most common combinations of resistant drug classes
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @param top_n Number of combinations kept.
+#' @return A tibble with `profile` (class abbreviations joined by " + "),
+#'   `classes` and `genomes`, most genomes first, the input to
+#'   makeProfilesPlot(). Genomes resistant to no class are left out.
+#' @keywords internal
+#' @noRd
+metadataProfiles <- function(meta, top_n = 15) {
+  .metadata_genomes(meta) |>
+    dplyr::filter(!is.na(.data$profile), !is.na(.data$classes), .data$classes > 0) |>
+    dplyr::count(.data$profile, .data$classes, name = "genomes", sort = TRUE) |>
+    utils::head(top_n) |>
+    dplyr::mutate(profile = gsub("_", " + ", .data$profile, fixed = TRUE))
 }

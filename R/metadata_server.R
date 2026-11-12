@@ -124,6 +124,36 @@ metadataServer <- function(id, results_root = NULL) {
       makeIsolationSourcesPlot(metadataBySource(meta()))
     })
 
+    # Resistance plots: each draws one table. The "<name>_ui" box holds the
+    # "<name>_plot" output.
+    resistance_plots <- list(
+      resistance_by_drug = function(m) {
+        makeResistanceSharePlot(metadataResistance(m, "drug"), "genome-drug records")
+      },
+      resistance_by_class = function(m) {
+        makeResistanceSharePlot(metadataResistance(m, "class"), "genomes")
+      },
+      country_year = function(m) makeCountryYearHeatmap(metadataCountryYear(m)),
+      drug_year = function(m) makeDrugYearHeatmap(metadataDrugYear(m)),
+      mdr = function(m) makeMdrPlot(metadataMdr(m)),
+      profiles = function(m) makeProfilesPlot(metadataProfiles(m))
+    )
+    for (name in names(resistance_plots)) {
+      local({
+        name <- name
+        draw <- resistance_plots[[name]]
+        # The year heatmaps get extra height for their many rows.
+        height <- if (name %in% c("drug_year", "country_year")) "600px" else "400px"
+        output[[paste0(name, "_ui")]] <- shiny::renderUI({
+          shiny::fluidRow(shinydashboard::box(
+            title = "", width = 12,
+            plotly::plotlyOutput(ns(paste0(name, "_plot")), height = height)
+          ))
+        })
+        output[[paste0(name, "_plot")]] <- plotly::renderPlotly(draw(meta()))
+      })
+    }
+
     invisible(NULL)
   })
 }
