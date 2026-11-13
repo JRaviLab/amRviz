@@ -496,6 +496,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
       legend.position   = "none",
+      axis.text.y       = ggplot2::element_text(size = 7),
       strip.placement   = "outside",
       strip.text.y.left = ggplot2::element_text(angle = 0, hjust = 1),
       panel.spacing     = ggplot2::unit(0.3, "lines")
