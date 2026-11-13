@@ -56,6 +56,8 @@ test_that("holdoutFeatureTable scales the top features within each group", {
   expect_equal(sum(tbl$feature == "tetA" & tbl$group == "AUS"), 2)
   # Cross-tested models are left out.
   expect_false("cross_only" %in% tbl$feature)
-  expect_equal(range(tbl$importance[tbl$group == "AUS"]), c(0, 1))
+  # Relative to the group's top feature, so the least important shown stays
+  # above 0.
+  expect_equal(sort(tbl$importance[tbl$group == "AUS"]), c(0.2, 0.4, 0.6) / 0.6)
   expect_equal(nrow(holdoutFeatureTable(top, "Sso", "AMG", "country", top_n = 1)), 2)
 })
