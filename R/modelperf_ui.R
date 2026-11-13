@@ -73,10 +73,11 @@ modelPerfUI <- function(id) {
                   shiny::selectInput(
                     ns("model_scale"),
                     label = shiny::tags$label("Model scale", style = "font-size: 15px;"),
-                    choices = c("genes", "domains", "proteins", "cogs", "args"),
+                    # Narrowed by the server to the scales in the loaded results.
+                    choices = .scale_choices(),
                     multiple = TRUE,
                     selectize = TRUE,
-                    selected = c("genes", "proteins", "domains", "cogs", "args"),
+                    selected = .scale_choices(),
                     width = "80%"
                   )
                 ),
