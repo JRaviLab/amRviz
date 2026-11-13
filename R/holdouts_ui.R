@@ -25,16 +25,22 @@ crossModelComparisonUI <- function(id) {
             width = "100%"
           )
         ),
-        shiny::column(
-          width = 4,
-          style = "height: 80px; display: flex; align-items: center;",
-          shiny::selectInput(
-            inputId = ns("drug_cross_model_comparison_id"),
-            label = shiny::tags$label("Drug/Drug class", style = "font-size: 15px;"),
-            choices = NULL,
-            multiple = FALSE,
-            selectize = TRUE,
-            width = "100%"
+        # Accuracy distributions pool all drug classes, so the drug choice
+        # only applies to the other tabs.
+        shiny::conditionalPanel(
+          ns = ns,
+          condition = "input.cross_model_comparison_tabset != 'Accuracy distributions'",
+          shiny::column(
+            width = 4,
+            style = "height: 80px; display: flex; align-items: center;",
+            shiny::selectInput(
+              inputId = ns("drug_cross_model_comparison_id"),
+              label = shiny::tags$label("Drug/Drug class", style = "font-size: 15px;"),
+              choices = NULL,
+              multiple = FALSE,
+              selectize = TRUE,
+              width = "100%"
+            )
           )
         ),
       )
@@ -50,6 +56,10 @@ crossModelComparisonUI <- function(id) {
           # Tab 1: Accuracy distributions
           shiny::tabPanel(
             "Accuracy distributions",
+            shiny::p(
+              "Pooled across all drug classes for the selected bug.",
+              style = "padding: 10px 10px 0; color: #666; font-style: italic;"
+            ),
             shiny::fluidRow(
               style = "padding: 10px;",
               shiny::column(
