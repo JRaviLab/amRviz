@@ -37,22 +37,6 @@ crossModelComparisonUI <- function(id) {
             width = "100%"
           )
         ),
-        shiny::column(
-          width = 4,
-          style = "height: 80px; display: flex; align-items: center;",
-          shiny::radioButtons(
-            inputId = ns("cross_model_comparison"),
-            label = shiny::tags$label("Cross-train models across",
-              style = "font-size: 15px;"
-            ),
-            choices = c(
-              "Countries" = "country",
-              "Time (5 yr intervals)" = "time"
-            ),
-            selected = "country",
-            inline = TRUE
-          )
-        )
       )
     ),
     shiny::column(
@@ -118,6 +102,24 @@ crossModelComparisonUI <- function(id) {
                       inputId = ns("cross_model_top_n_features"),
                       label = "Top features",
                       min = 0, max = 100, value = 10
+                    )
+                  )
+                ),
+                shiny::column(
+                  width = 4,
+                  shiny::div(
+                    style = "padding: 10px;",
+                    shiny::radioButtons(
+                      inputId = ns("cross_model_comparison"),
+                      label = shiny::tags$label("Cross-train models across",
+                        style = "font-size: 15px;"
+                      ),
+                      choices = c(
+                        "Countries" = "country",
+                        "Time (5 yr intervals)" = "time"
+                      ),
+                      selected = "country",
+                      inline = TRUE
                     )
                   )
                 )
