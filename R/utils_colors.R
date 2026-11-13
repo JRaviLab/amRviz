@@ -28,6 +28,15 @@ PHENOTYPE_COLORS <- c(
   I = "#e6ab80", Intermediate = "#e6ab80", intermediate = "#e6ab80"
 )
 
+# Multidrug-resistance plot: genomes by how many drug classes they resist.
+# Fewer than 2 classes in the susceptible blue, exactly 2 in a light amber, and
+# 3 or more (the standard multidrug-resistant definition) in the resistant amber.
+MDR_COLORS <- c(
+  below = "#5b8db8",
+  two = "#ecc08a",
+  three_plus = "#d4872a"
+)
+
 
 # Categorical palette for metadata plots (hosts, isolation sources, etc.).
 # Use `meta_palette(n)` at call sites rather than referencing META_COLORS

@@ -38,9 +38,15 @@ metadataUI <- function(id) {
             shiny::div(
               class = "plot-header",
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
-              "Distribution of AMR phenotypes"
+              "AMR phenotypes by drug"
             ),
-            styledBox(ns("resistance_vs_susceptible_ui"))
+            tabBox(
+              id = ns("phenotype_tabset"),
+              width = 12,
+              shiny::tabPanel("Genomes tested", styledBox(ns("resistance_vs_susceptible_ui"))),
+              shiny::tabPanel("% resistant by drug", styledBox(ns("resistance_by_drug_ui"))),
+              shiny::tabPanel("% resistant by drug class", styledBox(ns("resistance_by_class_ui")))
+            )
           )
         ),
         shiny::column(
@@ -50,9 +56,14 @@ metadataUI <- function(id) {
             shiny::div(
               class = "plot-header",
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
-              "Global distribution of resistant phenotypes"
+              "Where and when genomes were collected"
             ),
-            styledBox(ns("geo_isolate_plot_ui"))
+            tabBox(
+              id = ns("geo_tabset"),
+              width = 12,
+              shiny::tabPanel("Map", styledBox(ns("geo_isolate_plot_ui"))),
+              shiny::tabPanel("By country and year", styledBox(ns("country_year_ui")))
+            )
           )
         )
       ),
@@ -64,9 +75,14 @@ metadataUI <- function(id) {
             shiny::div(
               class = "plot-header",
               style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
-              "Distribution of AMR phenotypes by year"
+              "AMR phenotypes over time"
             ),
-            styledBox(ns("r_s_across_time_ui"))
+            tabBox(
+              id = ns("time_tabset"),
+              width = 12,
+              shiny::tabPanel("All drugs", styledBox(ns("r_s_across_time_ui"))),
+              shiny::tabPanel("% resistant by drug and year", styledBox(ns("drug_year_ui")))
+            )
           )
         ),
         shiny::column(
@@ -86,6 +102,32 @@ metadataUI <- function(id) {
                 styledBox(ns("host_isolate_plot_ui"))
               )
             )
+          )
+        )
+      ),
+      shiny::fluidRow(
+        shiny::column(
+          width = 6,
+          shiny::div(
+            class = "plot-container",
+            shiny::div(
+              class = "plot-header",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
+              "Multidrug resistance"
+            ),
+            styledBox(ns("mdr_ui"))
+          )
+        ),
+        shiny::column(
+          width = 6,
+          shiny::div(
+            class = "plot-container",
+            shiny::div(
+              class = "plot-header",
+              style = "text-align: center; font-family: 'Arial', sans-serif; font-size: 14px; margin-top: 8px; margin-bottom: 8px;",
+              "Most common resistance profiles"
+            ),
+            styledBox(ns("profiles_ui"))
           )
         )
       ),
