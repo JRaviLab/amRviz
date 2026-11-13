@@ -16,7 +16,7 @@ featureImportanceUI <- function(id) {
         shiny::selectInput(
           ns("bug_drug_comp_model_scale"),
           label = shiny::tags$label("Model scale", style = "font-size: 15px;"),
-          choices = c("genes", "domains", "proteins", "cogs", "args"),
+          choices = c("genes", "domains", "proteins", "cogs", "args", "struct"),
           multiple = FALSE,
           selectize = TRUE,
           selected = "genes"

@@ -81,7 +81,7 @@ makeFeatureImportancePlot <- function(
     dplyr::mutate(species = normalize_species(.data$species)) |>
     dplyr::filter(.data$species %in% bug_norm) |>
     dplyr::filter(.data$drug_or_class %in% amr_drug) |>
-    dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) |>
+    dplyr::filter(.data$feature_type %in% model_scale) |>
     dplyr::filter(.data$feature_subtype %in% data_type_) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
@@ -247,9 +247,12 @@ makeFeatureImportancePlot <- function(
 
     vi_mat <- .vi_matrix(vi_wider, group_cols)
 
+    # ESKAPE species first, then the rest alphabetically. Every selected
+    # species stays.
     eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-    col_ord <- intersect(eskape_order, colnames(vi_mat))
-    if (length(col_ord)) vi_mat <- vi_mat[, col_ord, drop = FALSE]
+    eskape <- intersect(eskape_order, colnames(vi_mat))
+    col_ord <- c(eskape, sort(setdiff(colnames(vi_mat), eskape)))
+    vi_mat <- vi_mat[, col_ord, drop = FALSE]
   }
 
   if (feature_importance_tabset == "across_drug") {
