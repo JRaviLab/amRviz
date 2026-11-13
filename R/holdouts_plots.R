@@ -113,7 +113,9 @@ holdoutGridTable <- function(perf_data, bug, drug, cross_model,
 #'
 #' Stratified (not cross-tested) models trained on each group, with each
 #' feature's importance averaged over seeds, then the `top_n` features per
-#' group, scaled 0 to 1 within the group.
+#' group, each divided by the group's most important feature (so that one is 1).
+#' Dividing, rather than stretching to 0-1, keeps the least important feature
+#' shown above 0: it is still a top feature.
 #'
 #' @param top_data Top-features tibble from loadTopFeat().
 #' @param bug Species code(s) to include.
@@ -156,11 +158,27 @@ holdoutFeatureTable <- function(top_data, bug, drug, cross_model, top_n = 10) {
   tbl |>
     dplyr::group_by(.data$group) |>
     dplyr::mutate(importance = {
-      rng <- range(.data$importance)
-      if (diff(rng) == 0) rep(1, dplyr::n()) else (.data$importance - rng[1]) / diff(rng)
+      top <- max(.data$importance)
+      if (top > 0) .data$importance / top else rep(1, dplyr::n())
     }) |>
     dplyr::ungroup() |>
     dplyr::select("feature", "feature_type", "group", "importance")
+}
+
+
+#' Why a drug's holdout top features are empty
+#'
+#' @param drug Drug or drug class shown.
+#' @param cross_model "country" or "time".
+#' @return A one-line message for the empty plot.
+#' @keywords internal
+#' @noRd
+holdoutFeatureEmptyMessage <- function(drug, cross_model) {
+  group <- if (identical(cross_model, "country")) "country" else "time period"
+  paste0(
+    "No ", drug, " models were trained and tested within a single ", group,
+    ", so there are no top features to show"
+  )
 }
 
 
@@ -169,8 +187,8 @@ holdoutFeatureTable <- function(top_data, bug, drug, cross_model, top_n = 10) {
 #' Holdout-model feature-importance heatmap
 #'
 #' Draws holdoutFeatureTable(): the top features of each group's holdout
-#' models, scaled within each group. Gray cells are features not among that
-#' group's top features.
+#' models, relative to each group's most important feature. Gray cells are
+#' features not among that group's top features.
 #'
 #' @param top_data Top-features tibble from loadTopFeat().
 #' @param bug Species code(s) to include.
@@ -203,12 +221,15 @@ makeCrossModelFeatureImportancePlot <- function(
     y = rows,
     z = mat,
     type = "heatmap",
+    # Fixed 0-1 color range, so color shows importance relative to the top
+    # feature rather than stretching the lowest one shown to the palest color.
     colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
-    colorbar = list(title = "Importance\n(scaled)"),
+    zmin = 0, zmax = 1,
+    colorbar = list(title = "Importance\n(relative to\ntop feature)"),
     hovertemplate = paste0(
       "<b>Feature:</b> %{y}<br>",
       "<b>Trained on:</b> %{x}<br>",
-      "<b>Importance:</b> %{z:.3f}<extra></extra>"
+      "<b>Importance:</b> %{z:.2f} of the top feature<extra></extra>"
     )
   ) |>
     plotly::layout(
