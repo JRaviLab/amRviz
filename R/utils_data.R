@@ -48,7 +48,7 @@
 #'
 #' @param run_dir An amRml run folder.
 #' @return The ORB's species label and the run's start time (the folder name
-#'   when the run has no run.json).
+#'   when the manifest doesn't record one).
 #' @keywords internal
 #' @noRd
 .amrml_run_label <- function(run_dir) {
@@ -61,8 +61,9 @@
 
 #' Find the ML results under a root
 #'
-#' Finds amRml runs, inside the ORBs whose manifests sit in `results_root` or
-#' up to two levels below it, or in `results_root` or its subfolders directly.
+#' Finds the amRml runs inside the ORBs whose manifests sit in `results_root`
+#' or up to two levels below it. Runs are only looked for inside ORBs, at
+#' `{orb}/amRml/{run}/`.
 #'
 #' @param results_root Root directory to search.
 #' @param verbose Unused; kept for signature consistency with the loaders.
@@ -76,12 +77,8 @@ listResultSources <- function(results_root, verbose = TRUE) {
     return(character(0))
   }
 
-  subdirs <- list.dirs(rr, full.names = TRUE, recursive = FALSE)
   orbs <- .list_available_orbs(.find_orb_manifests(rr))
-  runs <- unique(c(
-    unlist(lapply(orbs$orb_dir, .orb_amrml_runs)),
-    Filter(.is_amrml_run, c(rr, subdirs))
-  ))
+  runs <- unique(unlist(lapply(orbs$orb_dir, .orb_amrml_runs)))
   if (!length(runs)) {
     return(character(0))
   }

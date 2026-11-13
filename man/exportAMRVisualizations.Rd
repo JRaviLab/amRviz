@@ -27,8 +27,8 @@ overviews under \verb{output_dir/_overview} and \verb{output_dir/_across_species
 \item{formats}{Any of \code{"png"}, \code{"pdf"}, \code{"jpg"}, \code{"svg"}.}
 
 \item{results_root}{Folder holding amRml results, as for
-\code{\link[=launchAMRDashboard]{launchAMRDashboard()}}: an amRdata ORB with amRml runs, a folder of ORBs,
-or an amRml run. \code{NULL} uses the packaged demo ORB.}
+\code{\link[=launchAMRDashboard]{launchAMRDashboard()}}: an amRdata ORB with amRml runs inside it, or a
+folder of ORBs. \code{NULL} uses the packaged demo ORB.}
 
 \item{amrdata_root}{Directory of amRdata annotation parquets (for cluster
 enrichment). \code{NULL} tries \verb{~/amRdata/data}, else falls back to unenriched.}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "manifest_type": "amR_dataset",
+  "manifest_id": "manifest_run_20261104T011136029_pid77138",
+  "manifest_created_at": "2026-11-03 18:11:36.030276",
+  "dataset_id": "Sso",
+  "dataset": {
+    "selection": {
+      "user_bacs": "Shigella sonnei"
+    }
+  },
+  "artifacts": {
+    "amRml_input": {
+      "status": "ready",
+      "producer": "amRdata",
+      "producer_run_id": "run_20261104T012625769_pid77138",
+      "path_mode": "relative_to_manifest",
+      "directory": ".",
+      "metadata_parquet": "metadata.parquet"
+    }
+  }
+}
