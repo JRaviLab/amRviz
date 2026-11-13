@@ -30,9 +30,23 @@ test_that("metadataSummary counts records, genomes and phenotypes", {
 
 test_that("metadataAvailability counts genomes per drug and phenotype", {
   tbl <- metadataAvailability(meta_rows())
-  expect_named(tbl, c("drug", "phenotype", "genomes"))
+  expect_named(tbl, c("drug", "drug_abbr", "phenotype", "genomes"))
   amp <- tbl[tbl$drug == "ampicillin", ]
   expect_equal(amp$genomes[amp$phenotype == "Resistant"], 2)
+})
+
+test_that("per-drug tables carry the drug abbreviation for axis labels", {
+  meta <- dplyr::mutate(
+    meta_rows(),
+    drug_abbr = ifelse(.data$genome_drug.antibiotic == "ampicillin", "AMP", NA)
+  )
+  for (tbl in list(metadataAvailability(meta), metadataByHost(meta), metadataBySource(meta))) {
+    expect_equal(unique(tbl$drug_abbr[tbl$drug == "ampicillin"]), "AMP")
+    # A missing abbreviation falls back to the drug name.
+    expect_equal(unique(tbl$drug_abbr[tbl$drug == "tetracycline"]), "tetracycline")
+  }
+  # Without the column, the drug name is used.
+  expect_equal(metadataAvailability(meta_rows())$drug_abbr, metadataAvailability(meta_rows())$drug)
 })
 
 test_that("metadataByCountry counts genomes as well as records", {

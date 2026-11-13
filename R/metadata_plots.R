@@ -96,16 +96,15 @@ makeQuickStats <- function(data) {
 
 
 #' Shared look for the metadata bar and line charts
+#'
+#' @param x_text_size Font size of the x-axis labels; the per-drug charts use a
+#'   smaller one so their ~40 drug names fit at 45 degrees.
 #' @keywords internal
 #' @noRd
-.metadata_theme <- function(vertical_x = TRUE) {
+.metadata_theme <- function(x_text_size = 10) {
   ggplot2::theme_bw() +
     ggplot2::theme(
-      axis.text.x = if (vertical_x) {
-        ggplot2::element_text(angle = 90, hjust = 1, size = 10)
-      } else {
-        ggplot2::element_text(angle = 45, hjust = 1, size = 10)
-      },
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = x_text_size),
       axis.text.y = ggplot2::element_text(size = 10),
       legend.title = ggplot2::element_text(size = 12),
       legend.text = ggplot2::element_text(size = 10),
@@ -127,12 +126,12 @@ makeDataAvailabilityPlot <- function(data) {
   g <- ggplot2::ggplot(
     data,
     ggplot2::aes(
-      x = .data$drug,
+      x = .data$drug_abbr,
       y = .data$genomes,
       color = .data$phenotype,
       fill = .data$phenotype,
       text = paste0(
-        "Drug: ", .data$drug,
+        "Drug: ", .data$drug, " (", .data$drug_abbr, ")",
         "<br>Phenotype: ", .data$phenotype,
         "<br>Genomes: ", .data$genomes
       )
@@ -141,7 +140,7 @@ makeDataAvailabilityPlot <- function(data) {
     ggplot2::geom_col() +
     ggplot2::scale_fill_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
     ggplot2::scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
-    .metadata_theme() +
+    .metadata_theme(x_text_size = 9) +
     ggplot2::labs(
       x = "Drug", y = "No. of genomes",
       color = "AMR phenotype", fill = "AMR phenotype"
@@ -222,13 +221,13 @@ makeTimeSeriesAMRPlot <- function(data, amr_drug) {
     )
   ) +
     ggplot2::geom_line(ggplot2::aes(group = .data$phenotype)) +
-    ggplot2::geom_point() +
+    ggplot2::geom_point(alpha = 0.6) +
     ggplot2::scale_color_manual(values = PHENOTYPE_COLORS, na.value = "gray70") +
     ggplot2::labs(
       title = title, x = "Collection year", y = "Genome-drug records",
       colour = "AMR phenotype"
     ) +
-    .metadata_theme(vertical_x = FALSE)
+    .metadata_theme()
   plotly::ggplotly(g, tooltip = "text")
 }
 
@@ -246,11 +245,11 @@ makeHostIsolatePlot <- function(data) {
   g <- ggplot2::ggplot(
     data,
     ggplot2::aes(
-      x = .data$drug,
+      x = .data$drug_abbr,
       y = .data$records,
       fill = .data$host,
       text = paste0(
-        "Drug: ", .data$drug,
+        "Drug: ", .data$drug, " (", .data$drug_abbr, ")",
         "<br>Host: ", .data$host,
         "<br>Genome-drug records: ", .data$records
       )
@@ -260,7 +259,7 @@ makeHostIsolatePlot <- function(data) {
     ggplot2::scale_fill_manual(
       values = meta_palette(length(unique(data$host))), na.value = "gray70"
     ) +
-    .metadata_theme() +
+    .metadata_theme(x_text_size = 9) +
     ggplot2::labs(x = "Drug", y = "Genome-drug records", fill = "Host")
   plotly::ggplotly(g, tooltip = "text")
 }
@@ -285,11 +284,11 @@ makeIsolationSourcesPlot <- function(data) {
   g <- ggplot2::ggplot(
     data,
     ggplot2::aes(
-      x = .data$drug,
+      x = .data$drug_abbr,
       y = .data$records,
       fill = .data$source,
       text = paste0(
-        "Drug: ", .data$drug,
+        "Drug: ", .data$drug, " (", .data$drug_abbr, ")",
         "<br>Source: ", .data$source,
         "<br>Genome-drug records: ", .data$records
       )
@@ -300,7 +299,7 @@ makeIsolationSourcesPlot <- function(data) {
       values = colors[sources],
       labels = stringr::str_trunc(sources, width = 24)
     ) +
-    .metadata_theme() +
+    .metadata_theme(x_text_size = 9) +
     ggplot2::labs(x = "Drug", y = "Genome-drug records", fill = "Isolation source")
   plotly::ggplotly(g, tooltip = "text")
 }
@@ -424,7 +423,7 @@ makeResistanceSharePlot <- function(data, unit = "genome-drug records",
       breaks = seq(0, 1, 0.25), expand = c(0, 0)
     ) +
     ggplot2::scale_fill_manual(values = PHENOTYPE_COLORS, drop = TRUE) +
-    .metadata_theme(vertical_x = FALSE) +
+    .metadata_theme() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
     ggplot2::labs(x = paste("Share of", unit), y = NULL, fill = "AMR phenotype")
   plotly::ggplotly(g, tooltip = "text") |>
@@ -584,7 +583,7 @@ makeMdrPlot <- function(data) {
       ),
       drop = FALSE
     ) +
-    .metadata_theme(vertical_x = FALSE) +
+    .metadata_theme() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
     ggplot2::labs(
       title = sprintf(
@@ -622,7 +621,7 @@ makeProfilesPlot <- function(data) {
     )
   ) +
     ggplot2::geom_col(fill = PHENOTYPE_COLORS[["Resistant"]], width = 0.75) +
-    .metadata_theme(vertical_x = FALSE) +
+    .metadata_theme() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
     ggplot2::labs(x = "Genomes", y = "Resistant drug classes")
   plotly::ggplotly(g, tooltip = "text")
@@ -704,6 +703,26 @@ readSpeciesMetadata <- function(sources) {
 }
 
 
+#' Each record's drug abbreviation, for axis labels
+#'
+#' The per-drug charts list ~40 drugs, too many full names to read along an
+#' axis, so they label bars with amRdata's `drug_abbr` (e.g. "AMP") and give the
+#' full name on hover.
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @return A character vector: `drug_abbr`, or the drug name where it is
+#'   missing.
+#' @keywords internal
+#' @noRd
+.drug_abbr <- function(meta) {
+  drug <- as.character(meta$genome_drug.antibiotic)
+  if (!"drug_abbr" %in% names(meta)) {
+    return(drug)
+  }
+  dplyr::coalesce(as.character(meta$drug_abbr), drug)
+}
+
+
 #' Numbers behind the summary cards
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
@@ -737,18 +756,19 @@ metadataSummary <- function(meta) {
 #' Genomes tested per drug and phenotype
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
-#' @return A tibble with `drug`, `phenotype` and `genomes`, the input to
-#'   makeDataAvailabilityPlot().
+#' @return A tibble with `drug`, `drug_abbr`, `phenotype` and `genomes`, the
+#'   input to makeDataAvailabilityPlot().
 #' @keywords internal
 #' @noRd
 metadataAvailability <- function(meta) {
   meta |>
+    dplyr::mutate(drug_abbr = .drug_abbr(meta)) |>
     dplyr::distinct(
-      .data$genome.genome_id, .data$genome_drug.antibiotic,
+      .data$genome.genome_id, .data$genome_drug.antibiotic, .data$drug_abbr,
       .data$genome_drug.resistant_phenotype
     ) |>
     dplyr::count(
-      drug = .data$genome_drug.antibiotic,
+      drug = .data$genome_drug.antibiotic, .data$drug_abbr,
       phenotype = .data$genome_drug.resistant_phenotype,
       name = "genomes"
     )
@@ -805,15 +825,21 @@ metadataByYear <- function(meta) {
 #' Records per drug and host
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
-#' @return A tibble with `drug`, `host` (lower case) and `records`, the input
-#'   to makeHostIsolatePlot(). Rows without a host are left out.
+#' @return A tibble with `drug`, `drug_abbr`, `host` (lower case) and
+#'   `records`, the input to makeHostIsolatePlot(). Rows without a host are left out.
 #' @keywords internal
 #' @noRd
 metadataByHost <- function(meta) {
   meta |>
-    dplyr::mutate(host = .clean_category(.data$genome.host_common_name)) |>
+    dplyr::mutate(
+      host = .clean_category(.data$genome.host_common_name),
+      drug_abbr = .drug_abbr(meta)
+    ) |>
     dplyr::filter(!is.na(.data$host)) |>
-    dplyr::count(drug = .data$genome_drug.antibiotic, .data$host, name = "records")
+    dplyr::count(
+      drug = .data$genome_drug.antibiotic, .data$drug_abbr, .data$host,
+      name = "records"
+    )
 }
 
 
@@ -825,7 +851,7 @@ metadataByHost <- function(meta) {
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
 #' @param top_n Number of sources shown by name.
-#' @return A tibble with `drug`, `source` (a factor: named sources by records,
+#' @return A tibble with `drug`, `drug_abbr`, `source` (a factor: named sources by records,
 #'   then "other", then "not recorded") and `records`, the input to
 #'   makeIsolationSourcesPlot().
 #' @keywords internal
@@ -839,8 +865,11 @@ metadataBySource <- function(meta, top_n = 10) {
     source %in% named ~ source,
     TRUE ~ "other"
   )
-  tibble::tibble(drug = meta$genome_drug.antibiotic, source = source) |>
-    dplyr::count(.data$drug, .data$source, name = "records") |>
+  tibble::tibble(
+    drug = meta$genome_drug.antibiotic, drug_abbr = .drug_abbr(meta),
+    source = source
+  ) |>
+    dplyr::count(.data$drug, .data$drug_abbr, .data$source, name = "records") |>
     dplyr::mutate(source = factor(
       .data$source,
       levels = intersect(c(named, "other", "not recorded"), .data$source)
