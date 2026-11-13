@@ -501,7 +501,18 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       panel.spacing     = ggplot2::unit(0.3, "lines")
     )
 
-  plotly::ggplotly(g, tooltip = "text") |>
+  p <- plotly::ggplotly(g, tooltip = "text")
+  # ggplotly puts the facet strip labels on the right, rotated 90 degrees,
+  # regardless of the theme; turn them horizontal (Domain, Gene, Struct, ...).
+  p$x$layout$annotations <- lapply(p$x$layout$annotations, function(a) {
+    if (identical(a$textangle, 90)) {
+      a$textangle <- 0
+      a$xanchor <- "left"
+      a$x <- 1.01
+    }
+    a
+  })
+  p |>
     plotly::layout(
       title = list(
         text = "MCC per species and molecular scale", x = 0,
@@ -510,7 +521,7 @@ makeMCCStripPlot <- function(data, selected_drug_class = NULL,
       xaxis = list(
         tickfont = list(size = 10), tickangle = -45
       ),
-      margin = list(t = 50)
+      margin = list(t = 50, r = 90)
     )
 }
 
