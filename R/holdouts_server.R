@@ -86,13 +86,19 @@ crossModelComparisonServer <- function(id, core) {
         input$drug_cross_model_comparison_id,
         input$cross_model_comparison
       )
-      makeCrossModelFeatureImportancePlot(
+      p <- makeCrossModelFeatureImportancePlot(
         core$topFeatures(),
         input$bug_cross_model_comparison_id,
         input$drug_cross_model_comparison_id,
         input$cross_model_comparison,
         input$cross_model_top_n_features
       )
+      # The drug menu also lists drugs with only cross-tested models, which the
+      # performance grid shows but which have no top features; say so rather
+      # than drawing an empty plot.
+      p %||% plotly_placeholder(holdoutFeatureEmptyMessage(
+        input$drug_cross_model_comparison_id, input$cross_model_comparison
+      ))
     })
 
     output$cross_model_feature_importance_table <- DT::renderDataTable({

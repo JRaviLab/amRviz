@@ -111,6 +111,25 @@ test_that("crossModelComparisonServer renders the holdout plots", {
   )
 })
 
+test_that("holdout top features explain a drug with only cross-tested models", {
+  shiny::testServer(
+    crossModelComparisonServer,
+    args = list(core = demo_core()),
+    {
+      # In the demo, FLQ has cross-tested country models only.
+      session$setInputs(
+        bug_cross_model_comparison_id = "Sso",
+        drug_cross_model_comparison_id = "FLQ",
+        cross_model_comparison = "country", cross_model_top_n_features = 10
+      )
+      expect_match(
+        output$cross_model_feature_importance_plot,
+        "No FLQ models were trained and tested within a single country"
+      )
+    }
+  )
+})
+
 test_that("networkServer renders the drug-feature network", {
   shiny::testServer(
     networkServer,
