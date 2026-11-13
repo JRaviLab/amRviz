@@ -165,8 +165,24 @@ test_that("metadataMdr counts genomes by resistant classes", {
   tbl <- metadataMdr(resistance_rows())
   expect_equal(tbl$classes, 0:3)
   expect_equal(tbl$genomes, c(1, 0, 1, 1))
-  expect_equal(tbl$mdr, c(FALSE, FALSE, FALSE, TRUE))
+  # Two or more classes count toward the percentage; three or more is the
+  # standard definition and gets its own color.
+  expect_equal(tbl$mdr, c(FALSE, FALSE, TRUE, TRUE))
+  expect_equal(
+    as.character(tbl$group),
+    unname(.mdr_groups()[c("below", "below", "two", "three_plus")])
+  )
   expect_equal(nrow(metadataMdr(resistance_rows()[, 1:7])), 0)
+})
+
+test_that("the multidrug-resistance title gives both cutoffs", {
+  # 1 genome resistant to 0 classes, 1 to 2, 1 to 3.
+  p <- plotly::plotly_build(makeMdrPlot(metadataMdr(resistance_rows())))
+  expect_match(
+    p$x$layout$title$text,
+    "67% of 3 genomes resist 2 or more drug classes (33% resist 3 or more)",
+    fixed = TRUE
+  )
 })
 
 test_that("metadataProfiles lists resistant-class combinations", {

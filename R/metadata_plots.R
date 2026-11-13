@@ -547,21 +547,20 @@ makeCountryYearHeatmap <- function(data) {
 #' Bar chart of genomes by number of resistant drug classes
 #'
 #' @param data Output of metadataMdr().
-#' @return A plotly bar chart, with multidrug-resistant genomes in amber and
-#'   the share of them in the title.
+#' @return A plotly bar chart colored by `group` (fewer than 2 classes, 2, or 3
+#'   or more), with the share resistant to 2 or more, and to 3 or more, in the
+#'   title.
 #' @keywords internal
 #' @noRd
 makeMdrPlot <- function(data) {
   if (is.null(data) || !nrow(data) || !sum(data$genomes)) {
     return(plotly_placeholder("No resistant-class counts recorded"))
   }
-  mdr_label <- paste0("Multidrug resistant (", .MDR_MIN_CLASSES, " or more classes)")
-  data$group <- factor(
-    ifelse(data$mdr, mdr_label, "Not multidrug resistant"),
-    levels = c("Not multidrug resistant", mdr_label)
-  )
-  n_mdr <- sum(data$genomes[data$mdr])
+  groups <- .mdr_groups()
   total <- sum(data$genomes)
+  pct <- function(min_classes) {
+    round(100 * sum(data$genomes[data$classes >= min_classes]) / total)
+  }
   g <- ggplot2::ggplot(
     data,
     ggplot2::aes(
@@ -577,18 +576,19 @@ makeMdrPlot <- function(data) {
   ) +
     ggplot2::geom_col(width = 0.8) +
     ggplot2::scale_fill_manual(
-      values = stats::setNames(
-        c(PHENOTYPE_COLORS[["Susceptible"]], PHENOTYPE_COLORS[["Resistant"]]),
-        c("Not multidrug resistant", mdr_label)
-      ),
+      values = stats::setNames(MDR_COLORS[names(groups)], groups),
       drop = FALSE
     ) +
     .metadata_theme() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 0, hjust = 0.5)) +
     ggplot2::labs(
       title = sprintf(
-        "%s of %s genomes (%d%%) are multidrug resistant",
-        n_mdr, total, round(100 * n_mdr / total)
+        paste(
+          "%d%% of %s genomes resist %d or more drug classes",
+          "(%d%% resist %d or more)"
+        ),
+        pct(.MDR_MIN_CLASSES), format(total, big.mark = ","), .MDR_MIN_CLASSES,
+        pct(.MDR_STANDARD_CLASSES), .MDR_STANDARD_CLASSES
       ),
       x = "Number of drug classes resistant to", y = "Genomes", fill = NULL
     )
@@ -981,9 +981,23 @@ topDrugClasses <- function(meta, n = 3) {
 # Fewest records a drug needs to get its own row in the drug x year heatmap.
 .METADATA_MIN_RECORDS <- 10L
 
-# A genome is multidrug resistant (MDR) when it is resistant to at least this
-# many drug classes (Magiorakos et al. 2012).
-.MDR_MIN_CLASSES <- 3L
+# Genomes resistant to at least this many drug classes count toward the
+# multidrug-resistant percentage, as in amRdata's metadata summary.
+.MDR_MIN_CLASSES <- 2L
+# The standard multidrug-resistant definition, 3 or more classes (Magiorakos et
+# al. 2012), which the plot still shows in its own color.
+.MDR_STANDARD_CLASSES <- 3L
+
+# The multidrug-resistance plot's groups, in legend order.
+.mdr_groups <- function() {
+  c(
+    below = paste0("Resistant to fewer than ", .MDR_MIN_CLASSES, " classes"),
+    two = paste0("Resistant to ", .MDR_MIN_CLASSES, " classes"),
+    three_plus = paste0(
+      "Multidrug resistant (", .MDR_STANDARD_CLASSES, " or more classes)"
+    )
+  )
+}
 
 
 #' Resistant, intermediate and susceptible counts per group
@@ -1143,22 +1157,36 @@ metadataCountryYear <- function(meta, top_n = 15) {
 #' Genomes by number of resistant drug classes
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
-#' @return A tibble with `classes` (0 to the most seen), `genomes` and `mdr`
-#'   (TRUE at `.MDR_MIN_CLASSES` or more), the input to makeMdrPlot(). Empty
-#'   when the metadata has no resistant-class counts.
+#' @return A tibble with `classes` (0 to the most seen), `genomes`, `mdr`
+#'   (TRUE at `.MDR_MIN_CLASSES` or more, counted in the percentage) and
+#'   `group` (a factor of `.mdr_groups()`: fewer than 2 classes, 2, or 3 or
+#'   more), the input to makeMdrPlot(). Empty when the metadata has no
+#'   resistant-class counts.
 #' @keywords internal
 #' @noRd
 metadataMdr <- function(meta) {
   g <- .metadata_genomes(meta) |>
     dplyr::filter(!is.na(.data$classes))
   if (!nrow(g)) {
-    return(tibble::tibble(classes = numeric(0), genomes = integer(0), mdr = logical(0)))
+    return(tibble::tibble(
+      classes = numeric(0), genomes = integer(0), mdr = logical(0),
+      group = factor(character(0), levels = .mdr_groups())
+    ))
   }
+  groups <- .mdr_groups()
   tibble::tibble(classes = seq(0, max(g$classes))) |>
     dplyr::left_join(dplyr::count(g, .data$classes, name = "genomes"), by = "classes") |>
     dplyr::mutate(
       genomes = dplyr::coalesce(.data$genomes, 0L),
-      mdr = .data$classes >= .MDR_MIN_CLASSES
+      mdr = .data$classes >= .MDR_MIN_CLASSES,
+      group = factor(
+        dplyr::case_when(
+          .data$classes >= .MDR_STANDARD_CLASSES ~ groups[["three_plus"]],
+          .data$classes >= .MDR_MIN_CLASSES ~ groups[["two"]],
+          TRUE ~ groups[["below"]]
+        ),
+        levels = groups
+      )
     )
 }
 
