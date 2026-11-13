@@ -29,9 +29,9 @@
 #' Feature-importance heatmap across species or drugs
 #'
 #' Heatmap of top features across bugs (across_bug) or drugs (across_drug),
-#' min-max normalised within each group. Feature labels come from an annotation
-#' join when available, otherwise the raw Variable id. Uses the amRml columns
-#' drug_or_class, feature_subtype (encoding), feature_type (scale), and
+#' relative to each group's most important feature. Feature labels come from an
+#' annotation join when available, otherwise the raw Variable id. Uses the amRml
+#' columns drug_or_class, feature_subtype (encoding), feature_type (scale), and
 #' strat_label (NA for baseline).
 #'
 #' @param data Top-features tibble from loadTopFeat() / topFeatures().
@@ -210,13 +210,15 @@ makeFeatureImportancePlot <- function(
     dplyr::group_by(!!rlang::sym(group_column), .data$cluster_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
 
-  # Min-max normalise within each group
+  # Relative to each group's most important feature (that one is 1). Dividing,
+  # rather than stretching to 0-1, keeps the least important feature shown
+  # above 0: it is still a top feature.
   top_features_df <- top_features_df |>
     dplyr::group_by(!!rlang::sym(group_column)) |>
-    dplyr::mutate(
-      Importance = (.data$Importance - min(.data$Importance, na.rm = TRUE)) /
-        (max(.data$Importance, na.rm = TRUE) - min(.data$Importance, na.rm = TRUE))
-    ) |>
+    dplyr::mutate(Importance = {
+      top <- max(.data$Importance, na.rm = TRUE)
+      if (top > 0) .data$Importance / top else rep(1, dplyr::n())
+    }) |>
     dplyr::ungroup()
 
   # Slice top N features per group
@@ -283,12 +285,15 @@ makeFeatureImportancePlot <- function(
     y = rownames(vi_mat),
     z = vi_mat,
     type = "heatmap",
+    # Fixed 0-1 color range, so color shows importance relative to the top
+    # feature rather than stretching the lowest one shown to the palest color.
     colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
-    colorbar = list(title = "Importance"),
+    zmin = 0, zmax = 1,
+    colorbar = list(title = "Importance\n(relative to\ntop feature)"),
     hovertemplate = paste0(
       "<b>Feature:</b> %{y}<br>",
       "<b>Group:</b> %{x}<br>",
-      "<b>Importance:</b> %{z:.3f}<extra></extra>"
+      "<b>Importance:</b> %{z:.2f} of the top feature<extra></extra>"
     )
   ) |>
     plotly::layout(
