@@ -48,6 +48,33 @@ test_that("metadataWithHost drops blank hosts and adds evidence", {
   expect_true("genome_drug.evidence" %in% names(with_host))
 })
 
+test_that("drugs and classes are named in full with their abbreviations", {
+  df <- tibble::tibble(
+    genome_drug.antibiotic = c("amikacin", "nalidixic_acid", "mystery"),
+    drug_abbr = c("AMK", "NAL", NA),
+    drug_class = c("aminoglycosides", "nitrofuran_derivatives", "other"),
+    class_abbr = c("AMG", "NFD", "")
+  )
+  out <- .label_drugs(df)
+  expect_identical(out$genome_drug.antibiotic, c(
+    "amikacin (AMK)", "nalidixic acid (NAL)", "mystery"
+  ))
+  expect_identical(out$drug_class, c(
+    "aminoglycosides (AMG)", "nitrofuran derivatives (NFD)", "other"
+  ))
+  # Without the abbreviation columns the names are left alone.
+  bare <- df[c("genome_drug.antibiotic", "drug_class")]
+  expect_identical(.label_drugs(bare), bare)
+})
+
+test_that("readSpeciesMetadata labels drugs and classes with abbreviations", {
+  meta <- readSpeciesMetadata(sonnei())
+  skip_if_not(all(c("drug_abbr", "class_abbr") %in% names(meta)))
+  expect_true(all(grepl(" \\([A-Z-]+\\)$", meta$genome_drug.antibiotic)))
+  expect_true("amikacin (AMK)" %in% meta$genome_drug.antibiotic)
+  expect_true("aminoglycosides (AMG)" %in% meta$drug_class)
+})
+
 test_that("topDrugClasses returns the most-recorded classes first", {
   meta <- tibble::tibble(drug_class = c("A", "B", "B", "C", "C", "C", NA))
   expect_identical(topDrugClasses(meta, n = 2), c("C", "B"))

@@ -147,7 +147,7 @@ The dashboard is organized into tabs:
     -   Accuracy distributions, performance heatmaps, and feature
         consistency
 6.  **Network**: Interactive force-directed drug → feature graph, with
-    optional cluster/COG nodes
+    optional dyad nodes
 7.  **Query data**: Browse and export the raw performance-metric and
     top-feature tables as CSV
 
