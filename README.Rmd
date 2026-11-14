@@ -119,7 +119,7 @@ The dashboard is organized into tabs:
 5. **Model holdouts**: Compare models across stratifications
    - Country-holdout and year-interval models
    - Accuracy distributions, performance heatmaps, and feature consistency
-6. **Network**: Interactive force-directed drug → feature graph, with optional cluster nodes
+6. **Network**: Interactive force-directed drug → feature graph, with optional dyad nodes
 7. **Query data**: Browse and export the raw performance-metric and top-feature tables as CSV
 
 ### Data requirements

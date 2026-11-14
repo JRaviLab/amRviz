@@ -610,7 +610,37 @@ listMetadataSpecies <- function(results_root = NULL) {
 }
 
 
+#' Name drugs and drug classes in full, with their abbreviations
+#'
+#' Rewrites `genome_drug.antibiotic` as "amikacin (AMK)" and `drug_class` as
+#' "aminoglycosides (AMG)", from the metadata's `drug_abbr` and `class_abbr`,
+#' with underscores shown as spaces. A name with no abbreviation, or metadata
+#' without the abbreviation columns, keeps its full name.
+#'
+#' @param df Metadata tibble.
+#' @return `df` with the drug and class names relabelled.
+#' @keywords internal
+#' @noRd
+.label_drugs <- function(df) {
+  label <- function(name, abbr) {
+    name <- gsub("_", " ", name, fixed = TRUE)
+    has_abbr <- !is.na(name) & !is.na(abbr) & nzchar(abbr)
+    ifelse(has_abbr, paste0(name, " (", abbr, ")"), name)
+  }
+  if (all(c("genome_drug.antibiotic", "drug_abbr") %in% names(df))) {
+    df$genome_drug.antibiotic <- label(df$genome_drug.antibiotic, df$drug_abbr)
+  }
+  if (all(c("drug_class", "class_abbr") %in% names(df))) {
+    df$drug_class <- label(df$drug_class, df$class_abbr)
+  }
+  df
+}
+
+
 #' Read and row-bind metadata parquets for one or more species
+#'
+#' Drugs and drug classes are named in full with their abbreviations (see
+#' `.label_drugs()`).
 #'
 #' @param sources Named character vector of metadata parquet paths, as
 #'   listMetadataSpecies() returns; names are the species labels.
@@ -623,7 +653,9 @@ readSpeciesMetadata <- function(sources) {
   purrr::map_dfr(seq_along(sources), function(i) {
     fp <- sources[[i]]
     if (!is.na(fp) && file.exists(fp)) {
-      arrow::read_parquet(fp) |> dplyr::mutate(species = labels[[i]])
+      arrow::read_parquet(fp) |>
+        dplyr::mutate(species = labels[[i]]) |>
+        .label_drugs()
     } else {
       tibble::tibble()
     }

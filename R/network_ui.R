@@ -15,8 +15,9 @@ networkUI <- function(id) {
       ),
       shiny::p(paste(
         "Interactive force-directed graph linking drugs or drug classes",
-        "(orange) to their top predictive features (blue).",
-        "Drag nodes, zoom, and hover for labels."
+        "(orange) to their top predictive features of each type.",
+        "Links are red for a positive and blue for a negative importance",
+        "sign. Drag nodes, zoom, and hover for labels."
       )),
       shiny::fluidRow(
         shiny::column(
@@ -37,22 +38,22 @@ networkUI <- function(id) {
           shiny::sliderInput(
             inputId = ns("network_top_n"),
             label = shiny::tags$label(
-              "Top features per drug",
+              "Top features per type, per drug",
               style = "font-size: 15px;"
             ),
-            min = 1, max = 30, value = 5
+            min = 1, max = 30, value = 2
           )
         ),
         shiny::column(
           width = 3,
           style = "padding: 10px;",
           shiny::checkboxInput(
-            inputId = ns("network_include_clusters"),
-            label = "Show clusters",
+            inputId = ns("network_include_dyads"),
+            label = "Show dyads",
             value = FALSE
           ),
           shiny::tags$span(
-            "Adds cluster (fig) nodes from annotations.",
+            "Adds the dyads each feature belongs to, from the ORB.",
             style = "font-size: 11px; color: #666;"
           )
         )

@@ -449,8 +449,7 @@
         makeDrugFeatureNetwork(
           top_features, code,
           top_n = network_top_n,
-          include_clusters = FALSE,
-          results_root = results_root
+          include_dyads = FALSE
         ) |> .fit_network_to_content()
       }, width = 1600, height = 1600, trim = TRUE)
     })
@@ -517,7 +516,8 @@
 #'   export, by label ("Shigella flexneri"), output folder name
 #'   ("Shigella_flexneri") or species code ("Sfl").
 #' @param top_n_features,network_top_n Feature counts for the
-#'   feature-importance panels and the drug-feature network.
+#'   feature-importance panels and the drug-feature network (per feature type,
+#'   per drug, in the network).
 #' @param width,height Viewport size in pixels.
 #' @param scale Device-pixel multiplier for the PNG render; higher = sharper.
 #' @param delay Seconds to wait for each widget's JavaScript to settle.

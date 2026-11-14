@@ -5,6 +5,7 @@
 #' @param id Module id; must match the id passed to `networkUI()`.
 #' @param core Shared data from setupServerCore().
 #' @param results_root User results root, or NULL for the packaged demo data.
+#'   Unused: the network reads each model's own ORB.
 #' @return NULL, invisibly.
 #' @keywords internal
 #' @noRd
@@ -25,9 +26,7 @@ networkServer <- function(id, core, results_root = NULL) {
         core$topFeatures(),
         input$network_bug_id,
         top_n = input$network_top_n,
-        include_clusters = isTRUE(input$network_include_clusters),
-        # include_cogs = isTRUE(input$network_include_cogs),
-        results_root = results_root
+        include_dyads = isTRUE(input$network_include_dyads)
       )
     })
 
