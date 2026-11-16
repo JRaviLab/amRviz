@@ -25,27 +25,13 @@ test_that("readSpeciesMetadata returns an empty tibble for a missing file", {
   expect_identical(nrow(readSpeciesMetadata(missing)), 0L)
 })
 
-test_that("metadataByCountry sums records per country, excluding blanks", {
+test_that("the demo metadata builds every table the tab draws", {
   meta <- readSpeciesMetadata(sonnei())
-  by_country <- metadataByCountry(meta)
-  expect_named(by_country, c("genome.isolation_country", "count"))
-  expect_false(any(by_country$genome.isolation_country == ""))
-  expect_identical(
-    sum(by_country$count),
-    sum(meta$genome.isolation_country != "", na.rm = TRUE)
-  )
-})
-
-test_that("metadataByYear drops rows without a collection year", {
-  by_year <- metadataByYear(readSpeciesMetadata(sonnei()))
-  expect_true("n" %in% names(by_year))
-  expect_false(anyNA(by_year$genome.collection_year))
-})
-
-test_that("metadataWithHost drops blank hosts and adds evidence", {
-  with_host <- metadataWithHost(readSpeciesMetadata(sonnei()))
-  expect_false(any(with_host$genome.host_common_name == ""))
-  expect_true("genome_drug.evidence" %in% names(with_host))
+  expect_equal(sum(metadataByCountry(meta)$records), nrow(filter_valid_country(meta)))
+  expect_lte(max(metadataByCountry(meta)$genomes), length(unique(meta$genome.genome_id)))
+  expect_false(anyNA(metadataByYear(meta)$year))
+  expect_equal(sum(metadataBySource(meta)$records), nrow(meta))
+  expect_gt(nrow(metadataSankey(meta)$links), 0)
 })
 
 test_that("topDrugClasses returns the most-recorded classes first", {
