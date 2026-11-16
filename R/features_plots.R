@@ -29,9 +29,9 @@
 #' Feature-importance heatmap across species or drugs
 #'
 #' Heatmap of top features across bugs (across_bug) or drugs (across_drug),
-#' min-max normalised within each group. Feature labels come from an annotation
-#' join when available, otherwise the raw Variable id. Uses the amRml columns
-#' drug_or_class, feature_subtype (encoding), feature_type (scale), and
+#' relative to each group's most important feature. Feature labels come from an
+#' annotation join when available, otherwise the raw Variable id. Uses the amRml
+#' columns drug_or_class, feature_subtype (encoding), feature_type (scale), and
 #' strat_label (NA for baseline).
 #'
 #' @param data Top-features tibble from loadTopFeat() / topFeatures().
@@ -81,7 +81,7 @@ makeFeatureImportancePlot <- function(
     dplyr::mutate(species = normalize_species(.data$species)) |>
     dplyr::filter(.data$species %in% bug_norm) |>
     dplyr::filter(.data$drug_or_class %in% amr_drug) |>
-    dplyr::filter(.data$feature_type %in% c(model_scale, "struct")) |>
+    dplyr::filter(.data$feature_type %in% model_scale) |>
     dplyr::filter(.data$feature_subtype %in% data_type_) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
 
@@ -210,13 +210,15 @@ makeFeatureImportancePlot <- function(
     dplyr::group_by(!!rlang::sym(group_column), .data$cluster_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
 
-  # Min-max normalise within each group
+  # Relative to each group's most important feature (that one is 1). Dividing,
+  # rather than stretching to 0-1, keeps the least important feature shown
+  # above 0: it is still a top feature.
   top_features_df <- top_features_df |>
     dplyr::group_by(!!rlang::sym(group_column)) |>
-    dplyr::mutate(
-      Importance = (.data$Importance - min(.data$Importance, na.rm = TRUE)) /
-        (max(.data$Importance, na.rm = TRUE) - min(.data$Importance, na.rm = TRUE))
-    ) |>
+    dplyr::mutate(Importance = {
+      top <- max(.data$Importance, na.rm = TRUE)
+      if (top > 0) .data$Importance / top else rep(1, dplyr::n())
+    }) |>
     dplyr::ungroup()
 
   # Slice top N features per group
@@ -245,9 +247,12 @@ makeFeatureImportancePlot <- function(
 
     vi_mat <- .vi_matrix(vi_wider, group_cols)
 
+    # ESKAPE species first, then the rest alphabetically. Every selected
+    # species stays.
     eskape_order <- c("Efa", "Sau", "Kpn", "Aba", "Pae", "Esp")
-    col_ord <- intersect(eskape_order, colnames(vi_mat))
-    if (length(col_ord)) vi_mat <- vi_mat[, col_ord, drop = FALSE]
+    eskape <- intersect(eskape_order, colnames(vi_mat))
+    col_ord <- c(eskape, sort(setdiff(colnames(vi_mat), eskape)))
+    vi_mat <- vi_mat[, col_ord, drop = FALSE]
   }
 
   if (feature_importance_tabset == "across_drug") {
@@ -283,12 +288,15 @@ makeFeatureImportancePlot <- function(
     y = rownames(vi_mat),
     z = vi_mat,
     type = "heatmap",
+    # Fixed 0-1 color range, so color shows importance relative to the top
+    # feature rather than stretching the lowest one shown to the palest color.
     colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
-    colorbar = list(title = "Importance"),
+    zmin = 0, zmax = 1,
+    colorbar = list(title = "Importance\n(relative to\ntop feature)"),
     hovertemplate = paste0(
       "<b>Feature:</b> %{y}<br>",
       "<b>Group:</b> %{x}<br>",
-      "<b>Importance:</b> %{z:.3f}<extra></extra>"
+      "<b>Importance:</b> %{z:.2f} of the top feature<extra></extra>"
     )
   ) |>
     plotly::layout(

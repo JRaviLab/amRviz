@@ -16,7 +16,7 @@ featureImportanceUI <- function(id) {
         shiny::selectInput(
           ns("bug_drug_comp_model_scale"),
           label = shiny::tags$label("Model scale", style = "font-size: 15px;"),
-          choices = c("genes", "domains", "proteins", "cogs", "args"),
+          choices = c("genes", "domains", "proteins", "cogs", "args", "struct"),
           multiple = FALSE,
           selectize = TRUE,
           selected = "genes"
@@ -103,7 +103,9 @@ featureImportanceUI <- function(id) {
               ),
               shiny::column(
                 width = 6,
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                # Scroll inside the box, so a long page of rows (up to 100)
+                # doesn't spill over the rows below and the footer.
+                style = "padding: 0; height: 600px; overflow-y: auto; border: 1px solid lightgray;",
                 DT::dataTableOutput(ns("across_bug_feature_importance_table"), height = "100%")
               ),
               shiny::fluidRow(
@@ -174,7 +176,9 @@ featureImportanceUI <- function(id) {
               ),
               shiny::column(
                 width = 6,
-                style = "padding: 0; height: 600px; border: 1px solid lightgray;",
+                # Scroll inside the box, so a long page of rows (up to 100)
+                # doesn't spill over the rows below and the footer.
+                style = "padding: 0; height: 600px; overflow-y: auto; border: 1px solid lightgray;",
                 DT::dataTableOutput(ns("across_drug_feature_importance_table"), height = "100%")
               ),
               shiny::fluidRow(
