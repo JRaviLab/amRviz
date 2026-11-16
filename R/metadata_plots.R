@@ -82,8 +82,8 @@ makeQuickStats <- function(data) {
       shiny::column(4, quickStatBox("Drugs tested", s$drugs, "pills", "#9b7fba"))
     ),
     shiny::fluidRow(
-      shiny::column(4, quickStatBox("Resistant records", s$resistant_records, "virus", "#d4872a")),
-      shiny::column(4, quickStatBox("Susceptible records", s$susceptible_records, "shield-halved", "#8a8a8a")),
+      shiny::column(4, quickStatBox("Resistant records", s$resistant_records, "virus", PHENOTYPE_COLORS[["Resistant"]])),
+      shiny::column(4, quickStatBox("Susceptible records", s$susceptible_records, "shield-halved", PHENOTYPE_COLORS[["Susceptible"]])),
       shiny::column(4, quickStatBox("Drug classes", s$drug_classes, "layer-group", "#8b6b7a"))
     ),
     shiny::fluidRow(
@@ -331,13 +331,13 @@ makeMetadataSankey <- function(data, drug_classes = NULL,
     group = flow$links$drug_class
   )
 
-  # Sankey-specific muted palette. Resistant -> amber and Susceptible -> grey
-  # are explicitly mapped; remaining range colors are deliberately lower-
+  # Sankey-specific muted palette. Resistant and Susceptible take the phenotype
+  # colours the other plots use; remaining range colors are deliberately lower-
   # saturation than META_COLORS so the translucent link bands don't read as
   # bright pastels at the Sankey's default opacity.
   range_colors <- c(
-    "#d4872a", # Resistant (amber)
-    "#8a8a8a", # Susceptible (grey)
+    PHENOTYPE_COLORS[["Resistant"]], # amber
+    PHENOTYPE_COLORS[["Susceptible"]], # blue
     "#7a8a9b", # muted slate blue
     "#c4a991", # dusty peach
     "#9ab18a", # sage green
