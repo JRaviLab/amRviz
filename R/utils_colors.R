@@ -1,6 +1,7 @@
 # Colour palettes shared across the dashboard plots.
 
-# Unified palette for molecular feature scales (gene, protein, domain, struct).
+# Unified palette for molecular feature scales (gene, protein, domain, struct,
+# ARG, COG, defense/Cas).
 # Keyed to match the values in the `feature_type` column.
 # SCALE_COLORS <- c(
 #   domains  = "#66a61e",
@@ -15,7 +16,8 @@ SCALE_COLORS <- c(
   "genes" = "#009E73", # bluish green
   "domains" = "#0072B2", # deepblue
   "proteins" = "#CC79A7", # reddish purple
-  "struct" = "#D55E00" # vermillion
+  "struct" = "#D55E00", # vermillion
+  "DefenseCas" = "#999999" # gray
 )
 # AMR phenotype palette (R/S/I plus full-word + lowercase variants so it works
 # regardless of how the column is encoded). Susceptible is intentionally
