@@ -152,6 +152,24 @@ rescoringDefaults <- function() {
 }
 
 
+#' Thresholds that keep everything in the rescoring
+#'
+#' The Network tab shows one slider per category and leaves the other
+#' thresholds at these values, so only the sliders filter: any fit that passed
+#' amRml's own gate (MCC 0.5 and beating the shuffled labels), every feature
+#' row, and every dyad.
+#'
+#' @return A list as from rescoringDefaults().
+#' @keywords internal
+#' @noRd
+rescoringAll <- function() {
+  list(
+    mcc = 0.5, delta_mcc = 0, quantile = 0, core = 1, cumulative = 1,
+    both_subtypes = FALSE, dyad_rank_score = 0
+  )
+}
+
+
 #' Model fits of the rescoring that pass the performance thresholds
 #'
 #' @param models The `models` of loadRescoring().

@@ -160,6 +160,24 @@ test_that("rescoredFeatures applies the core, cumulative and subtype thresholds"
   expect_equal(nrow(rescoredFeatures(resc$features, "Sfl")), 0)
 })
 
+test_that("rescoringAll keeps everything in the rescoring", {
+  resc <- load_rescoring_features()
+  all <- rescoringAll()
+  expect_named(all, names(rescoringDefaults()))
+  # Every non-MDR feature row of AMP and TET survives; the defaults keep fewer.
+  models <- rescoredModels(resc$models, "Hin", all)
+  expect_equal(nrow(models), 5)
+  kept <- rescoredFeatures(resc$features, "Hin", all, models)
+  expect_setequal(kept$Variable, c("DDE", "g1", "g2", "g3", "tetA"))
+  expect_lt(nrow(rescoredFeatures(resc$features, "Hin", rescoringDefaults())), nrow(kept))
+  # One slider moves one category: the margin over shuffled drops the genes.
+  strict <- utils::modifyList(all, list(delta_mcc = 0.6))
+  expect_setequal(
+    rescoredFeatures(resc$features, "Hin", strict, rescoredModels(resc$models, "Hin", strict))$Variable,
+    c("DDE", "tetA")
+  )
+})
+
 test_that("rescoredModels keeps the fits that pass the performance thresholds", {
   resc <- load_rescoring_features()
   at <- function(...) {
@@ -316,9 +334,8 @@ test_that("the Network tab draws rescored features only when asked and available
     )
     expect_false(use_rescoring())
     session$setInputs(
-      network_rescored = "yes", network_resc_mcc = 0.5, network_resc_delta = 0,
-      network_resc_quantile = 0, network_resc_core = 0.9,
-      network_resc_cumulative = 0.75, network_resc_dyad = 0, network_resc_both = FALSE
+      network_rescored = "yes", network_resc_delta = 0,
+      network_resc_quantile = 0, network_resc_both = FALSE, network_resc_dyad = 0
     )
     expect_true(use_rescoring())
     expect_true(nzchar(output$drug_feature_network))
@@ -334,13 +351,18 @@ test_that("the Network tab draws rescored features only when asked and available
 test_that("networkUI has the rescoring radio and its threshold sliders", {
   html <- as.character(networkUI("network"))
   expect_match(html, "network-network_rescored", fixed = TRUE)
-  expect_match(html, "network-network_resc_quantile", fixed = TRUE)
   # Grouped by model performance, features and dyads; performance sliders grey
   # and dyad sliders green.
-  expect_match(html, "network-network_resc_mcc", fixed = TRUE)
   expect_match(html, "network-sliders-grey", fixed = TRUE)
   expect_match(html, "network-sliders-green", fixed = TRUE)
   expect_match(html, "Model performance", fixed = TRUE)
   expect_match(html, .NETWORK_DYAD_COLOR, fixed = TRUE)
-  expect_match(html, "input.network_rescored == &#39;yes&#39;", fixed = TRUE)
+  # One slider per category and the subtype check; the rest keep everything.
+  expect_equal(lengths(regmatches(html, gregexpr("js-range-slider", html))), 3 + 1)
+  for (id in c("delta", "quantile", "both", "dyad")) {
+    expect_match(html, paste0("network-network_resc_", id), fixed = TRUE)
+  }
+  for (gone in c("network_resc_mcc", "network_resc_core", "network_resc_cumulative")) {
+    expect_no_match(html, gone, fixed = TRUE)
+  }
 })

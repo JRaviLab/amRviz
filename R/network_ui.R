@@ -54,7 +54,10 @@ networkUI <- function(id) {
             value = FALSE
           ),
           shiny::tags$span(
-            "Adds the dyads each feature belongs to, from the ORB.",
+            paste(
+              "A dyad pairs a protein with its gene.",
+              "Adds the dyads each feature belongs to, from the ORB."
+            ),
             style = "font-size: 11px; color: #666;"
           )
         )
@@ -96,32 +99,24 @@ networkUI <- function(id) {
         shiny::conditionalPanel(
           condition = "input.network_rescored == 'yes'",
           ns = ns,
-          # Model performance sliders are grey, features keep Shiny's blue and
-          # dyads are green, the colour of dyad nodes.
+          # One slider per category. Model performance is grey, features keep
+          # Shiny's blue and dyads are green, the colour of dyad nodes. The
+          # other rescoring thresholds keep everything (see rescoringAll()).
           shiny::column(
             width = 3,
             class = "network-sliders-grey",
             style = "padding: 10px;",
             shiny::tags$h5("Model performance", style = "font-weight: bold;"),
             shiny::sliderInput(
-              inputId = ns("network_resc_mcc"),
-              label = shiny::tags$label("MCC threshold", style = "font-size: 15px;"),
-              min = 0.5, max = 1, value = rescoringDefaults()$mcc, step = 0.01
-            ),
-            shiny::tags$span(
-              "Model fits must reach this MCC. The run's own minimum is 0.5.",
-              style = "font-size: 11px; color: #666;"
-            ),
-            shiny::sliderInput(
               inputId = ns("network_resc_delta"),
               label = shiny::tags$label(
                 "MCC above shuffled",
                 style = "font-size: 15px;"
               ),
-              min = 0, max = 1.2, value = rescoringDefaults()$delta_mcc, step = 0.05
+              min = 0, max = 1.2, value = rescoringAll()$delta_mcc, step = 0.05
             ),
             shiny::tags$span(
-              "Fits must beat their shuffled-label fit by at least this.",
+              "Model fits must beat their shuffled-label fit by at least this MCC.",
               style = "font-size: 11px; color: #666;"
             )
           ),
@@ -135,41 +130,21 @@ networkUI <- function(id) {
                 "Rank-score quantile",
                 style = "font-size: 15px;"
               ),
-              min = 0, max = 1, value = rescoringDefaults()$quantile, step = 0.01
+              min = 0, max = 1, value = rescoringAll()$quantile, step = 0.01
             ),
             shiny::tags$span(
-              "A feature's rank score must reach this quantile of its drug's.",
-              style = "font-size: 11px; color: #666;"
-            ),
-            shiny::sliderInput(
-              inputId = ns("network_resc_core"),
-              label = shiny::tags$label(
-                "Core contribution",
-                style = "font-size: 15px;"
+              paste(
+                "Rank score is a feature's importance rank within a model, from",
+                "0 (least) to 1 (most), as the median across seeds. A feature",
+                "must reach this quantile of its drug's rank scores: 0.75 keeps",
+                "the top quarter."
               ),
-              min = 0.3, max = 1, value = rescoringDefaults()$core, step = 0.05
-            ),
-            shiny::tags$span(
-              "A feature is in the core until the running share reaches this.",
-              style = "font-size: 11px; color: #666;"
-            ),
-            shiny::sliderInput(
-              inputId = ns("network_resc_cumulative"),
-              label = shiny::tags$label(
-                "Cumulative contribution",
-                style = "font-size: 15px;"
-              ),
-              min = 0.05, max = 1, value = rescoringDefaults()$cumulative,
-              step = 0.05
-            ),
-            shiny::tags$span(
-              "A feature's cumulative share must stay at or below this.",
               style = "font-size: 11px; color: #666;"
             ),
             shiny::checkboxInput(
               inputId = ns("network_resc_both"),
               label = "Found in both subtypes",
-              value = rescoringDefaults()$both_subtypes
+              value = rescoringAll()$both_subtypes
             ),
             shiny::tags$span(
               "Keep a feature only if it passes in binary and counts.",
@@ -187,7 +162,7 @@ networkUI <- function(id) {
                 "Dyad rank score",
                 style = "font-size: 15px;"
               ),
-              min = 0, max = 1, value = rescoringDefaults()$dyad_rank_score,
+              min = 0, max = 1, value = rescoringAll()$dyad_rank_score,
               step = 0.01
             ),
             shiny::tags$span(

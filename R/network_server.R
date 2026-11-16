@@ -46,9 +46,8 @@ networkServer <- function(id, core, results_root = NULL) {
       shiny::req(input$network_bug_id, input$network_top_n)
       if (use_rescoring()) {
         shiny::req(
-          input$network_resc_mcc, input$network_resc_delta,
-          input$network_resc_quantile, input$network_resc_core,
-          input$network_resc_cumulative, input$network_resc_dyad
+          input$network_resc_delta, input$network_resc_quantile,
+          input$network_resc_dyad
         )
         makeDrugFeatureNetwork(
           NULL,
@@ -56,15 +55,13 @@ networkServer <- function(id, core, results_root = NULL) {
           top_n = input$network_top_n,
           include_dyads = isTRUE(input$network_include_dyads),
           rescoring = core$rescoring(),
-          thresholds = list(
-            mcc = input$network_resc_mcc,
+          # One slider per category, and the subtype check; the rest keep everything.
+          thresholds = utils::modifyList(rescoringAll(), list(
             delta_mcc = input$network_resc_delta,
             quantile = input$network_resc_quantile,
-            core = input$network_resc_core,
-            cumulative = input$network_resc_cumulative,
             both_subtypes = isTRUE(input$network_resc_both),
             dyad_rank_score = input$network_resc_dyad
-          )
+          ))
         )
       } else {
         makeDrugFeatureNetwork(
