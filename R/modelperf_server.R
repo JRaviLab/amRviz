@@ -95,7 +95,7 @@ modelPerfServer <- function(id, core) {
 
     # Scale choices: the molecular scales present in the loaded results.
     shiny::observe({
-      choices <- .scale_choices(unique(core$queryData()$feature_type))
+      choices <- .scale_choices(unique(core$queryData()[["feature_type"]]))
       shiny::updateSelectInput(session, "model_scale",
         choices = choices, selected = choices
       )

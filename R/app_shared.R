@@ -74,7 +74,7 @@ resultsSourceServer <- function(id, results_root) {
 #' @param results_root User results root, or NULL for the packaged demo data.
 #' @param result_dirs Reactive returning the selected result folders, from
 #'   resultsSourceServer().
-#' @return A named list of reactives: `queryData`, `topFeatures`,
+#' @return A named list of reactives: `queryData`, `topFeatures`, `rescoring`,
 #'   `available_species`, `filtered_top_features`, `loadDrugClassMapRec`.
 #' @keywords internal
 #' @noRd
@@ -82,6 +82,8 @@ setupServerCore <- function(results_root, result_dirs) {
   # Performance metrics + top features, refreshed when the selection changes.
   queryData <- shiny::reactiveVal(tibble::tibble())
   topFeatures <- shiny::reactiveVal(tibble::tibble())
+  # Rescored features and dyads of the selected runs, or NULL when none has any.
+  rescoring <- shiny::reactiveVal(NULL)
 
   shiny::observeEvent(
     list(results_root, result_dirs()),
@@ -95,6 +97,10 @@ setupServerCore <- function(results_root, result_dirs) {
         result_dirs = result_dirs()
       ))
       topFeatures(loadTopFeat(
+        results_root = results_root,
+        result_dirs = result_dirs()
+      ))
+      rescoring(loadRescoring(
         results_root = results_root,
         result_dirs = result_dirs()
       ))
@@ -139,6 +145,7 @@ setupServerCore <- function(results_root, result_dirs) {
   list(
     queryData = queryData,
     topFeatures = topFeatures,
+    rescoring = rescoring,
     available_species = available_species,
     filtered_top_features = filtered_top_features,
     loadDrugClassMapRec = loadDrugClassMapRec
