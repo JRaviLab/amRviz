@@ -131,7 +131,7 @@ resistance_rows <- function() {
 
 test_that("metadataResistance counts records per drug", {
   tbl <- metadataResistance(resistance_rows(), "drug")
-  expect_named(tbl, c("label", "resistant", "intermediate", "susceptible", "total", "pct_resistant"))
+  expect_named(tbl, c("label", "abbr", "resistant", "intermediate", "susceptible", "total", "pct_resistant"))
   amp <- tbl[tbl$label == "ampicillin", ]
   expect_equal(c(amp$resistant, amp$susceptible, amp$total), c(2, 1, 3))
   # Most resistant first.
@@ -149,7 +149,7 @@ test_that("metadataResistance counts each genome once per drug class", {
 
 test_that("metadataDrugYear leaves out undated records and rare drugs", {
   tbl <- metadataDrugYear(resistance_rows(), min_records = 1)
-  expect_named(tbl, c("drug", "year", "resistant", "total", "pct_resistant"))
+  expect_named(tbl, c("drug", "drug_abbr", "year", "resistant", "total", "pct_resistant"))
   expect_false(anyNA(tbl$year))
   expect_equal(sum(tbl$total), 5)
   expect_equal(nrow(metadataDrugYear(resistance_rows(), min_records = 3)), 0)
@@ -207,4 +207,34 @@ test_that("the resistance plots draw, and draw a message when empty", {
   )) {
     expect_s3_class(p, "plotly")
   }
+})
+
+test_that("plots name drugs and classes with their abbreviations; tables keep plain names", {
+  expect_identical(
+    .name_with_abbr(
+      c("amikacin", "nalidixic_acid", "ampicillin", "mystery", NA),
+      c("AMK", "NAL", "ampicillin", NA, "X")
+    ),
+    c("amikacin (AMK)", "nalidixic acid (NAL)", "ampicillin", "mystery", NA)
+  )
+
+  m <- resistance_rows()
+  m$drug_abbr <- c("AMP", "AMX", "GEN", "AMP", "AMX", "AMP")
+  m$class_abbr <- c("PEN", "PEN", "AMG", "PEN", "PEN", "PEN")
+  by_drug <- metadataResistance(m, "drug")
+  expect_true(all(by_drug$label %in% m$genome_drug.antibiotic))
+  expect_identical(by_drug$abbr[by_drug$label == "gentamicin"], "GEN")
+  by_class <- metadataResistance(m, "class")
+  expect_identical(by_class$abbr[by_class$label == "penicillins"], "PEN")
+  dy <- metadataDrugYear(m, min_records = 1)
+  expect_true(all(as.character(dy$drug) %in% m$genome_drug.antibiotic))
+  expect_identical(unique(dy$drug_abbr[dy$drug == "ampicillin"]), "AMP")
+
+  share <- plotly::plotly_build(makeResistanceSharePlot(by_class, "genomes"))
+  expect_true(any(grepl("penicillins (PEN)", unlist(lapply(share$x$data, `[[`, "text")), fixed = TRUE)))
+  heat <- makeDrugYearHeatmap(dy)
+  expect_true("ampicillin (AMP)" %in% plotly::plotly_build(heat)$x$layout$yaxis$ticktext)
+
+  # Without abbreviation columns, names show alone.
+  expect_true(all(is.na(metadataResistance(resistance_rows(), "drug")$abbr)))
 })

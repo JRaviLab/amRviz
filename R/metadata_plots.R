@@ -131,7 +131,7 @@ makeDataAvailabilityPlot <- function(data) {
       color = .data$phenotype,
       fill = .data$phenotype,
       text = paste0(
-        "Drug: ", .data$drug, " (", .data$drug_abbr, ")",
+        "Drug: ", .name_with_abbr(.data$drug, .data$drug_abbr),
         "<br>Phenotype: ", .data$phenotype,
         "<br>Genomes: ", .data$genomes
       )
@@ -249,7 +249,7 @@ makeHostIsolatePlot <- function(data) {
       y = .data$records,
       fill = .data$host,
       text = paste0(
-        "Drug: ", .data$drug, " (", .data$drug_abbr, ")",
+        "Drug: ", .name_with_abbr(.data$drug, .data$drug_abbr),
         "<br>Host: ", .data$host,
         "<br>Genome-drug records: ", .data$records
       )
@@ -288,7 +288,7 @@ makeIsolationSourcesPlot <- function(data) {
       y = .data$records,
       fill = .data$source,
       text = paste0(
-        "Drug: ", .data$drug, " (", .data$drug_abbr, ")",
+        "Drug: ", .name_with_abbr(.data$drug, .data$drug_abbr),
         "<br>Source: ", .data$source,
         "<br>Genome-drug records: ", .data$records
       )
@@ -389,7 +389,7 @@ makeResistanceSharePlot <- function(data, unit = "genome-drug records",
     return(plotly_placeholder("No phenotype data"))
   }
   shown <- utils::head(data[order(-data$total), , drop = FALSE], top_n)
-  shown$label <- gsub("_", " ", shown$label, fixed = TRUE)
+  shown$label <- .name_with_abbr(shown$label, shown$abbr)
   order <- shown$label[order(shown$pct_resistant, shown$total)]
   long <- tidyr::pivot_longer(
     shown, c("resistant", "intermediate", "susceptible"),
@@ -500,9 +500,13 @@ makeDrugYearHeatmap <- function(data) {
   if (is.null(data) || !nrow(data) || dplyr::n_distinct(data$year) < 2) {
     return(plotly_placeholder("Too few collection years recorded"))
   }
+  lookup <- dplyr::distinct(data, .data$drug, .data$drug_abbr)
   drug <- factor(
-    gsub("_", " ", data$drug, fixed = TRUE),
-    levels = gsub("_", " ", levels(data$drug), fixed = TRUE)
+    .name_with_abbr(data$drug, data$drug_abbr),
+    levels = .name_with_abbr(
+      levels(data$drug),
+      lookup$drug_abbr[match(levels(data$drug), lookup$drug)]
+    )
   )
   .year_heatmap(
     rows = drug, years = data$year, value = data$pct_resistant,
@@ -720,6 +724,46 @@ readSpeciesMetadata <- function(sources) {
     return(drug)
   }
   dplyr::coalesce(as.character(meta$drug_abbr), drug)
+}
+
+
+#' A drug or drug class name with its abbreviation, for display
+#'
+#' Plots show "amikacin (AMK)"; the tables keep the plain name and the
+#' abbreviation in separate columns. Underscores become spaces. The
+#' abbreviation is left off where it is missing or the same as the name.
+#'
+#' @param name Drug or drug class names.
+#' @param abbr Their abbreviations.
+#' @return A character vector.
+#' @keywords internal
+#' @noRd
+.name_with_abbr <- function(name, abbr) {
+  name <- as.character(name)
+  abbr <- as.character(abbr)
+  shown <- gsub("_", " ", name, fixed = TRUE)
+  has <- !is.na(name) & !is.na(abbr) & nzchar(abbr) & abbr != name
+  ifelse(has, paste0(shown, " (", abbr, ")"), shown)
+}
+
+
+#' Abbreviation of each drug or drug class name in the metadata
+#'
+#' @param meta Metadata tibble from readSpeciesMetadata().
+#' @param name_col,abbr_col Name column and its abbreviation column.
+#' @param names Names to look up.
+#' @return A character vector of abbreviations, NA where there is none.
+#' @keywords internal
+#' @noRd
+.lookup_abbr <- function(meta, name_col, abbr_col, names) {
+  if (!all(c(name_col, abbr_col) %in% names(meta))) {
+    return(rep(NA_character_, length(names)))
+  }
+  pairs <- dplyr::distinct(
+    tibble::tibble(name = meta[[name_col]], abbr = as.character(meta[[abbr_col]]))
+  ) |>
+    dplyr::filter(!is.na(.data$abbr), nzchar(.data$abbr))
+  pairs$abbr[match(names, pairs$name)]
 }
 
 
@@ -1071,7 +1115,8 @@ topDrugClasses <- function(meta, n = 3) {
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
 #' @param by "drug" or "class".
-#' @return A tibble with `label` (drug or drug class), `resistant`,
+#' @return A tibble with `label` (drug or drug class), `abbr` (its
+#'   abbreviation, or NA), `resistant`,
 #'   `intermediate`, `susceptible`, `total` (records per drug, genomes per
 #'   class) and `pct_resistant`, most resistant first. The input to
 #'   makeResistanceSharePlot().
@@ -1098,9 +1143,18 @@ metadataResistance <- function(meta, by = c("drug", "class")) {
   } else {
     df <- dplyr::mutate(df, label = .data$genome_drug.antibiotic)
   }
+  abbr_cols <- if (by == "class") {
+    c("drug_class", "class_abbr")
+  } else {
+    c("genome_drug.antibiotic", "drug_abbr")
+  }
   df |>
     dplyr::filter(!is.na(.data$label)) |>
     .phenotype_counts(.data$label) |>
+    dplyr::mutate(
+      abbr = .lookup_abbr(meta, abbr_cols[1], abbr_cols[2], .data$label),
+      .after = "label"
+    ) |>
     dplyr::arrange(dplyr::desc(.data$pct_resistant), dplyr::desc(.data$total))
 }
 
@@ -1109,7 +1163,8 @@ metadataResistance <- function(meta, by = c("drug", "class")) {
 #'
 #' @param meta Metadata tibble from readSpeciesMetadata().
 #' @param min_records Drugs with fewer dated records than this are left out.
-#' @return A tibble with `drug`, `year`, `resistant`, `total` (records) and
+#' @return A tibble with `drug`, `drug_abbr` (or NA), `year`, `resistant`,
+#'   `total` (records) and
 #'   `pct_resistant`, the input to makeDrugYearHeatmap(). `drug` is a factor,
 #'   least resistant overall first. Rows without a year are left out.
 #' @keywords internal
@@ -1128,6 +1183,10 @@ metadataDrugYear <- function(meta, min_records = .METADATA_MIN_RECORDS) {
     dplyr::filter(.data$drug %in% overall$drug) |>
     .phenotype_counts(.data$drug, .data$year) |>
     dplyr::select("drug", "year", "resistant", "total", "pct_resistant") |>
+    dplyr::mutate(
+      drug_abbr = .lookup_abbr(meta, "genome_drug.antibiotic", "drug_abbr", .data$drug),
+      .after = "drug"
+    ) |>
     dplyr::mutate(drug = factor(.data$drug, levels = overall$drug))
 }
 
