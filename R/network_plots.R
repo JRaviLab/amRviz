@@ -88,6 +88,55 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
     return(NULL)
   }
 
+  orb_dirs <- if ("metadata_path" %in% names(df)) {
+    unique(dirname(df$metadata_path[!is.na(df$metadata_path)]))
+  } else {
+    character(0)
+  }
+  metadata_paths <- if ("metadata_path" %in% names(df)) {
+    unique(df$metadata_path)
+  } else {
+    character(0)
+  }
+
+  # Dyads: each shown feature to the dyads it belongs to, in the ORB.
+  dyad_hits <- NULL
+  if (include_dyads && length(orb_dirs)) {
+    dyads <- load_dyad_links(orb_dirs)
+    if (!is.null(dyads)) {
+      dyads$feature <- .network_feature_name(dyads$feature_type, dyads$feature)
+      dyad_hits <- dplyr::inner_join(
+        dplyr::distinct(top, .data$feature_type, .data$Variable),
+        dplyr::distinct(dyads, .data$feature_type, .data$feature, .data$dyad_id),
+        by = c("feature_type", "Variable" = "feature")
+      ) |>
+        dplyr::transmute(
+          .data$feature_type, .data$Variable,
+          dyad_key = as.character(.data$dyad_id),
+          dyad_label = paste("Dyad", .data$dyad_id)
+        )
+    }
+  }
+  .network_assemble(top, dyad_hits, orb_dirs, metadata_paths)
+}
+
+
+#' Nodes and links from the features chosen for each drug
+#'
+#' @param top One row per drug or class and feature: `drug_label`,
+#'   `drug_or_class`, `feature_type`, `Variable`, `importance` and `sign`.
+#' @param dyad_hits Optional dyads to add: `feature_type`, `Variable` (a
+#'   feature in `top`), `dyad_key` (the dyad's ID, as shown on hover) and
+#'   `dyad_label`.
+#' @param orb_dirs,metadata_paths The ORBs the models were fitted on and their
+#'   metadata, for the hover text.
+#' @param scores Optional rescoring scores to add to the hover text; see
+#'   network_node_info().
+#' @return The list described in networkTables().
+#' @keywords internal
+#' @noRd
+.network_assemble <- function(top, dyad_hits, orb_dirs, metadata_paths,
+                              scores = NULL) {
   # A node's id includes its type, so a feature named like a drug, or the
   # same name in two feature types, stays a separate node.
   drug_id <- paste0(top$drug_label, ":", top$drug_or_class)
@@ -115,44 +164,107 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
     from = drug_id, to = feature_id, importance = top$importance, sign = top$sign
   )
 
-  # The ORBs the models were fitted on hold the dyads and the feature names.
-  orb_dirs <- if ("metadata_path" %in% names(df)) {
-    unique(dirname(df$metadata_path[!is.na(df$metadata_path)]))
-  } else {
-    character(0)
+  if (!is.null(dyad_hits) && nrow(dyad_hits)) {
+    dyad_hits <- dplyr::distinct(
+      dyad_hits, .data$feature_type, .data$Variable, .data$dyad_key,
+      .data$dyad_label
+    )
+    dyad_id <- paste0("dyad:", dyad_hits$dyad_key)
+    keep <- !duplicated(dyad_id)
+    nodes <- dplyr::bind_rows(nodes, tibble::tibble(
+      id = dyad_id[keep], label = dyad_hits$dyad_label[keep], group = "dyad",
+      key = dyad_hits$dyad_key[keep]
+    ))
+    links <- dplyr::bind_rows(links, tibble::tibble(
+      from = paste0(dyad_hits$feature_type, ":", dyad_hits$Variable),
+      to = dyad_id, importance = 0.5, sign = NA_character_
+    ))
   }
 
-  if (include_dyads && length(orb_dirs)) {
-    dyads <- load_dyad_links(orb_dirs)
-    if (!is.null(dyads)) {
-      dyads$feature <- .network_feature_name(dyads$feature_type, dyads$feature)
-      hits <- dplyr::inner_join(
-        dplyr::distinct(top, .data$feature_type, .data$Variable),
-        dplyr::distinct(dyads, .data$feature_type, .data$feature, .data$dyad_id),
-        by = c("feature_type", "Variable" = "feature")
-      )
-      if (nrow(hits)) {
-        dyad_id <- paste0("dyad:", hits$dyad_id)
-        nodes <- dplyr::bind_rows(nodes, tibble::tibble(
-          id = unique(dyad_id),
-          label = paste("Dyad", unique(hits$dyad_id)), group = "dyad",
-          key = as.character(unique(hits$dyad_id))
-        ))
-        links <- dplyr::bind_rows(links, tibble::tibble(
-          from = paste0(hits$feature_type, ":", hits$Variable),
-          to = dyad_id, importance = 0.5, sign = NA_character_
-        ))
+  nodes$info <- network_node_info(nodes, orb_dirs, metadata_paths, scores)
+  list(nodes = nodes, links = links)
+}
+
+
+#' Nodes and links for the network of rescored features
+#'
+#' Like networkTables(), but the features and dyads come from amRml's
+#' rescoring of the run (see loadRescoring()): the features that pass the
+#' thresholds, up to `top_n` of each type per drug or class by rank score, and
+#' optionally the rescored dyads that reach them. The hover text also gives the
+#' scores: each drug's MCC, and each feature's and dyad's scores per drug.
+#'
+#' @param rescoring A list of `features` and `dyads` from loadRescoring().
+#' @param bug Species code.
+#' @param top_n Number of top features per feature type, per drug or drug class.
+#' @param include_dyads Add dyad nodes when TRUE.
+#' @param thresholds A list as from rescoringDefaults().
+#' @return The list described in networkTables(), or NULL when nothing passes.
+#' @keywords internal
+#' @noRd
+networkTablesRescored <- function(rescoring, bug, top_n = 10,
+                                  include_dyads = FALSE,
+                                  thresholds = rescoringDefaults()) {
+  # Only features from model fits that pass the performance thresholds.
+  models <- rescoredModels(rescoring$models, bug, thresholds)
+  features <- rescoredFeatures(
+    rescoring$features, bug, thresholds,
+    models = if (!is.null(rescoring$models) && nrow(rescoring$models)) models
+  )
+  if (!nrow(features)) {
+    return(NULL)
+  }
+  # Variable names as the network shows them, then the top N of each type.
+  features$Variable <- .network_feature_name(features$feature_type, features$Variable)
+  top <- features |>
+    dplyr::group_by(.data$drug_label, .data$drug_or_class, .data$feature_type) |>
+    dplyr::slice_max(
+      order_by = .data$rank_score * 10 + .data$contribution,
+      n = top_n, with_ties = FALSE
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      # Link width follows the feature's share of the model's importance.
+      importance = pmax(.data$contribution * 10, 0.25)
+    )
+
+  orb_dirs <- unique(dirname(top$metadata_path[!is.na(top$metadata_path)]))
+  metadata_paths <- unique(top$metadata_path)
+
+  scores <- list(
+    drugs = rescoredDrugScores(models),
+    features = top[c(
+      "drug_label", "drug_or_class", "feature_type", "Variable", "rank_score",
+      "contribution", "seed_ratio"
+    )]
+  )
+  dyad_hits <- NULL
+  if (include_dyads) {
+    reached <- rescoredDyads(rescoring$dyads, top, thresholds)
+    if (nrow(reached)) {
+      # Name a dyad by its ID in the ORB where it is there, else as rescored.
+      orb <- dplyr::bind_rows(lapply(orb_dirs, .read_dyads))
+      known <- if (nrow(orb)) {
+        stats::setNames(orb$dyad_id, paste(orb$protein, orb$gene, sep = "|"))
+      } else {
+        integer(0)
       }
+      # A fused gene is "a...b" in the rescoring and "a~~~b" in the ORB.
+      name <- gsub("...", "~~~", reached$dyad, fixed = TRUE)
+      id <- unname(known[name])
+      dyad_hits <- tibble::tibble(
+        feature_type = reached$feature_type, Variable = reached$Variable,
+        dyad_key = ifelse(is.na(id), name, as.character(id)),
+        dyad_label = paste("Dyad", ifelse(is.na(id), name, id))
+      )
+      scores$dyads <- dplyr::distinct(tibble::tibble(
+        drug_label = reached$drug_label, drug_or_class = reached$drug_or_class,
+        dyad_key = dyad_hits$dyad_key, rank_score = reached$dyad_rank_score,
+        contribution = reached$dyad_contribution, frequency = reached$frequency
+      ))
     }
   }
-
-  metadata_paths <- if ("metadata_path" %in% names(df)) {
-    unique(df$metadata_path)
-  } else {
-    character(0)
-  }
-  nodes$info <- network_node_info(nodes, orb_dirs, metadata_paths)
-  list(nodes = nodes, links = links)
+  .network_assemble(top, dyad_hits, orb_dirs, metadata_paths, scores)
 }
 
 
@@ -162,19 +274,27 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
 #' features, optionally extended to the dyads they belong to.
 #'
 #' @inheritParams networkTables
+#' @param rescoring A list from loadRescoring(); when given, the network draws
+#'   the rescored features and dyads instead of `top_data`.
+#' @param thresholds Thresholds for the rescoring, as from rescoringDefaults().
 #' @return A `networkD3` forceNetwork widget, or NULL when there is nothing to
 #'   plot.
 #' @keywords internal
 #' @noRd
 makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
-                                   include_dyads = FALSE) {
+                                   include_dyads = FALSE, rescoring = NULL,
+                                   thresholds = rescoringDefaults()) {
   if (!requireNamespace("networkD3", quietly = TRUE)) {
     stop(
       "Package 'networkD3' is required. ",
       "Install it with install.packages('networkD3')."
     )
   }
-  net <- networkTables(top_data, bug, top_n, include_dyads)
+  net <- if (is.null(rescoring)) {
+    networkTables(top_data, bug, top_n, include_dyads)
+  } else {
+    networkTablesRescored(rescoring, bug, top_n, include_dyads, thresholds)
+  }
   if (is.null(net)) {
     return(NULL)
   }
@@ -186,20 +306,34 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   )
   # A link is coloured by the sign of the feature's importance for the drug;
   # links to dyads have no sign.
-  link_colour <- unname(.NETWORK_SIGN_COLORS[net$links$sign])
+  sign_colors <- .network_sign_colors()
+  link_colour <- unname(sign_colors[net$links$sign])
   link_colour[is.na(link_colour)] <- .NETWORK_NO_SIGN_COLOR
+  # One legend entry per kind of link drawn.
+  legend_rows <- list(
+    POS = c("Toward susceptibility", sign_colors[["POS"]]),
+    NEG = c("Toward resistance", sign_colors[["NEG"]]),
+    none = c("Feature in a dyad", .NETWORK_NO_SIGN_COLOR)
+  )
+  present <- c(
+    POS = "POS" %in% net$links$sign, NEG = "NEG" %in% net$links$sign,
+    none = any(is.na(net$links$sign))
+  )
+  edge_legend <- unname(lapply(legend_rows[present], function(r) {
+    list(label = r[[1]], colour = r[[2]])
+  }))
 
   # Colour domain: drug + every molecular scale + dyad, drawing scale colours
   # from the shared SCALE_COLORS palette so the network matches the other tabs.
   js_array <- function(x) paste0('["', paste(x, collapse = '","'), '"]')
   group_domain <- c("drug", names(SCALE_COLORS), "dyad")
-  group_range <- c("#d4872a", unname(SCALE_COLORS), "#66a61e")
+  group_range <- c(.NETWORK_DRUG_COLOR, unname(SCALE_COLORS), .NETWORK_DYAD_COLOR)
   color_scale <- sprintf(
     "d3.scaleOrdinal().domain(%s).range(%s)",
     js_array(group_domain), js_array(group_range)
   )
 
-  .styleNetwork(info = nodes$info, networkD3::forceNetwork(
+  .styleNetwork(info = nodes$info, edge_legend = edge_legend, networkD3::forceNetwork(
     Links = edges,
     Nodes = nodes,
     Source = "source",
@@ -322,10 +456,24 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
 }
 
 
-# Link colours: the sign of a feature's importance for a drug (amRml's "POS" and
-# "NEG"), and links that have no sign, such as those to dyads.
-.NETWORK_SIGN_COLORS <- c(POS = "#c0392b", NEG = "#2c7bb6")
+# Link colours: the sign of a feature's effect for a drug (amRml's "POS" and
+# "NEG"), and links that have no sign, such as those to dyads. A negative sign
+# points toward resistance (blaTEM for ampicillin, tet genes for tetracycline),
+# so the links take the Metadata tab's colours for Resistant and Susceptible.
+# A function, since the palette is defined in another file.
+.network_sign_colors <- function() {
+  c(
+    POS = PHENOTYPE_COLORS[["Susceptible"]],
+    NEG = PHENOTYPE_COLORS[["Resistant"]]
+  )
+}
 .NETWORK_NO_SIGN_COLOR <- "#999999"
+
+# Dyad nodes, and the dyad sliders to match.
+.NETWORK_DYAD_COLOR <- "#66a61e"
+
+# Drug nodes: neutral, so they don't read as either phenotype colour.
+.NETWORK_DRUG_COLOR <- "#3d3d3d"
 
 # Font family for the force-directed networks, matching the plotly/ggplot
 # panels (which use "Arial, sans-serif").
@@ -394,6 +542,8 @@ function(el, x, info) {
     info = [].concat(info);
     var root = d3.select(el);
     if (root.style('position') === 'static') { root.style('position', 'relative'); }
+    // A re-render keeps the widget's div, so drop the previous box.
+    root.selectAll('.network-tip').remove();
     var tip = root.append('div')
       .attr('class', 'network-tip')
       .style('position', 'absolute')
@@ -429,15 +579,46 @@ function(el, x, info) {
 }
 "
 
+# Post-render hook for forceNetwork: a legend for the link colours, under the
+# widget's own node legend. `items` is a list of `label` and `colour`.
+.NETWORK_EDGE_LEGEND_JS <- "
+function(el, x, items) {
+  try {
+    var d3 = window.d3;
+    if (!d3 || !items) { return; }
+    items = [].concat(items);
+    var svg = d3.select(el).select('svg');
+    // Start below the node legend: 22px per entry, as networkD3 spaces it.
+    var top = svg.selectAll('.legend').size() * 22 + 18;
+    var g = svg.append('g').attr('class', 'edge-legend')
+      .attr('transform', 'translate(18,' + top + ')');
+    items.forEach(function(d, i) {
+      var row = g.append('g').attr('transform', 'translate(0,' + (i * 22) + ')');
+      row.append('line')
+        .attr('x1', 0).attr('x2', 18).attr('y1', 9).attr('y2', 9)
+        .style('stroke', d.colour).style('stroke-width', 3);
+      row.append('text')
+        .attr('x', 22).attr('y', 14)
+        .style('font-size', '12px').style('fill', '#333333')
+        .style('font-family', x.options.fontFamily)
+        .text(d.label);
+    });
+  } catch (e) { /* no link legend on error */ }
+}
+"
+
 # Apply the shared font + per-group node shapes to a forceNetwork widget, and
 # the hover box when `info` is given.
-.styleNetwork <- function(net, info = NULL) {
+.styleNetwork <- function(net, info = NULL, edge_legend = NULL) {
   if (is.null(net)) {
     return(NULL)
   }
   net <- htmlwidgets::onRender(net, .NETWORK_SHAPE_JS)
   if (!is.null(info)) {
     net <- htmlwidgets::onRender(net, .NETWORK_TOOLTIP_JS, data = as.list(info))
+  }
+  if (length(edge_legend)) {
+    net <- htmlwidgets::onRender(net, .NETWORK_EDGE_LEGEND_JS, data = edge_legend)
   }
   net
 }

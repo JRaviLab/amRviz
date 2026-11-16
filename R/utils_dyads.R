@@ -238,10 +238,16 @@ load_dyad_links <- function(orb_dirs) {
 #'   feature name, or a dyad ID).
 #' @param orb_dirs The ORBs the models were fitted on.
 #' @param metadata_paths Their metadata parquets, for the drug names.
+#' @param scores Optional rescoring scores, a list of `drugs` (`drug_label`,
+#'   `drug_or_class`, `mcc`, `delta_mcc`, `n_fits`), `features` (those and
+#'   `feature_type`, `Variable`, `rank_score`, `contribution`, `seed_ratio`)
+#'   and `dyads` (`drug_label`, `drug_or_class`, `dyad_key`, `rank_score`,
+#'   `contribution`, `frequency`). Added to each node's text.
 #' @return A character vector with one HTML string per node.
 #' @keywords internal
 #' @noRd
-network_node_info <- function(nodes, orb_dirs, metadata_paths = character(0)) {
+network_node_info <- function(nodes, orb_dirs, metadata_paths = character(0),
+                              scores = NULL) {
   orb_dirs <- unique(orb_dirs[!is.na(orb_dirs) & nzchar(orb_dirs)])
   is_dyad <- nodes$group == "dyad"
   dyads <- dplyr::bind_rows(
@@ -253,6 +259,13 @@ network_node_info <- function(nodes, orb_dirs, metadata_paths = character(0)) {
   ) |>
     dplyr::distinct(.data$dyad_id, .keep_all = TRUE)
   dyad <- dyads[match(nodes$key[is_dyad], dyads$dyad_id), ]
+  # A dyad from the rescoring that isn't in the ORB is named "protein|gene":
+  # take its protein and gene from that.
+  by_name <- is.na(dyad$protein) & is.na(dyad$gene) & grepl("|", nodes$key[is_dyad], fixed = TRUE)
+  dyad$protein[by_name] <- sub("[|][^|]*$", "", nodes$key[is_dyad][by_name])
+  gene <- sub("^.*[|]", "", nodes$key[is_dyad][by_name])
+  gene <- gsub("...", "~~~", gene, fixed = TRUE)
+  dyad$gene[by_name] <- ifelse(gene == "NA", NA_character_, gene)
 
   looked_up <- lapply(orb_dirs, .read_gene_protein_names,
     proteins = c(dyad$protein, nodes$key[nodes$group == "proteins"]),
@@ -316,12 +329,78 @@ network_node_info <- function(nodes, orb_dirs, metadata_paths = character(0)) {
     line("Name", unname(name))
   )
   info[is_dyad] <- paste0(
-    line("Type", paste("Dyad", dyad$dyad_type)),
+    line("Type", ifelse(is.na(dyad$dyad_type), "Dyad", paste("Dyad", dyad$dyad_type))),
     line("Dyad ID", nodes$key[is_dyad]),
     line("Protein ID", protein), line("Protein name", protein_name),
     line("Gene ID", gene), line("Gene name", gene_name)
   )
-  sub("<br>$", "", info)
+  info <- sub("<br>$", "", info)
+  extra <- .score_lines(nodes, scores)
+  ifelse(nzchar(extra), paste0(info, "<br>", extra), info)
+}
+
+
+#' Hover lines for the rescoring scores of each node
+#'
+#' @param nodes Network nodes: `id`, `group` and `key`.
+#' @param scores As for network_node_info(), or NULL.
+#' @param max_rows Most drugs listed per feature or dyad.
+#' @return A character vector with one HTML string per node, empty where the
+#'   node has no scores.
+#' @keywords internal
+#' @noRd
+.score_lines <- function(nodes, scores, max_rows = 6) {
+  extra <- rep("", nrow(nodes))
+  if (is.null(scores)) {
+    return(extra)
+  }
+  num <- function(x, digits = 2) formatC(x, format = "f", digits = digits)
+  # A class is marked, so a drug and a class sharing an abbreviation differ.
+  target <- function(df) {
+    paste0(df$drug_or_class, ifelse(df$drug_label == "drug_class", " (class)", ""))
+  }
+  # One line per drug, most important first, and "+ n more" past the limit.
+  by_drug <- function(df, text) {
+    if (!nrow(df)) {
+      return("")
+    }
+    df <- df[order(-df$rank_score), ]
+    lines <- paste0(target(df), ": ", text(df))
+    more <- length(lines) - max_rows
+    lines <- utils::head(lines, max_rows)
+    if (more > 0) lines <- c(lines, paste0("+ ", more, " more"))
+    paste0("<b>Scores by drug:</b><br>", paste(htmltools::htmlEscape(lines), collapse = "<br>"))
+  }
+
+  drugs <- scores$drugs
+  for (i in which(nodes$group == "drug")) {
+    unit <- if (startsWith(nodes$id[i], "drug_class:")) "drug_class" else "drug"
+    hit <- drugs[drugs$drug_label == unit & drugs$drug_or_class == nodes$key[i], ]
+    if (nrow(hit)) {
+      extra[i] <- paste0(
+        "<b>MCC (median of passing fits):</b> ", num(hit$mcc[1]), "<br>",
+        "<b>MCC above shuffled (median):</b> ", num(hit$delta_mcc[1]), "<br>",
+        "<b>Passing fits:</b> ", hit$n_fits[1]
+      )
+    }
+  }
+  features <- scores$features
+  for (i in which(!nodes$group %in% c("drug", "dyad"))) {
+    hit <- features[features$feature_type == nodes$group[i] & features$Variable == nodes$key[i], ]
+    extra[i] <- by_drug(hit, function(d) {
+      paste0("rank score ", num(d$rank_score), ", share ", num(d$contribution, 3),
+        ", seed ratio ", num(d$seed_ratio))
+    })
+  }
+  dyads <- scores$dyads
+  for (i in which(nodes$group == "dyad")) {
+    hit <- dyads[dyads$dyad_key == nodes$key[i], ]
+    extra[i] <- by_drug(hit, function(d) {
+      paste0("rank score ", num(d$rank_score), ", share ", num(d$contribution, 3),
+        ", ", d$frequency, " feature", ifelse(d$frequency == 1, "", "s"))
+    })
+  }
+  extra
 }
 
 # Feature types whose names come from the ORB's protein annotation files.

@@ -20,14 +20,60 @@ networkServer <- function(id, core, results_root = NULL) {
       )
     })
 
+    # The dyad rank score only means something while dyads are shown.
+    shiny::observe({
+      shinyjs::toggleState(
+        "network_resc_dyad",
+        condition = isTRUE(input$network_include_dyads)
+      )
+    })
+
+    # Rescored features are drawn when asked for and the run has them.
+    use_rescoring <- shiny::reactive({
+      identical(input$network_rescored, "yes") && !is.null(core$rescoring())
+    })
+
+    output$network_rescoring_note <- shiny::renderUI({
+      if (identical(input$network_rescored, "yes") && is.null(core$rescoring())) {
+        shiny::tags$span(
+          "The selected runs have no rescoring.",
+          style = "font-size: 12px; color: #a33b52;"
+        )
+      }
+    })
+
     output$drug_feature_network <- networkD3::renderForceNetwork({
       shiny::req(input$network_bug_id, input$network_top_n)
-      makeDrugFeatureNetwork(
-        core$topFeatures(),
-        input$network_bug_id,
-        top_n = input$network_top_n,
-        include_dyads = isTRUE(input$network_include_dyads)
-      )
+      if (use_rescoring()) {
+        shiny::req(
+          input$network_resc_mcc, input$network_resc_delta,
+          input$network_resc_quantile, input$network_resc_core,
+          input$network_resc_cumulative, input$network_resc_dyad
+        )
+        makeDrugFeatureNetwork(
+          NULL,
+          input$network_bug_id,
+          top_n = input$network_top_n,
+          include_dyads = isTRUE(input$network_include_dyads),
+          rescoring = core$rescoring(),
+          thresholds = list(
+            mcc = input$network_resc_mcc,
+            delta_mcc = input$network_resc_delta,
+            quantile = input$network_resc_quantile,
+            core = input$network_resc_core,
+            cumulative = input$network_resc_cumulative,
+            both_subtypes = isTRUE(input$network_resc_both),
+            dyad_rank_score = input$network_resc_dyad
+          )
+        )
+      } else {
+        makeDrugFeatureNetwork(
+          core$topFeatures(),
+          input$network_bug_id,
+          top_n = input$network_top_n,
+          include_dyads = isTRUE(input$network_include_dyads)
+        )
+      }
     })
 
     invisible(NULL)

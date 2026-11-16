@@ -87,7 +87,7 @@ test_that("makeDrugFeatureNetwork colours links by sign", {
   rows <- network_rows()[1:2, ]
   rows$Sign <- c("POS", "NEG")
   net <- makeDrugFeatureNetwork(rows, "Sso")
-  expect_equal(net$x$links$colour, c("#c0392b", "#2c7bb6"))
+  expect_equal(net$x$links$colour, c("#5b8db8", "#d4872a"))
 })
 
 test_that("networkTables keeps current Pfam names whole", {
@@ -221,6 +221,27 @@ test_that("a drug and a class sharing an abbreviation are separate nodes", {
   expect_setequal(
     networkTables(rows, "Sso")$nodes$label[networkTables(rows, "Sso")$nodes$group == "drug"],
     c("TET", "TETC")
+  )
+})
+
+test_that("makeDrugFeatureNetwork adds a legend for the link colours", {
+  skip_if_not_installed("networkD3")
+  rows <- network_rows()[1:2, ]
+  rows$Sign <- c("POS", "NEG")
+  hook <- makeDrugFeatureNetwork(rows, "Sso")$jsHooks$render[[3]]
+  expect_match(hook$code, "edge-legend")
+  expect_equal(
+    vapply(hook$data, `[[`, "", "label"),
+    c("Toward susceptibility", "Toward resistance")
+  )
+  expect_equal(vapply(hook$data, `[[`, "", "colour"), c("#5b8db8", "#d4872a"))
+  # Links to dyads, which have no sign, get their own entry.
+  dir_rows <- dyad_rows(make_dyad_orb(withr::local_tempdir()))
+  dir_rows$Sign <- "POS"
+  with_dyads <- makeDrugFeatureNetwork(dir_rows, "Sso", include_dyads = TRUE)
+  expect_equal(
+    vapply(with_dyads$jsHooks$render[[3]]$data, `[[`, "", "label"),
+    c("Toward susceptibility", "Feature in a dyad")
   )
 })
 
