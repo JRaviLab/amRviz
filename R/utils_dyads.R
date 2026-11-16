@@ -309,6 +309,7 @@ network_node_info <- function(nodes, orb_dirs, metadata_paths = character(0),
 
   type <- unname(.scale_label_map()$labels[nodes$group])
   type[is_drug] <- ifelse(drug_kind == "drug class", "Drug class", "Drug")
+  type[nodes$group == "args"] <- "AMRFinder"
   type[is_dyad] <- "Dyad"
   type[is.na(type)] <- nodes$group[is.na(type)]
 

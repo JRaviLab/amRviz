@@ -299,6 +299,8 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     return(NULL)
   }
   nodes <- as.data.frame(net$nodes)
+  # The widget's legend lists these group names, so use the names shown.
+  nodes$group <- .network_group_label(nodes$group)
   edges <- data.frame(
     source = match(net$links$from, nodes$id) - 1,
     target = match(net$links$to, nodes$id) - 1,
@@ -326,7 +328,7 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
   # Colour domain: drug + every molecular scale + dyad, drawing scale colours
   # from the shared SCALE_COLORS palette so the network matches the other tabs.
   js_array <- function(x) paste0('["', paste(x, collapse = '","'), '"]')
-  group_domain <- c("drug", names(SCALE_COLORS), "dyad")
+  group_domain <- .network_group_label(c("drug", names(SCALE_COLORS), "dyad"))
   group_range <- c(.NETWORK_DRUG_COLOR, unname(SCALE_COLORS), .NETWORK_DYAD_COLOR)
   color_scale <- sprintf(
     "d3.scaleOrdinal().domain(%s).range(%s)",
@@ -472,6 +474,24 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
 # Dyad nodes, and the dyad sliders to match.
 .NETWORK_DYAD_COLOR <- "#66a61e"
 
+# How the widget's legend names the node groups, where it isn't the group's
+# own name.
+.NETWORK_GROUP_LABELS <- c(
+  drug = "drugs/drug classes", args = "AMRFinder", cogs = "COGs"
+)
+
+#' Legend names for node groups
+#'
+#' @param group Node groups: "drug", a feature type or "dyad".
+#' @return The names the legend shows.
+#' @keywords internal
+#' @noRd
+.network_group_label <- function(group) {
+  named <- group %in% names(.NETWORK_GROUP_LABELS)
+  group[named] <- unname(.NETWORK_GROUP_LABELS[group[named]])
+  group
+}
+
 # Drug nodes: neutral, so they don't read as either phenotype colour.
 .NETWORK_DRUG_COLOR <- "#3d3d3d"
 
@@ -491,6 +511,7 @@ function(el, x) {
     if (!d3 || !d3.symbol) { return; }
     var shapeMap = {
       'drug': d3.symbolDiamond,
+      'drugs/drug classes': d3.symbolDiamond,
       'variable': d3.symbolCircle,
       'dyad': d3.symbolSquare,
       'cluster': d3.symbolSquare

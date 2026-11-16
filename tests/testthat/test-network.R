@@ -245,6 +245,23 @@ test_that("makeDrugFeatureNetwork adds a legend for the link colours", {
   )
 })
 
+test_that("the network legend names drugs, AMRFinder and COGs", {
+  skip_if_not_installed("networkD3")
+  rows <- dyad_rows(make_dyad_orb(withr::local_tempdir()))
+  rows$feature_type[4] <- "cogs"
+  net <- makeDrugFeatureNetwork(rows, "Sso", include_dyads = TRUE)
+  expect_true(all(c("drugs/drug classes", "COGs") %in% net$x$nodes$group))
+  expect_false(any(c("drug", "cogs", "args") %in% net$x$nodes$group))
+  domain <- as.character(net$x$options$colourScale)
+  expect_match(domain, '"drugs/drug classes"', fixed = TRUE)
+  expect_match(domain, '"AMRFinder"', fixed = TRUE)
+  expect_match(domain, '"COGs"', fixed = TRUE)
+  expect_match(domain, '"dyad"', fixed = TRUE)
+  # The shape hook keys on the same names.
+  expect_match(net$jsHooks$render[[1]]$code, "'drugs/drug classes': d3.symbolDiamond", fixed = TRUE)
+  expect_equal(.network_group_label(c("drug", "args", "cogs", "genes")), c("drugs/drug classes", "AMRFinder", "COGs", "genes"))
+})
+
 test_that("makeDrugFeatureNetwork adds a hover box with each node's text", {
   skip_if_not_installed("networkD3")
   rows <- dyad_rows(make_dyad_orb(withr::local_tempdir()))
