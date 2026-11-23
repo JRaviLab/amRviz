@@ -576,9 +576,7 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     network_view = c("feature", "dyad"),
                                     network_show_features = FALSE,
                                     network_rescored = FALSE,
-                                    network_thresholds = list(delta_mcc = 0.75, 
-                                                              quantile = 0.75, 
-                                                              dyad_rank_score = 0.8),
+                                    network_thresholds = list(),
                                     network_feature_types = NULL,
                                     network_weighted_edges = TRUE) {
   network_view <- match.arg(network_view)
