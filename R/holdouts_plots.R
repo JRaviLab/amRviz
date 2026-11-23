@@ -20,6 +20,108 @@
 }
 
 
+# ---- Names ----
+
+#' Full names for the drug, drug class and country codes
+#'
+#' Read from the ORB metadata each row points to (`metadata_path`), which
+#' pairs each code with its name: `drug_abbr` with `genome_drug.antibiotic`,
+#' `class_abbr` with `drug_class`, and `country_abbr` with
+#' `genome.isolation_country`.
+#'
+#' @param data Performance or top-features tibble with a `metadata_path`
+#'   column.
+#' @return A list of two named character vectors, code -> name: `drug` (drugs
+#'   and drug classes) and `country`. Empty when there is no metadata.
+#' @keywords internal
+#' @noRd
+holdoutNames <- function(data) {
+  out <- list(drug = character(0), country = character(0))
+  if (!is.data.frame(data) || !"metadata_path" %in% names(data)) {
+    return(out)
+  }
+  paths <- unique(stats::na.omit(as.character(data$metadata_path)))
+  paths <- paths[file.exists(paths)]
+  if (!length(paths)) {
+    return(out)
+  }
+  cols <- c(
+    "genome_drug.antibiotic", "drug_abbr", "drug_class", "class_abbr",
+    "genome.isolation_country", "country_abbr"
+  )
+  meta <- dplyr::bind_rows(lapply(paths, function(p) {
+    tryCatch(
+      arrow::read_parquet(p, col_select = dplyr::any_of(cols)),
+      error = function(e) tibble::tibble()
+    )
+  }))
+  pairs <- function(name, code) {
+    if (!all(c(name, code) %in% names(meta))) {
+      return(character(0))
+    }
+    d <- meta[!is.na(meta[[name]]) & !is.na(meta[[code]]), c(name, code)]
+    d <- d[!duplicated(d[[code]]), ]
+    stats::setNames(gsub("_", " ", d[[name]]), d[[code]])
+  }
+  list(
+    drug = c(
+      pairs("genome_drug.antibiotic", "drug_abbr"),
+      pairs("drug_class", "class_abbr")
+    ),
+    country = pairs("genome.isolation_country", "country_abbr")
+  )
+}
+
+
+#' Label codes with their full names, as "Australia (AUS)"
+#'
+#' @param code Codes to label.
+#' @param lookup Named character vector, code -> name, from holdoutNames().
+#' @return Labels; a code with no known name is returned as is.
+#' @keywords internal
+#' @noRd
+.holdout_label <- function(code, lookup) {
+  code <- as.character(code)
+  name <- unname(lookup[code])
+  ifelse(is.na(name), code, paste0(name, " (", code, ")"))
+}
+
+
+#' Name lookup for a holdout grouping: countries have names, years don't
+#' @keywords internal
+#' @noRd
+.holdout_group_names <- function(names, cross_model) {
+  if (identical(cross_model, "country")) names$country else character(0)
+}
+
+
+#' Drug menu for the holdouts tab, grouped into drug classes and drugs
+#'
+#' @param perf_data Performance tibble from loadMLResults().
+#' @param bug Species code to include.
+#' @param names Name lookups from holdoutNames().
+#' @return A list for `selectInput(choices = )`: "Drug classes" and "Drugs"
+#'   groups of codes, each labeled like "aminoglycosides (AMG)". Empty groups
+#'   are left out; `character(0)` when there are no holdout models.
+#' @keywords internal
+#' @noRd
+holdoutDrugMenu <- function(perf_data, bug, names = holdoutNames(perf_data)) {
+  codes <- getHoldoutsDrugChoices(perf_data, bug)
+  if (!length(codes)) {
+    return(character(0))
+  }
+  classes <- perf_data$drug_or_class[perf_data$drug_label %in% "drug_class"]
+  is_class <- codes %in% classes
+  # as.list() so a group with one entry still shows as a group.
+  group <- function(x) as.list(stats::setNames(x, .holdout_label(x, names$drug)))
+  menu <- list(
+    "Drug classes" = group(codes[is_class]),
+    "Drugs" = group(codes[!is_class])
+  )
+  menu[lengths(menu) > 0]
+}
+
+
 # ---- Tables ----
 
 #' Holdout model scores per drug class, by whether the test group matched
@@ -111,24 +213,30 @@ holdoutGridTable <- function(perf_data, bug, drug, cross_model,
 
 #' Most important features of each group's holdout models
 #'
-#' Stratified (not cross-tested) models trained on each group, with each
-#' feature's importance averaged over seeds, then the `top_n` features per
-#' group, each divided by the group's most important feature (so that one is 1).
-#' Dividing, rather than stretching to 0-1, keeps the least important feature
-#' shown above 0: it is still a top feature.
+#' Stratified (not cross-tested) models trained on each group. Each feature
+#' type (scale) is its own model, so features are ranked within each group and
+#' feature type: the `top_n` features of each, each divided by the most
+#' important one of that group and type (so that one is 1). Dividing, rather
+#' than stretching to 0-1, keeps the least important feature shown above 0:
+#' it is still a top feature.
+#'
+#' Importance is averaged over seeds with its sign, so a feature whose seeds
+#' disagree on direction counts for less. amRml's `Sign` "NEG" points to
+#' Resistant and "POS" to Susceptible.
 #'
 #' @param top_data Top-features tibble from loadTopFeat().
 #' @param bug Species code(s) to include.
 #' @param drug Drug or drug class to include.
 #' @param cross_model "country" or "time".
-#' @param top_n Number of features per group, or "all".
-#' @return A tibble with `feature`, `feature_type`, `group` and `importance`.
+#' @param top_n Number of features per group and feature type, or "all".
+#' @return A tibble with `feature`, `feature_type`, `group`, `importance` and
+#'   `direction` ("Resistant", "Susceptible", or NA when there is no `Sign`).
 #' @keywords internal
 #' @noRd
-holdoutFeatureTable <- function(top_data, bug, drug, cross_model, top_n = 10) {
+holdoutFeatureTable <- function(top_data, bug, drug, cross_model, top_n = 5) {
   empty <- tibble::tibble(
     feature = character(0), feature_type = character(0),
-    group = character(0), importance = numeric(0)
+    group = character(0), importance = numeric(0), direction = character(0)
   )
   if (is.null(top_data) || !is.data.frame(top_data) || !nrow(top_data)) {
     return(empty)
@@ -143,26 +251,86 @@ holdoutFeatureTable <- function(top_data, bug, drug, cross_model, top_n = 10) {
   if (!nrow(df)) {
     return(empty)
   }
+  # +1 toward Resistant, -1 toward Susceptible, NA without a sign.
+  sign <- if ("Sign" %in% names(df)) {
+    dplyr::case_when(df$Sign == "NEG" ~ 1, df$Sign == "POS" ~ -1)
+  } else {
+    rep(NA_real_, nrow(df))
+  }
+  df$signed <- df$Importance * dplyr::coalesce(sign, 1)
+  df$has_sign <- !is.na(sign)
+
   tbl <- df |>
     dplyr::group_by(
       group = as.character(.data$strat_value),
       feature = .data$Variable, .data$feature_type
     ) |>
-    dplyr::summarise(importance = mean(.data$Importance), .groups = "drop")
+    dplyr::summarise(
+      signed = mean(.data$signed),
+      has_sign = all(.data$has_sign),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      importance = abs(.data$signed),
+      direction = dplyr::case_when(
+        !.data$has_sign ~ NA_character_,
+        .data$signed > 0 ~ "Resistant",
+        .data$signed < 0 ~ "Susceptible"
+      )
+    )
   if (!identical(top_n, "all")) {
     tbl <- tbl |>
-      dplyr::group_by(.data$group) |>
+      dplyr::group_by(.data$group, .data$feature_type) |>
       dplyr::slice_max(.data$importance, n = as.numeric(top_n), with_ties = FALSE) |>
       dplyr::ungroup()
   }
   tbl |>
-    dplyr::group_by(.data$group) |>
+    dplyr::group_by(.data$group, .data$feature_type) |>
     dplyr::mutate(importance = {
       top <- max(.data$importance)
       if (top > 0) .data$importance / top else rep(1, dplyr::n())
     }) |>
     dplyr::ungroup() |>
-    dplyr::select("feature", "feature_type", "group", "importance")
+    dplyr::select("feature", "feature_type", "group", "importance", "direction")
+}
+
+
+#' Holdout top-feature rows for the table beside the heatmap
+#'
+#' The rows behind holdoutFeatureTable(), one per model and feature, without
+#' the columns that the filter makes constant or that only identify the run
+#' (`task_id`, `shuffled`, `cross_test`, `strat_value_test`, `species_label`,
+#' `metadata_path`). `Sign` is shown as `direction` ("Resistant" or
+#' "Susceptible").
+#'
+#' @inheritParams holdoutFeatureTable
+#' @return A tibble, empty when nothing matches.
+#' @keywords internal
+#' @noRd
+holdoutFeatureRows <- function(top_data, bug, drug, cross_model) {
+  if (is.null(top_data) || !is.data.frame(top_data) || !nrow(top_data)) {
+    return(tibble::tibble())
+  }
+  df <- top_data |>
+    dplyr::filter(
+      normalize_species(.data$species) %in% normalize_species(bug),
+      .data$drug_or_class %in% .env$drug,
+      .data$strat_label %in% .holdout_strat(cross_model),
+      !.data$cross_test %in% TRUE
+    )
+  if ("Sign" %in% names(df)) {
+    df <- df |>
+      dplyr::mutate(Sign = dplyr::case_when(
+        .data$Sign == "NEG" ~ "Resistant",
+        .data$Sign == "POS" ~ "Susceptible"
+      )) |>
+      dplyr::rename(direction = "Sign")
+  }
+  df |>
+    dplyr::select(-dplyr::any_of(c(
+      "task_id", "shuffled", "cross_test", "strat_value_test",
+      "species_label", "metadata_path"
+    )))
 }
 
 
@@ -187,50 +355,93 @@ holdoutFeatureEmptyMessage <- function(drug, cross_model) {
 #' Holdout-model feature-importance heatmap
 #'
 #' Draws holdoutFeatureTable(): the top features of each group's holdout
-#' models, relative to each group's most important feature. Gray cells are
-#' features not among that group's top features.
+#' models for each feature type, relative to the most important feature of
+#' that group and type. Color shows direction (amber toward resistant, blue
+#' toward susceptible) and depth shows importance. Gray cells are features not
+#' among that group's top features.
 #'
 #' @param top_data Top-features tibble from loadTopFeat().
 #' @param bug Species code(s) to include.
 #' @param drug Drug/class identifier(s) to include.
 #' @param cross_model "country" or "time".
-#' @param top_n_features Number of features per stratum, or "all".
+#' @param top_n_features Number of features per stratum and feature type, or
+#'   "all".
 #' @param annotated_dir Currently unused; kept for call-site consistency.
+#' @param names Name lookups from holdoutNames(), for country names in the
+#'   hover text.
 #' @return A plotly heatmap, or NULL when there is nothing to plot.
 #' @keywords internal
 #' @noRd
 makeCrossModelFeatureImportancePlot <- function(
   top_data, bug, drug, cross_model, top_n_features,
-  annotated_dir = NULL
+  annotated_dir = NULL, names = holdoutNames(top_data)
 ) {
   tbl <- holdoutFeatureTable(top_data, bug, drug, cross_model, top_n_features)
   if (!nrow(tbl)) {
     return(NULL)
   }
-  # Feature rows in order of first appearance by group, so each group's top
-  # features sit together.
-  tbl <- tbl[order(tbl$group, -tbl$importance), ]
+  # Rows grouped by feature type, then by group, most important first, so each
+  # group's top features of each type sit together.
+  tbl <- tbl[order(tbl$feature_type, tbl$group, -tbl$importance), ]
   row_id <- paste0(tbl$feature, " (", tbl$feature_type, ")")
   rows <- unique(row_id)
   groups <- sort(unique(tbl$group))
-  mat <- matrix(NA_real_, length(rows), length(groups), dimnames = list(rows, groups))
-  mat[cbind(match(row_id, rows), match(tbl$group, groups))] <- tbl$importance
+  idx <- cbind(match(row_id, rows), match(tbl$group, groups))
+
+  signed <- any(!is.na(tbl$direction))
+  z <- matrix(NA_real_, length(rows), length(groups), dimnames = list(rows, groups))
+  z[idx] <- if (signed) {
+    ifelse(tbl$direction %in% "Susceptible", -tbl$importance, tbl$importance)
+  } else {
+    tbl$importance
+  }
+
+  group_label <- .holdout_label(tbl$group, .holdout_group_names(names, cross_model))
+  hover <- matrix(NA_character_, length(rows), length(groups))
+  hover[idx] <- paste0(
+    "<b>Feature:</b> ", row_id, "<br>",
+    "<b>Trained on:</b> ", group_label, "<br>",
+    "<b>Importance:</b> ", sprintf("%.2f", tbl$importance),
+    " of the top ", tbl$feature_type, " feature",
+    ifelse(is.na(tbl$direction), "",
+      paste0("<br><b>Points to:</b> ", tolower(tbl$direction))
+    )
+  )
+
+  # Fixed color range, so color shows importance relative to the top feature
+  # rather than stretching the lowest one shown to the palest color.
+  color <- if (signed) {
+    list(
+      colorscale = list(
+        c(0, PHENOTYPE_COLORS[["Susceptible"]]), c(0.5, "#f7f7f7"),
+        c(1, PHENOTYPE_COLORS[["Resistant"]])
+      ),
+      zmin = -1, zmax = 1,
+      colorbar = list(
+        title = "Importance<br>(relative to top<br>feature of its type)",
+        tickvals = c(-1, -0.5, 0, 0.5, 1),
+        ticktext = c("1 susceptible", "0.5", "0", "0.5", "1 resistant")
+      )
+    )
+  } else {
+    list(
+      colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
+      zmin = 0, zmax = 1,
+      colorbar = list(title = "Importance<br>(relative to top<br>feature of its type)")
+    )
+  }
 
   plotly::plot_ly(
     x = groups,
     y = rows,
-    z = mat,
+    z = z,
+    hovertext = hover,
     type = "heatmap",
-    # Fixed 0-1 color range, so color shows importance relative to the top
-    # feature rather than stretching the lowest one shown to the palest color.
-    colorscale = list(c(0, "#c8e8e8"), c(1, "#4e9a9a")),
-    zmin = 0, zmax = 1,
-    colorbar = list(title = "Importance\n(relative to\ntop feature)"),
-    hovertemplate = paste0(
-      "<b>Feature:</b> %{y}<br>",
-      "<b>Trained on:</b> %{x}<br>",
-      "<b>Importance:</b> %{z:.2f} of the top feature<extra></extra>"
-    )
+    colorscale = color$colorscale,
+    zmin = color$zmin, zmax = color$zmax,
+    colorbar = color$colorbar,
+    hoverongaps = FALSE,
+    hoverinfo = "text"
   ) |>
     plotly::layout(
       xaxis = list(title = "", tickangle = -45, side = "top"),
@@ -249,11 +460,14 @@ makeCrossModelFeatureImportancePlot <- function(
 #' @param perf_data Performance tibble from loadMLResults().
 #' @param bug Species code(s) to include.
 #' @param cross_model "country" or "time".
+#' @param names Name lookups from holdoutNames(), for drug class names in the
+#'   hover text.
 #' @return A horizontal plotly box plot (empty placeholder when there is no
 #'   matching data).
 #' @keywords internal
 #' @noRd
-makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
+makeCrossModelRidgePlot <- function(perf_data, bug, cross_model,
+                                    names = holdoutNames(perf_data)) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(plotly_placeholder("No data available"))
   }
@@ -277,6 +491,7 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
         type = "box",
         x = sub$value,
         y = sub$drug_class,
+        text = .holdout_label(sub$drug_class, names$drug),
         name = tt,
         orientation = "h",
         boxpoints = "all",
@@ -286,7 +501,7 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
         line = list(color = col),
         fillcolor = paste0(col, "44"),
         hovertemplate = paste0(
-          "<b>Drug class:</b> %{y}<br>",
+          "<b>Drug class:</b> %{text}<br>",
           "<b>", metric_title, ":</b> %{x:.3f}<br>",
           "<b>Test:</b> ", tt, "<extra></extra>"
         )
@@ -324,11 +539,14 @@ makeCrossModelRidgePlot <- function(perf_data, bug, cross_model) {
 #' @param bug Species code(s) to include.
 #' @param drug Drug/class identifier(s) to include.
 #' @param cross_model "country" or "time".
+#' @param names Name lookups from holdoutNames(), for country names in the
+#'   hover text.
 #' @return A plotly heatmap, or an empty placeholder plot (with an explanatory
 #'   title) when there is nothing to compare.
 #' @keywords internal
 #' @noRd
-makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
+makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model,
+                                          names = holdoutNames(perf_data)) {
   if (is.null(perf_data) || !is.data.frame(perf_data) || !nrow(perf_data)) {
     return(plotly_placeholder("No data available"))
   }
@@ -351,18 +569,25 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
   test <- sort(unique(tbl$test))
   idx <- cbind(match(tbl$test, test), match(tbl$train, train))
   value <- matrix(NA_real_, length(test), length(train), dimnames = list(test, train))
-  models <- value
   value[idx] <- tbl$value
-  models[idx] <- tbl$n_models
   # Cell labels, blank where there is no model (plotly would print 0.00).
   label <- ifelse(is.na(value), "", sprintf("%.2f", value))
   metric_title <- .HOLDOUT_METRIC_TITLE[[.HOLDOUT_METRIC]]
+
+  lookup <- .holdout_group_names(names, cross_model)
+  hover <- matrix(NA_character_, length(test), length(train))
+  hover[idx] <- paste0(
+    "<b>Train data:</b> ", .holdout_label(tbl$train, lookup), "<br>",
+    "<b>Test data:</b> ", .holdout_label(tbl$test, lookup), "<br>",
+    "<b>", metric_title, ":</b> ", sprintf("%.3f", tbl$value), "<br>",
+    "<b>Models:</b> ", tbl$n_models
+  )
 
   plotly::plot_ly(
     x = train,
     y = test,
     z = value,
-    customdata = models,
+    hovertext = hover,
     type = "heatmap",
     colorscale = list(
       c(0, "#f2f0f7"), c(0.25, "#cbc9e2"),
@@ -374,12 +599,8 @@ makeCrossModelPerformancePlot <- function(perf_data, bug, drug, cross_model) {
     text = label,
     texttemplate = "%{text}",
     colorbar = list(title = gsub(" ", "\n", metric_title)),
-    hovertemplate = paste0(
-      "<b>Train data:</b> %{x}<br>",
-      "<b>Test data:</b> %{y}<br>",
-      "<b>", metric_title, ":</b> %{z:.3f}<br>",
-      "<b>Models:</b> %{customdata}<extra></extra>"
-    )
+    hoverongaps = FALSE,
+    hoverinfo = "text"
   ) |>
     plotly::layout(
       title = list(

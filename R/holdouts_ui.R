@@ -110,8 +110,8 @@ crossModelComparisonUI <- function(id) {
                     style = "padding: 10px;",
                     shiny::sliderInput(
                       inputId = ns("cross_model_top_n_features"),
-                      label = "Top features",
-                      min = 0, max = 100, value = 10
+                      label = "Top features per feature type",
+                      min = 1, max = 50, value = 5
                     )
                   )
                 ),

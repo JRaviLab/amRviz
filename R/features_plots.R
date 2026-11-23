@@ -463,13 +463,16 @@ makeFeatureImportTable <- function(feature_import_table) {
     # "COG", "COG_name","COG_description", 
     # "ARG_name", "ARG_description",
     "Gene", "Annotation", "accession",
-    "feature_type", "feature_subtype", "Importance"
+    "feature_type", "feature_subtype", "Importance", "direction"
   )
   existing <- intersect(cols_priority, names(feature_import_table))
 
+  # Scientific notation for fractional numbers only; whole numbers such as
+  # seeds stay as they are.
+  fractional <- function(x) is.numeric(x) && any(x != round(x), na.rm = TRUE)
   feature_import_table <- feature_import_table |>
     dplyr::mutate(
-      dplyr::across(where(is.numeric), ~ formatC(.x, format = "e", digits = 3))
+      dplyr::across(where(fractional), ~ formatC(.x, format = "e", digits = 3))
     ) |>
     # dplyr::mutate(dplyr::across(
     #   dplyr::any_of("ARG_name"),
