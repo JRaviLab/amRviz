@@ -51,7 +51,7 @@ networkServer <- function(id, core, results_root = NULL) {
     })
 
     output$network_rescoring_note <- shiny::renderUI({
-      if (identical(input$network_rescored, "yes") && is.null(core$rescoring())) {
+      if (identical(input$network_rescored, "yes") && !use_rescoring()) {
         shiny::tags$span(
           "The selected runs have no rescoring.",
           style = "font-size: 12px; color: #a33b52;"
