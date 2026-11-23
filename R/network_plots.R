@@ -509,6 +509,9 @@ function(el, x) {
   try {
     var d3 = window.d3;
     if (!d3 || !d3.symbol) { return; }
+    var svg = d3.select(el).select('svg');
+    svg.property('__zoom', d3.zoomIdentity);
+    svg.select('.zoom-layer').attr('transform', d3.zoomIdentity);
     var shapeMap = {
       'drug': d3.symbolDiamond,
       'drugs/drug classes': d3.symbolDiamond,
