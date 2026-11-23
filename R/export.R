@@ -284,7 +284,10 @@
 .exportPlanSpecs <- function(perf_data, top_features,
                              ml_species, meta_species,
                              results_root, amrdata_root,
-                             top_n_features = 10, network_top_n = 5) {
+                             top_n_features = 10, network_top_n = 5,
+                             network_view = "feature", network_show_features = FALSE,
+                             rescoring = NULL, network_thresholds = list(),
+                             network_feature_types = NULL, network_weighted_edges = TRUE) {
   specs <- list()
   add <- function(group, name, build,
                   width = NULL, height = NULL, trim = FALSE) {
@@ -449,7 +452,10 @@
         makeDrugFeatureNetwork(
           top_features, code,
           top_n = network_top_n,
-          include_dyads = FALSE
+          include_dyads = FALSE, view = network_view,
+          show_features = network_show_features, rescoring = rescoring,
+          thresholds = utils::modifyList(rescoringAll(), network_thresholds),
+          feature_types = network_feature_types, weighted_edges = network_weighted_edges
         ) |> .fit_network_to_content()
       }, width = 1600, height = 1600, trim = TRUE)
     })
@@ -541,6 +547,20 @@
 #'     network_top_n = 10
 #'   )
 #' }
+#' @param network_view Network view: `"feature"` (default) or `"dyad"`.
+#' @param network_show_features Also show contributing features in dyad view.
+#' @param network_rescored Use saved rescoring for network figures. Requires
+#'   selected runs to actually have rescoring; FALSE uses raw feature importance.
+#' @param network_thresholds Named list of rescoring filter overrides, such as
+#'   `list(delta_mcc = 0.75, quantile = 0.75, dyad_rank_score = 0.8)`.
+#'   Unspecified thresholds use the Network tab's initial values.
+#' @param network_feature_types Feature types to include in the network;
+#'   NULL includes all. Uses internal names such as `"args"`, `"cogs"`,
+#'   `"domains"`, `"genes"`, `"proteins"`, and `"struct"`.
+#'   In dyad view this controls extra feature nodes only, leaving drug-dyad
+#'   associations and support counts unchanged.
+#' @param network_weighted_edges Vary network edge thickness by score.
+#'   FALSE uses a uniform width without changing the scores or colors.
 exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     formats = c("png", "pdf"),
                                     results_root = NULL,
@@ -552,7 +572,22 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     height = 800,
                                     scale = 2,
                                     delay = 1.5,
-                                    verbose = TRUE) {
+                                    verbose = TRUE,
+                                    network_view = c("feature", "dyad"),
+                                    network_show_features = FALSE,
+                                    network_rescored = FALSE,
+                                    network_thresholds = list(delta_mcc = 0.75, 
+                                                              quantile = 0.75, 
+                                                              dyad_rank_score = 0.8),
+                                    network_feature_types = NULL,
+                                    network_weighted_edges = TRUE) {
+  network_view <- match.arg(network_view)
+  for (nm in c("network_show_features", "network_rescored", "network_weighted_edges")) {
+    value <- get(nm)
+    if (!is.logical(value) || length(value) != 1 || is.na(value)) {
+      stop("`", nm, "` must be TRUE or FALSE.", call. = FALSE)
+    }
+  }
   # Validate dependencies up front with actionable messages.
   for (pkg in c("htmlwidgets", "webshot2", "chromote", "magick")) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -615,6 +650,12 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
   }
   perf_data <- loadMLResults(results_root, result_dirs, verbose = verbose)
   top_features <- loadTopFeat(results_root, result_dirs, verbose = verbose)
+  rescoring <- if (network_rescored) {
+    loadRescoring(results_root, result_dirs, verbose = verbose)
+  }
+  if (network_rescored && is.null(rescoring)) {
+    stop("The selected runs have no rescoring for network export.", call. = FALSE)
+  }
 
   # ML species: (code, folder label) pairs, excluding cross/MDR pseudo-species.
   ml_species <- list(code = character(0), label = character(0))
@@ -664,7 +705,10 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
   specs <- .exportPlanSpecs(
     perf_data, top_features, ml_species, meta_species,
     results_root, amrdata_root,
-    top_n_features = top_n_features, network_top_n = network_top_n
+    top_n_features = top_n_features, network_top_n = network_top_n,
+    network_view = network_view, network_show_features = network_show_features,
+    rescoring = rescoring, network_thresholds = network_thresholds,
+    network_feature_types = network_feature_types, network_weighted_edges = network_weighted_edges
   )
 
   if (!dir.exists(output_dir)) {

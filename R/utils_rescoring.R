@@ -24,11 +24,11 @@
 # and the prefixes a dyad's `variables_csv` gives them.
 .RESCORING_TYPES <- c(
   AMRFinder = "args", COG = "cogs", Pfam = "domains",
-  gene = "genes", protein = "proteins"
+  gene = "genes", protein = "proteins", DefenseCas = "DefenseCas"
 )
 .RESCORING_PREFIXES <- c(
   amr = "args", cog = "cogs", pfam = "domains",
-  gene = "genes", protein = "proteins"
+  gene = "genes", protein = "proteins", defense = "DefenseCas"
 )
 
 

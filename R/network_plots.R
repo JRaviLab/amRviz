@@ -38,6 +38,14 @@
 #' @param bug Species code.
 #' @param top_n Number of top features per feature type, per drug or drug class.
 #' @param include_dyads Add dyad nodes when TRUE and the ORB has dyads.
+#' @param view Draw drug-to-feature or direct drug-to-dyad associations.
+#'   Default keeps the existing feature view.
+#' @param show_features Also show contributing features in dyad view.
+#' @param rescoring Optional list from loadRescoring(); NULL uses raw features.
+#' @param thresholds Rescoring filters, as from rescoringDefaults().
+#' @param feature_types Feature types to include; NULL keeps all, character(0)
+#'   keeps none. In dyad view, selects only the extra feature nodes;
+#'   drug-dyad associations and support counts are unchanged.
 #' @return A list of `nodes` (`id`, unique across node types (a drug's starts
 #'   with its unit, "drug" or "drug_class"), `label`, `group`:
 #'   "drug", a feature type, or "dyad", `key`: the ID shown on hover, and `info`:
@@ -46,7 +54,16 @@
 #'   that has none), or NULL when there is nothing to draw.
 #' @keywords internal
 #' @noRd
-networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
+networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE,
+                          view = c("feature", "dyad"), show_features = FALSE,
+                          rescoring = NULL, thresholds = rescoringDefaults(),
+                          feature_types = NULL) {
+  view <- match.arg(view)
+  if (!is.null(rescoring)) {
+    return(networkTablesRescored(rescoring, bug, top_n, include_dyads,
+                                 thresholds, view = view, show_features = show_features,
+                                 feature_types = feature_types))
+  }
   if (is.null(top_data) || !is.data.frame(top_data) || !nrow(top_data)) {
     return(NULL)
   }
@@ -58,6 +75,7 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
     dplyr::filter(!.data$cross_test %in% TRUE) |>
     dplyr::filter(!is.na(.data$Variable), !is.na(.data$drug_or_class)) |>
     dplyr::mutate(Variable = .network_feature_name(.data$feature_type, .data$Variable))
+  if (view == "feature" && !is.null(feature_types)) df <- dplyr::filter(df, .data$feature_type %in% feature_types)
   if (!nrow(df)) {
     return(NULL)
   }
@@ -101,7 +119,7 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
 
   # Dyads: each shown feature to the dyads it belongs to, in the ORB.
   dyad_hits <- NULL
-  if (include_dyads && length(orb_dirs)) {
+  if ((include_dyads || view == "dyad") && length(orb_dirs)) {
     dyads <- load_dyad_links(orb_dirs)
     if (!is.null(dyads)) {
       dyads$feature <- .network_feature_name(dyads$feature_type, dyads$feature)
@@ -117,7 +135,9 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
         )
     }
   }
-  .network_assemble(top, dyad_hits, orb_dirs, metadata_paths)
+  net <- .network_assemble(top, dyad_hits, orb_dirs, metadata_paths)
+  if (view == "dyad") .network_dyad_view(net, top, dyad_hits, show_features,
+                                        feature_types = feature_types) else net
 }
 
 
@@ -199,18 +219,28 @@ networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE) {
 #' @param top_n Number of top features per feature type, per drug or drug class.
 #' @param include_dyads Add dyad nodes when TRUE.
 #' @param thresholds A list as from rescoringDefaults().
+#' @param view Network view: features or direct drug-to-dyad associations.
+#' @param show_features Add the selected features through their dyads.
+#' @param feature_types Feature types to include, as for networkTables().
 #' @return The list described in networkTables(), or NULL when nothing passes.
 #' @keywords internal
 #' @noRd
 networkTablesRescored <- function(rescoring, bug, top_n = 10,
                                   include_dyads = FALSE,
-                                  thresholds = rescoringDefaults()) {
+                                  thresholds = rescoringDefaults(),
+                                  view = c("feature", "dyad"), show_features = FALSE,
+                                  feature_types = NULL) {
+  view <- match.arg(view)
   # Only features from model fits that pass the performance thresholds.
   models <- rescoredModels(rescoring$models, bug, thresholds)
   features <- rescoredFeatures(
     rescoring$features, bug, thresholds,
     models = if (!is.null(rescoring$models) && nrow(rescoring$models)) models
   )
+  if (view == "feature" && !is.null(feature_types)) {
+    features <- dplyr::filter(features, .data$feature_type %in% feature_types)
+    if (nrow(models)) models <- dplyr::filter(models, .data$feature_type %in% feature_types)
+  }
   if (!nrow(features)) {
     return(NULL)
   }
@@ -239,7 +269,7 @@ networkTablesRescored <- function(rescoring, bug, top_n = 10,
     )]
   )
   dyad_hits <- NULL
-  if (include_dyads) {
+  if (include_dyads || view == "dyad") {
     reached <- rescoredDyads(rescoring$dyads, top, thresholds)
     if (nrow(reached)) {
       # Name a dyad by its ID in the ORB where it is there, else as rescored.
@@ -253,6 +283,7 @@ networkTablesRescored <- function(rescoring, bug, top_n = 10,
       name <- gsub("...", "~~~", reached$dyad, fixed = TRUE)
       id <- unname(known[name])
       dyad_hits <- tibble::tibble(
+        drug_label = reached$drug_label, drug_or_class = reached$drug_or_class,
         feature_type = reached$feature_type, Variable = reached$Variable,
         dyad_key = ifelse(is.na(id), name, as.character(id)),
         dyad_label = paste("Dyad", ifelse(is.na(id), name, id))
@@ -264,7 +295,85 @@ networkTablesRescored <- function(rescoring, bug, top_n = 10,
       ))
     }
   }
-  .network_assemble(top, dyad_hits, orb_dirs, metadata_paths, scores)
+  net <- .network_assemble(top, dyad_hits, orb_dirs, metadata_paths, scores)
+  if (view == "dyad") {
+    .network_dyad_view(net, top, dyad_hits, show_features, scores$dyads, feature_types)
+  } else net
+}
+
+
+# Show a simplified graph of drug -> dyad + optionally -> features
+.network_dyad_view <- function(net, top, hits, show_features, scores = NULL,
+                               feature_types = NULL) {
+  if (is.null(hits) || !nrow(hits)) return(NULL)
+  keys <- c("drug_label", "drug_or_class", "feature_type", "Variable")
+  if (all(c("drug_label", "drug_or_class") %in% names(hits))) {
+    hits <- dplyr::inner_join(hits, top[c(keys, "importance", "sign")], by = keys)
+  } else {
+    hits <- dplyr::inner_join(
+      hits, top[c(keys, "importance", "sign")], by = c("feature_type", "Variable")
+    )
+  }
+  # Counting R/S association.
+  ### One vote per typed feature, regardless of duplicates
+  hits <- dplyr::distinct(hits, .data$drug_label, .data$drug_or_class,
+    .data$dyad_key, .data$feature_type, .data$Variable, .keep_all = TRUE)
+  associations <- hits |>
+    dplyr::group_by(.data$drug_label, .data$drug_or_class, .data$dyad_key) |>
+    dplyr::summarise(
+      features = paste(sort(unique(paste0(.data$feature_type, ":", .data$Variable))), collapse = ", "),
+      n_r = sum(.data$sign %in% "NEG"),
+      n_s = sum(.data$sign %in% "POS"),
+      n_mixed = sum(.data$sign %in% "MIXED"),
+      n_unknown = sum(!.data$sign %in% c("NEG", "POS", "MIXED")),
+      importance = max(.data$importance), .groups = "drop"
+    ) |>
+    dplyr::mutate(sign = dplyr::case_when(
+      .data$n_r > .data$n_s ~ "NEG",
+      .data$n_s > .data$n_r ~ "POS",
+      TRUE ~ NA_character_
+    ))
+  if (!is.null(scores)) {
+    associations <- dplyr::left_join(
+      associations, scores[c("drug_label", "drug_or_class", "dyad_key", "contribution")],
+      by = c("drug_label", "drug_or_class", "dyad_key")
+    ) |>
+      dplyr::mutate(importance = pmax(.data$contribution * 10, 0.25))
+  }
+  net$links <- associations |>
+    dplyr::transmute(
+      from = paste0(.data$drug_label, ":", .data$drug_or_class),
+      to = paste0("dyad:", .data$dyad_key), .data$importance,
+      .data$sign, .data$features, .data$n_r, .data$n_s,
+      .data$n_mixed, .data$n_unknown
+    ) |>
+    dplyr::distinct()
+  if (show_features) {
+    shown <- if (is.null(feature_types)) hits else dplyr::filter(hits, .data$feature_type %in% feature_types)
+    net$links <- dplyr::bind_rows(net$links, shown |>
+      dplyr::transmute(
+        from = paste0("dyad:", .data$dyad_key),
+        to = paste0(.data$feature_type, ":", .data$Variable),
+        importance = 0.5, sign = NA_character_, features = NA_character_
+      ) |>
+      dplyr::distinct())
+  }
+  net$nodes <- net$nodes[net$nodes$id %in% c(net$links$from, net$links$to), ]
+  for (i in which(net$nodes$group == "dyad")) {
+    a <- associations[associations$dyad_key == net$nodes$key[i], ]
+    target <- paste0(a$drug_or_class, ifelse(a$drug_label == "drug_class", " (class)", ""))
+    lines <- htmltools::htmlEscape(paste0(target, ": ", a$features))
+    support <- vapply(seq_len(nrow(a)), function(j) {
+      counts <- c(R = a$n_r[j], S = a$n_s[j], mixed = a$n_mixed[j], unknown = a$n_unknown[j])
+      counts <- counts[counts > 0]
+      paste0(target[j], ": ", paste(counts, names(counts), collapse = ", "))
+    }, character(1))
+    support <- htmltools::htmlEscape(support)
+    net$nodes$info[i] <- paste0(net$nodes$info[i],
+      "<br><b>Support by drug:</b><br>", paste(support, collapse = "<br>"),
+      "<br><b>Features by drug:</b><br>", paste(lines, collapse = "<br>"))
+  }
+  net
 }
 
 
@@ -277,24 +386,30 @@ networkTablesRescored <- function(rescoring, bug, top_n = 10,
 #' @param rescoring A list from loadRescoring(); when given, the network draws
 #'   the rescored features and dyads instead of `top_data`.
 #' @param thresholds Thresholds for the rescoring, as from rescoringDefaults().
+#' @param view,show_features As for networkTables().
+#' @param feature_types Feature types to include, as for networkTables().
+#' @param weighted_edges Vary edge thickness by importance/contribution;
+#'   FALSE draws every edge at the same width without changing the scores.
 #' @return A `networkD3` forceNetwork widget, or NULL when there is nothing to
 #'   plot.
 #' @keywords internal
 #' @noRd
 makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
                                    include_dyads = FALSE, rescoring = NULL,
-                                   thresholds = rescoringDefaults()) {
+                                   thresholds = rescoringDefaults(),
+                                   view = c("feature", "dyad"), show_features = FALSE,
+                                   feature_types = NULL, weighted_edges = TRUE) {
   if (!requireNamespace("networkD3", quietly = TRUE)) {
     stop(
       "Package 'networkD3' is required. ",
       "Install it with install.packages('networkD3')."
     )
   }
-  net <- if (is.null(rescoring)) {
-    networkTables(top_data, bug, top_n, include_dyads)
-  } else {
-    networkTablesRescored(rescoring, bug, top_n, include_dyads, thresholds)
-  }
+  view <- match.arg(view)
+  net <- networkTables(top_data, bug, top_n, include_dyads,
+                       view = view, show_features = show_features,
+                       rescoring = rescoring, thresholds = thresholds,
+                       feature_types = feature_types)
   if (is.null(net)) {
     return(NULL)
   }
@@ -306,16 +421,17 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     target = match(net$links$to, nodes$id) - 1,
     value = net$links$importance
   )
-  # A link is coloured by the sign of the feature's importance for the drug;
-  # links to dyads have no sign.
+  # Feature edges use their sign, direct dyad edge uses R/S majority in case of
+  # split evidence. Membership edges and dyad ties have no sign
   sign_colors <- .network_sign_colors()
   link_colour <- unname(sign_colors[net$links$sign])
   link_colour[is.na(link_colour)] <- .NETWORK_NO_SIGN_COLOR
-  # One legend entry per kind of link drawn.
+  # One legend entry per link type
   legend_rows <- list(
-    POS = c("Toward susceptibility", sign_colors[["POS"]]),
-    NEG = c("Toward resistance", sign_colors[["NEG"]]),
-    none = c("Feature in a dyad", .NETWORK_NO_SIGN_COLOR)
+    POS = c(if (view == "dyad") "Majority towards susceptibility" else "Towards susceptibility", sign_colors[["POS"]]),
+    NEG = c(if (view == "dyad") "Majority towards resistance" else "Towards resistance", sign_colors[["NEG"]]),
+    none = c(if (view == "dyad") "No majority / NA" else "Feature in a dyad",
+             .NETWORK_NO_SIGN_COLOR)
   )
   present <- c(
     POS = "POS" %in% net$links$sign, NEG = "NEG" %in% net$links$sign,
@@ -345,6 +461,11 @@ makeDrugFeatureNetwork <- function(top_data, bug, top_n = 10,
     Group = "group",
     colourScale = networkD3::JS(color_scale),
     linkColour = link_colour,
+    linkWidth = networkD3::JS(if (weighted_edges) {
+      "function(d) { return Math.sqrt(d.value); }"
+    } else {
+      "function(d) { return 1.5; }"
+    }),
     opacity = 0.9,
     zoom = TRUE,
     fontSize = 13,
@@ -477,7 +598,7 @@ makeFeatureEgoNetwork <- function(enriched_tbl, variable) {
 # How the widget's legend names the node groups, where it isn't the group's
 # own name.
 .NETWORK_GROUP_LABELS <- c(
-  drug = "drugs/drug classes", args = "AMRFinder", cogs = "COGs"
+  drug = "drugs/drug classes", args = "AMRFinder", cogs = "COGs", DefenseCas = "Defense/Cas"
 )
 
 #' Legend names for node groups

@@ -20,17 +20,34 @@ networkServer <- function(id, core, results_root = NULL) {
       )
     })
 
-    # The dyad rank score only means something while dyads are shown.
-    shiny::observe({
-      shinyjs::toggleState(
-        "network_resc_dyad",
-        condition = isTRUE(input$network_include_dyads)
-      )
-    })
-
     # Rescored features are drawn when asked for and the run has them.
     use_rescoring <- shiny::reactive({
-      identical(input$network_rescored, "yes") && !is.null(core$rescoring())
+      if (!identical(input$network_rescored, "yes")) return(FALSE)
+      resc <- core$rescoring()
+      !is.null(resc) && any(normalize_species(resc$features[["species"]]) %in%
+                             normalize_species(input$network_bug_id))
+    })
+    dyad_view <- shiny::reactive({
+      use_rescoring() && identical(input$network_view, "dyads")
+    })
+
+    # Keep disabled controls' selections, enable controls that still apply
+    shiny::observe({
+      rescored <- use_rescoring()
+      features_visible <- !dyad_view() || isTRUE(input$network_dyad_features)
+      shinyjs::toggleState("network_include_dyads", condition = !dyad_view())
+      shinyjs::toggleClass("network_include_dyads_hint", "text-muted", condition = dyad_view())
+      shinyjs::toggleState("network_feature_types", condition = features_visible)
+      shinyjs::toggleClass("network_feature_types_panel", "text-muted", condition = !features_visible)
+      for (id in c("network_view", "network_resc_quantile", "network_resc_both")) {
+        shinyjs::toggleState(id, condition = rescored)
+      }
+      shinyjs::toggleState("network_dyad_features", condition = dyad_view())
+      shinyjs::toggleState("network_resc_dyad", condition = rescored &&
+                            (dyad_view() || isTRUE(input$network_include_dyads)))
+      has_models <- rescored && any(normalize_species(core$rescoring()$models[["species"]]) %in%
+                                     normalize_species(input$network_bug_id))
+      shinyjs::toggleState("network_resc_delta", condition = has_models)
     })
 
     output$network_rescoring_note <- shiny::renderUI({
@@ -44,6 +61,8 @@ networkServer <- function(id, core, results_root = NULL) {
 
     output$drug_feature_network <- networkD3::renderForceNetwork({
       shiny::req(input$network_bug_id, input$network_top_n)
+      if (!dyad_view()) shiny::validate(shiny::need(length(input$network_feature_types) > 0,
+                                                   "Please select at least one feature type."))
       if (use_rescoring()) {
         shiny::req(
           input$network_resc_delta, input$network_resc_quantile,
@@ -55,6 +74,10 @@ networkServer <- function(id, core, results_root = NULL) {
           top_n = input$network_top_n,
           include_dyads = isTRUE(input$network_include_dyads),
           rescoring = core$rescoring(),
+          view = if (identical(input$network_view, "dyads")) "dyad" else "feature",
+          show_features = isTRUE(input$network_dyad_features),
+          feature_types = input$network_feature_types %||% character(),
+          weighted_edges = isTRUE(input$network_weighted_edges),
           # One slider per category, and the subtype check; the rest keep everything.
           thresholds = utils::modifyList(rescoringAll(), list(
             delta_mcc = input$network_resc_delta,
@@ -68,7 +91,9 @@ networkServer <- function(id, core, results_root = NULL) {
           core$topFeatures(),
           input$network_bug_id,
           top_n = input$network_top_n,
-          include_dyads = isTRUE(input$network_include_dyads)
+          include_dyads = isTRUE(input$network_include_dyads),
+          feature_types = input$network_feature_types %||% character(),
+          weighted_edges = isTRUE(input$network_weighted_edges)
         )
       }
     })

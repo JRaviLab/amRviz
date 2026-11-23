@@ -48,17 +48,38 @@ networkUI <- function(id) {
         shiny::column(
           width = 3,
           style = "padding: 10px;",
-          shiny::checkboxInput(
-            inputId = ns("network_include_dyads"),
-            label = "Show dyads",
-            value = FALSE
+          # Tell people why they can't use the dyad toggle when dyads are already forced on
+          shiny::tags$div(
+            id = ns("network_include_dyads_hint"),
+            title = "Switch to 'Drugs \u2192 features' to use this option.",
+            shiny::checkboxInput(
+              inputId = ns("network_include_dyads"),
+              label = "Show dyads",
+              value = FALSE
+            )
           ),
           shiny::tags$span(
-            paste(
-              "A dyad pairs a protein with its gene.",
-              "Adds the dyads each feature belongs to, from the ORB."
-            ),
+            "Dyads pair proteins with genes.",
             style = "font-size: 11px; color: #666;"
+          )
+        ),
+        shiny::column(
+          width = 3,
+          style = "padding: 10px;",
+          shiny::checkboxInput(ns("network_weighted_edges"), "Weight edges by importance", TRUE),
+          shiny::tags$details(
+            id = ns("network_feature_types_panel"),
+            title = "In dyad view, enable 'Show connected features' to change feature types.",
+            class = "network-feature-toggle",
+            shiny::tags$summary("Toggle feature types"),
+            shiny::checkboxGroupInput(
+              ns("network_feature_types"), label = NULL,
+              choices = c("AMRFinder" = "args", "COGs" = "cogs", "Pfam" = "domains",
+                          "Genes" = "genes", "Proteins" = "proteins", "Defense/Cas" = "DefenseCas",
+                          "Structural" = "struct"),
+              selected = names(SCALE_COLORS)
+            ),
+            shiny::tags$small("Select feature nodes.")
           )
         )
         # ,
@@ -92,8 +113,23 @@ networkUI <- function(id) {
           ),
           shiny::uiOutput(ns("network_rescoring_note")),
           shiny::tags$span(
-            "Uses amRml's rescoring across seeds, from the run's results/rescoring.",
+            "Uses scores across model seeds.",
             style = "font-size: 11px; color: #666;"
+          ),
+          shiny::conditionalPanel(
+            condition = "input.network_rescored == 'yes'", ns = ns,
+            shiny::radioButtons(
+              ns("network_view"), "Network view",
+              choices = c("Drugs \u2192 features" = "features", "Drugs \u2192 dyads" = "dyads"),
+              selected = "dyads"
+            ),
+            shiny::conditionalPanel(
+              condition = "input.network_view == 'dyads'", ns = ns,
+              shiny::checkboxInput(
+                ns("network_dyad_features"), "Show connected features", FALSE
+              ),
+              shiny::tags$small("Color: Res/Sus majority. Weight: dyad contribution.")
+            )
           )
         ),
         shiny::conditionalPanel(
@@ -133,12 +169,7 @@ networkUI <- function(id) {
               min = 0, max = 1, value = rescoringAll()$quantile, step = 0.01
             ),
             shiny::tags$span(
-              paste(
-                "Rank score is a feature's importance rank within a model, from",
-                "0 (least) to 1 (most), as the median across seeds. A feature",
-                "must reach this quantile of its drug's rank scores: 0.75 keeps",
-                "the top quarter."
-              ),
+              "0.75 keeps the top quarter by rank score.",
               style = "font-size: 11px; color: #666;"
             ),
             shiny::checkboxInput(
@@ -166,7 +197,7 @@ networkUI <- function(id) {
               step = 0.01
             ),
             shiny::tags$span(
-              "Only applies when Show dyads is on.",
+              "Applies in the dyad view or when Show dyads is on.",
               style = "font-size: 11px; color: #666;"
             )
           )
@@ -211,6 +242,10 @@ networkUI <- function(id) {
     ), group, bar, dark)
   }
   paste(
+    ".network-feature-toggle > summary { list-style: none; cursor: pointer; font-weight: 600; }",
+    ".network-feature-toggle > summary::-webkit-details-marker { display: none; }",
+    ".network-feature-toggle > summary::before { content: '\\25B6'; display: inline-block; margin-right: 6px; }",
+    ".network-feature-toggle[open] > summary::before { content: '\\25BC'; }",
     one("network-sliders-grey", "#a8a8a8", "#7a7a7a"),
     one("network-sliders-green", "#8ccf4a", .NETWORK_DYAD_COLOR)
   )
