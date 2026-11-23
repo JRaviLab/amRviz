@@ -26,35 +26,34 @@
 }
 
 
-#' Feature-importance heatmap across species or drugs
+#' The heatmap's grouping column for a view
+#' @param feature_importance_tabset "across_bug" or "across_drug".
+#' @keywords internal
+#' @noRd
+.feature_group_column <- function(feature_importance_tabset) {
+  if (identical(feature_importance_tabset, "across_drug")) "drug_or_class" else "species"
+}
+
+
+#' Top-feature rows of the Features tab's selection
 #'
-#' Heatmap of top features across bugs (across_bug) or drugs (across_drug),
-#' relative to each group's most important feature. Feature labels come from an
-#' annotation join when available, otherwise the raw Variable id. Uses the amRml
-#' columns drug_or_class, feature_subtype (encoding), feature_type (scale), and
-#' strat_label (NA for baseline).
+#' Baseline models only: no country or year stratification, and not
+#' cross-tested. Rows are enriched with annotations, and labeled by
+#' `cluster_name` (the feature ID when there are no annotations).
 #'
 #' @param data Top-features tibble from loadTopFeat() / topFeatures().
 #' @param bug Species code(s) to include.
 #' @param amr_drug Drug/class identifier(s) to include.
 #' @param model_scale Molecular scale (feature_type) to include.
 #' @param data_type_ Data encoding(s) (feature_subtype) to include.
-#' @param top_n_features Number of features per group, or "all".
-#' @param feature_importance_tabset "across_bug" or "across_drug".
-#' @param annotated_dir Optional directory of annotated parquet files.
-#' @param amrdata_root,results_root Optional roots for the name-map lookup.
-#' @return A plotly heatmap, or NULL when there is nothing to plot.
+#' @param results_root Optional results root for the annotation lookup.
+#' @return The rows, one per model and feature; an empty tibble when none match.
 #' @keywords internal
 #' @noRd
-makeFeatureImportancePlot <- function(
-  data, bug, amr_drug, model_scale, data_type_,
-  top_n_features, feature_importance_tabset,
-  annotated_dir = NULL,
-  amrdata_root = NULL,
-  results_root = NULL
-) {
+.feature_rows <- function(data, bug, amr_drug, model_scale, data_type_,
+                          results_root = NULL) {
   if (is.null(data) || !is.data.frame(data) || !nrow(data)) {
-    return(NULL)
+    return(tibble::tibble())
   }
 
   # Map UI scale label to singular for annotated file matching
@@ -65,11 +64,6 @@ makeFeatureImportancePlot <- function(
     TRUE ~ model_scale
   )
 
-  top_n_features <- ifelse(
-    identical(top_n_features, "all"), "all",
-    as.numeric(top_n_features)
-  )
-
   bug_norm <- normalize_species(bug)
 
   # Filter top features using new amRml column names:
@@ -77,6 +71,7 @@ makeFeatureImportancePlot <- function(
   #   feature_subtype = encoding (binary/counts)
   #   drug_or_class = drug/class abbreviation
   #   strat_label   = NA for baseline (no country/year stratification)
+  #   cross_test    = TRUE for models tested on another drug, left out
   top_features_df <- data |>
     dplyr::mutate(species = normalize_species(.data$species)) |>
     dplyr::filter(.data$species %in% bug_norm) |>
@@ -84,16 +79,13 @@ makeFeatureImportancePlot <- function(
     dplyr::filter(.data$feature_type %in% model_scale) |>
     dplyr::filter(.data$feature_subtype %in% data_type_) |>
     dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
-
-  if (!nrow(top_features_df)) {
-    return(NULL)
+  if ("cross_test" %in% names(top_features_df)) {
+    top_features_df <- dplyr::filter(top_features_df, !.data$cross_test %in% TRUE)
   }
 
-  # group column: across_bug groups by species; across_drug by drug_or_class
-  group_column <- dplyr::case_when(
-    feature_importance_tabset == "across_drug" ~ "drug_or_class",
-    feature_importance_tabset == "across_bug" ~ "species"
-  )
+  if (!nrow(top_features_df)) {
+    return(tibble::tibble())
+  }
 
   # TODO(HMMER PR): restore COG/ARG annotation join once cross-scale features
   # land. Attempt to load annotated files for COG name lookup
@@ -205,8 +197,25 @@ makeFeatureImportancePlot <- function(
   if (!"cluster_name" %in% names(top_features_df)) {
     top_features_df$cluster_name <- top_features_df$Variable
   }
-  top_features_df <- top_features_df |>
-    dplyr::filter(!is.na(.data$cluster_name)) |>
+  dplyr::filter(top_features_df, !is.na(.data$cluster_name))
+}
+
+
+#' The heatmap's table, from .feature_rows()
+#'
+#' @param rows Output of .feature_rows().
+#' @param group_column "species" or "drug_or_class".
+#' @param top_n_features Number of features per group, or "all".
+#' @keywords internal
+#' @noRd
+.feature_table <- function(rows, group_column, top_n_features) {
+  if (!nrow(rows)) {
+    out <- tibble::tibble(
+      group = character(0), cluster_name = character(0), Importance = numeric(0)
+    )
+    return(dplyr::rename(out, !!group_column := "group"))
+  }
+  top_features_df <- rows |>
     dplyr::group_by(!!rlang::sym(group_column), .data$cluster_name) |>
     dplyr::summarize(Importance = max(.data$Importance, na.rm = TRUE), .groups = "drop")
 
@@ -225,10 +234,100 @@ makeFeatureImportancePlot <- function(
   if (!identical(top_n_features, "all")) {
     top_features_df <- top_features_df |>
       dplyr::group_by(!!rlang::sym(group_column)) |>
-      dplyr::slice_max(order_by = .data$Importance, n = top_n_features) |>
+      dplyr::slice_max(order_by = .data$Importance, n = as.numeric(top_n_features)) |>
       dplyr::ungroup()
   }
+  top_features_df
+}
 
+
+#' Top features the Features tab's heatmap draws
+#'
+#' Each feature's highest importance in each group (species for "across_bug",
+#' drug or class for "across_drug"), relative to the group's most important
+#' feature, then the `top_n_features` of each group.
+#'
+#' @inheritParams .feature_rows
+#' @param top_n_features Number of features per group, or "all".
+#' @param feature_importance_tabset "across_bug" or "across_drug".
+#' @return A tibble with the group column (`species` or `drug_or_class`),
+#'   `cluster_name` and `Importance`; empty when nothing matches.
+#' @keywords internal
+#' @noRd
+featureImportanceTable <- function(data, bug, amr_drug, model_scale, data_type_,
+                                   top_n_features, feature_importance_tabset,
+                                   results_root = NULL) {
+  .feature_table(
+    .feature_rows(data, bug, amr_drug, model_scale, data_type_, results_root),
+    .feature_group_column(feature_importance_tabset),
+    top_n_features
+  )
+}
+
+
+#' Model rows behind the Features tab's heatmap, for the table under it
+#'
+#' The rows of each feature the heatmap shows, one per model, so the table
+#' follows every control the heatmap does. Columns that only identify the run
+#' or are the same on every row after the filter are left out (`task_id`,
+#' `shuffled`, `strat_label`, `strat_value`, `strat_value_test`, `cross_test`,
+#' `species_label`, `metadata_path`), and drugs and classes are named in full,
+#' as "gentamicin (GEN)".
+#'
+#' @inheritParams featureImportanceTable
+#' @param names Name lookups from amrNames().
+#' @return A tibble, empty when nothing matches.
+#' @keywords internal
+#' @noRd
+featureImportanceRows <- function(data, bug, amr_drug, model_scale, data_type_,
+                                  top_n_features, feature_importance_tabset,
+                                  results_root = NULL, names = amrNames(data)) {
+  rows <- .feature_rows(data, bug, amr_drug, model_scale, data_type_, results_root)
+  if (!nrow(rows)) {
+    return(rows)
+  }
+  group_column <- .feature_group_column(feature_importance_tabset)
+  shown <- .feature_table(rows, group_column, top_n_features)
+  rows <- dplyr::semi_join(rows, shown, by = c(group_column, "cluster_name"))
+  # cluster_name only adds anything when annotations named the features.
+  if (identical(rows$cluster_name, rows$Variable)) {
+    rows$cluster_name <- NULL
+  }
+  rows$drug_or_class <- .amr_label(rows$drug_or_class, names$drug)
+  rows |>
+    dplyr::select(-dplyr::any_of(c(
+      "task_id", "shuffled", "strat_label", "strat_value", "strat_value_test",
+      "cross_test", "species_label", "metadata_path"
+    )))
+}
+
+
+#' Feature-importance heatmap across species or drugs
+#'
+#' Draws featureImportanceTable(): top features across bugs (across_bug) or
+#' drugs (across_drug), relative to each group's most important feature.
+#' Feature labels come from an annotation join when available, otherwise the
+#' raw Variable id.
+#'
+#' @inheritParams featureImportanceTable
+#' @param annotated_dir,amrdata_root Currently unused; kept for call-site
+#'   consistency.
+#' @param names Name lookups from amrNames(), for drug and class names.
+#' @return A plotly heatmap, or NULL when there is nothing to plot.
+#' @keywords internal
+#' @noRd
+makeFeatureImportancePlot <- function(
+  data, bug, amr_drug, model_scale, data_type_,
+  top_n_features, feature_importance_tabset,
+  annotated_dir = NULL,
+  amrdata_root = NULL,
+  results_root = NULL,
+  names = amrNames(data)
+) {
+  top_features_df <- featureImportanceTable(
+    data, bug, amr_drug, model_scale, data_type_,
+    top_n_features, feature_importance_tabset, results_root
+  )
   if (!nrow(top_features_df)) {
     return(NULL)
   }
@@ -283,8 +382,14 @@ makeFeatureImportancePlot <- function(
     return(NULL)
   }
 
+  # Drugs and classes named in full, as "gentamicin (GEN)"; species as codes.
+  x <- colnames(vi_mat)
+  if (identical(feature_importance_tabset, "across_drug")) {
+    x <- .amr_label(x, names$drug)
+  }
+
   plotly::plot_ly(
-    x = colnames(vi_mat),
+    x = x,
     y = rownames(vi_mat),
     z = vi_mat,
     type = "heatmap",

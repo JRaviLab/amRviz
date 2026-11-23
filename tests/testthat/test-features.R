@@ -54,3 +54,68 @@ test_that("model scale menu offers structural features", {
   html <- as.character(featureImportanceUI("features"))
   expect_match(html, '<option value="struct"', fixed = TRUE)
 })
+
+# ── table under the heatmap (review on #66) ─────────────────────────────────
+
+test_that("the feature table holds exactly the features the heatmap shows", {
+  top <- suppressMessages(loadTopFeat(verbose = FALSE))
+  sso <- top[top$species == "Sso", ]
+  drug <- "AMP"
+  shown <- function(n, scale = "genes", type = "binary") {
+    featureImportanceTable(sso, "Sso", drug, scale, type, n, "across_drug")
+  }
+  rows <- function(n, scale = "genes", type = "binary") {
+    featureImportanceRows(sso, "Sso", drug, scale, type, n, "across_drug", names = list())
+  }
+  # The table follows the slider ...
+  expect_setequal(unique(rows(5)$Variable), shown(5)$cluster_name)
+  expect_lt(length(unique(rows(5)$Variable)), length(unique(rows(20)$Variable)))
+  # ... the model scale and the data type.
+  expect_true(all(rows(5, "domains")$feature_type == "domains"))
+  expect_true(all(rows(5, "genes", "counts")$feature_subtype == "counts"))
+  # And the heatmap draws the same features.
+  w <- makeFeatureImportancePlot(sso, "Sso", drug, "genes", "binary", 5, "across_drug", names = list())
+  expect_setequal(unlist(plotly::plotly_build(w)$x$data[[1]]$y), shown(5)$cluster_name)
+})
+
+test_that("the feature table leaves out the task and constant columns", {
+  top <- suppressMessages(loadTopFeat(verbose = FALSE))
+  rows <- featureImportanceRows(
+    top, "Sso", "AMP", "genes", "binary", 5, "across_drug", names = list()
+  )
+  expect_gt(nrow(rows), 0)
+  expect_false(any(c(
+    "task_id", "shuffled", "strat_label", "strat_value", "strat_value_test",
+    "cross_test", "species_label", "metadata_path"
+  ) %in% names(rows)))
+  expect_true(all(c("species", "drug_or_class", "Variable", "seed", "Importance") %in% names(rows)))
+})
+
+test_that("cross-tested models are left out of the heatmap and table", {
+  top <- suppressMessages(loadTopFeat(verbose = FALSE))
+  sso <- top[top$species == "Sso" & top$drug_or_class == "AMP" &
+    top$feature_type == "genes" & top$feature_subtype == "binary" &
+    !top$cross_test %in% TRUE & (is.na(top$strat_label) | !nzchar(top$strat_label)), ]
+  cross <- dplyr::mutate(sso[1, ], cross_test = TRUE, Variable = "cross_only", Importance = 1e6)
+  both <- rbind(sso, cross)
+  expect_false("cross_only" %in%
+    featureImportanceTable(both, "Sso", "AMP", "genes", "binary", "all", "across_drug")$cluster_name)
+  expect_false("cross_only" %in%
+    featureImportanceRows(both, "Sso", "AMP", "genes", "binary", "all", "across_drug", names = list())$Variable)
+})
+
+test_that("drugs and classes are named in full in the heatmap and table", {
+  top <- suppressMessages(loadTopFeat(verbose = FALSE))
+  sso <- top[top$species == "Sso", ]
+  names <- amrNames(sso)
+  expect_equal(names$drug[["AMP"]], "ampicillin")
+  expect_equal(names$drug[["AMG"]], "aminoglycosides")
+  w <- makeFeatureImportancePlot(sso, "Sso", c("AMP", "TET"), "genes", "binary", 5, "across_drug", names = names)
+  expect_setequal(
+    as.character(plotly::plotly_build(w)$x$data[[1]]$x),
+    c("ampicillin (AMP)", "tetracycline (TET)")
+  )
+  rows <- featureImportanceRows(sso, "Sso", "AMP", "genes", "binary", 5, "across_drug", names = names)
+  expect_equal(unique(rows$drug_or_class), "ampicillin (AMP)")
+  expect_equal(.amr_choices(c("AMG", "XYZ"), names$drug), c(`aminoglycosides (AMG)` = "AMG", XYZ = "XYZ"))
+})

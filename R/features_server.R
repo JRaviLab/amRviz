@@ -12,6 +12,9 @@
 featureImportanceServer <- function(id, core, results_root = NULL,
                                     amrdata_root = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
+    # Full names for drug and class codes, read once per data load.
+    names <- shiny::reactive(amrNames(core$topFeatures()))
+
     # Species choices come from the loaded ML results.
     shiny::observe({
       choices <- core$available_species()
@@ -70,7 +73,8 @@ featureImportanceServer <- function(id, core, results_root = NULL,
           dplyr::filter(normalize_species(.data$species) %in% bug_norm_input()) |>
           dplyr::filter(.data$feature_type %in% input$bug_drug_comp_model_scale) |>
           dplyr::filter(.data$feature_subtype %in% input$feature_data_type) |>
-          dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+          dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
+          dplyr::filter(!.data$cross_test %in% TRUE)
 
         if (identical(input$across_bug_id, "drug")) {
           drugs_vec <- base_tf |>
@@ -82,7 +86,7 @@ featureImportanceServer <- function(id, core, results_root = NULL,
           if (!length(sel)) sel <- utils::head(drugs_vec, 1)
           shiny::updateSelectInput(
             session, "amr_drug_across_bug",
-            choices = drugs_vec, selected = sel
+            choices = .amr_choices(drugs_vec, names()$drug), selected = sel
           )
         } else {
           drugs_class_vec <- base_tf |>
@@ -93,7 +97,7 @@ featureImportanceServer <- function(id, core, results_root = NULL,
           sel <- utils::head(drugs_class_vec, 1)
           shiny::updateSelectInput(
             session, "amr_drug_class_across_bug",
-            choices = drugs_class_vec, selected = sel
+            choices = .amr_choices(drugs_class_vec, names()$drug), selected = sel
           )
         }
       }
@@ -115,7 +119,8 @@ featureImportanceServer <- function(id, core, results_root = NULL,
           dplyr::filter(normalize_species(.data$species) %in% bn) |>
           dplyr::filter(.data$feature_type %in% input$bug_drug_comp_model_scale) |>
           dplyr::filter(.data$feature_subtype %in% input$feature_data_type) |>
-          dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label))
+          dplyr::filter(is.na(.data$strat_label) | !nzchar(.data$strat_label)) |>
+          dplyr::filter(!.data$cross_test %in% TRUE)
 
         if (identical(input$across_drug_id, "drug")) {
           drugs_vec <- base_tf |>
@@ -132,7 +137,7 @@ featureImportanceServer <- function(id, core, results_root = NULL,
           }
           shiny::updateSelectInput(
             session, "amr_drug_across_drug",
-            choices = drugs_vec, selected = sel
+            choices = .amr_choices(drugs_vec, names()$drug), selected = sel
           )
         } else {
           drugs_class_vec <- base_tf |>
@@ -149,31 +154,43 @@ featureImportanceServer <- function(id, core, results_root = NULL,
           }
           shiny::updateSelectInput(
             session, "amr_drug_class_across_drug",
-            choices = drugs_class_vec, selected = sel
+            choices = .amr_choices(drugs_class_vec, names()$drug), selected = sel
           )
         }
       }
     )
 
+    # The drug or drug classes selected in each view.
+    drug_across_bug <- shiny::reactive({
+      if (identical(input$across_bug_id, "drug_class")) {
+        input$amr_drug_class_across_bug
+      } else {
+        input$amr_drug_across_bug
+      }
+    })
+    drug_across_drug <- shiny::reactive({
+      if (identical(input$across_drug_id, "drug_class")) {
+        input$amr_drug_class_across_drug
+      } else {
+        input$amr_drug_across_drug
+      }
+    })
+
     output$across_bug_feature_importance_plot <- plotly::renderPlotly({
       if (is.null(input$across_bug_id)) {
         return(NULL)
       }
-      amr_drug <- if (input$across_bug_id == "drug") {
-        input$amr_drug_across_bug
-      } else {
-        input$amr_drug_class_across_bug
-      }
       makeFeatureImportancePlot(
         core$topFeatures(),
         input$bug_search_amr_across_bug,
-        amr_drug,
+        drug_across_bug(),
         input$bug_drug_comp_model_scale,
         input$feature_data_type,
         input$top_n_features,
-        input$feature_importance_tabset,
+        "across_bug",
         amrdata_root = amrdata_root,
-        results_root = results_root
+        results_root = results_root,
+        names = names()
       )
     })
 
@@ -181,76 +198,51 @@ featureImportanceServer <- function(id, core, results_root = NULL,
       if (is.null(input$across_drug_id)) {
         return(NULL)
       }
-      amr_drug <- if (input$across_drug_id == "drug") {
-        input$amr_drug_across_drug
-      } else {
-        input$amr_drug_class_across_drug
-      }
       makeFeatureImportancePlot(
         core$topFeatures(),
         input$bug_search_amr_across_drug,
-        amr_drug,
+        drug_across_drug(),
         input$bug_drug_comp_model_scale,
         input$feature_data_type,
         input$top_n_features,
-        input$feature_importance_tabset,
+        "across_drug",
         amrdata_root = amrdata_root,
-        results_root = results_root
+        results_root = results_root,
+        names = names()
       )
     })
 
-    # Annotation-joined top features feeding the table, cluster barplot, and ego network.
+    # The model rows of the features each heatmap shows, feeding the table,
+    # cluster barplot and ego network, so all of them follow the same controls
+    # as the heatmap.
     enriched_across_bug <- shiny::reactive({
-      amr_drug <- if (!is.null(input$across_bug_id) &&
-        input$across_bug_id == "drug_class") {
-        input$amr_drug_class_across_bug
-      } else {
-        input$amr_drug_across_bug
-      }
-      bug <- input$bug_search_amr_across_bug
-      tf <- core$filtered_top_features()
-      # No results loaded yet (or none selected): nothing to show.
-      if (!nrow(tf)) {
-        return(NULL)
-      }
-      tf <- tf |>
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
-        dplyr::filter(.data$drug_or_class %in% amr_drug)
-      if (!nrow(tf)) {
-        return(NULL)
-      }
-      dplyr::bind_rows(lapply(unique(tf$species), function(sp) {
-        enrich_with_annotations(
-          tf[tf$species == sp, ],
-          species_code = sp,
-          results_root = results_root
-        )
-      }))
+      tf <- featureImportanceRows(
+        core$topFeatures(),
+        input$bug_search_amr_across_bug,
+        drug_across_bug(),
+        input$bug_drug_comp_model_scale,
+        input$feature_data_type,
+        input$top_n_features,
+        "across_bug",
+        results_root = results_root,
+        names = names()
+      )
+      if (!nrow(tf)) NULL else tf
     })
 
     enriched_across_drug <- shiny::reactive({
-      amr_drug <- if (!is.null(input$across_drug_id) &&
-        input$across_drug_id == "drug_class") {
-        input$amr_drug_class_across_drug
-      } else {
-        input$amr_drug_across_drug
-      }
-      bug <- input$bug_search_amr_across_drug
-      tf <- core$filtered_top_features()
-      # No results loaded yet (or none selected): nothing to show.
-      if (!nrow(tf)) {
-        return(NULL)
-      }
-      tf <- tf |>
-        dplyr::filter(normalize_species(.data$species) %in% normalize_species(bug)) |>
-        dplyr::filter(.data$drug_or_class %in% amr_drug)
-      if (!nrow(tf)) {
-        return(NULL)
-      }
-      enrich_with_annotations(
-        tf,
-        species_code = bug, results_root = results_root
+      tf <- featureImportanceRows(
+        core$topFeatures(),
+        input$bug_search_amr_across_drug,
+        drug_across_drug(),
+        input$bug_drug_comp_model_scale,
+        input$feature_data_type,
+        input$top_n_features,
+        "across_drug",
+        results_root = results_root,
+        names = names()
       )
+      if (!nrow(tf)) NULL else tf
     })
 
     output$across_bug_feature_importance_table <- DT::renderDataTable({
