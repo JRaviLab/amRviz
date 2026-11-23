@@ -25,27 +25,40 @@ test_that("readSpeciesMetadata returns an empty tibble for a missing file", {
   expect_identical(nrow(readSpeciesMetadata(missing)), 0L)
 })
 
-test_that("metadataByCountry sums records per country, excluding blanks", {
+test_that("the demo metadata builds every table the tab draws", {
   meta <- readSpeciesMetadata(sonnei())
-  by_country <- metadataByCountry(meta)
-  expect_named(by_country, c("genome.isolation_country", "count"))
-  expect_false(any(by_country$genome.isolation_country == ""))
-  expect_identical(
-    sum(by_country$count),
-    sum(meta$genome.isolation_country != "", na.rm = TRUE)
+  expect_equal(sum(metadataByCountry(meta)$records), nrow(filter_valid_country(meta)))
+  expect_lte(max(metadataByCountry(meta)$genomes), length(unique(meta$genome.genome_id)))
+  expect_false(anyNA(metadataByYear(meta)$year))
+  expect_equal(sum(metadataBySource(meta)$records), nrow(meta))
+  expect_gt(nrow(metadataSankey(meta)$links), 0)
+})
+
+test_that("drugs and classes are named in full with their abbreviations", {
+  df <- tibble::tibble(
+    genome_drug.antibiotic = c("amikacin", "nalidixic_acid", "mystery"),
+    drug_abbr = c("AMK", "NAL", NA),
+    drug_class = c("aminoglycosides", "nitrofuran_derivatives", "other"),
+    class_abbr = c("AMG", "NFD", "")
   )
+  out <- .label_drugs(df)
+  expect_identical(out$genome_drug.antibiotic, c(
+    "amikacin (AMK)", "nalidixic acid (NAL)", "mystery"
+  ))
+  expect_identical(out$drug_class, c(
+    "aminoglycosides (AMG)", "nitrofuran derivatives (NFD)", "other"
+  ))
+  # Without the abbreviation columns the names are left alone.
+  bare <- df[c("genome_drug.antibiotic", "drug_class")]
+  expect_identical(.label_drugs(bare), bare)
 })
 
-test_that("metadataByYear drops rows without a collection year", {
-  by_year <- metadataByYear(readSpeciesMetadata(sonnei()))
-  expect_true("n" %in% names(by_year))
-  expect_false(anyNA(by_year$genome.collection_year))
-})
-
-test_that("metadataWithHost drops blank hosts and adds evidence", {
-  with_host <- metadataWithHost(readSpeciesMetadata(sonnei()))
-  expect_false(any(with_host$genome.host_common_name == ""))
-  expect_true("genome_drug.evidence" %in% names(with_host))
+test_that("readSpeciesMetadata labels drugs and classes with abbreviations", {
+  meta <- readSpeciesMetadata(sonnei())
+  skip_if_not(all(c("drug_abbr", "class_abbr") %in% names(meta)))
+  expect_true(all(grepl(" \\([A-Z-]+\\)$", meta$genome_drug.antibiotic)))
+  expect_true("amikacin (AMK)" %in% meta$genome_drug.antibiotic)
+  expect_true("aminoglycosides (AMG)" %in% meta$drug_class)
 })
 
 test_that("drugs and classes are named in full with their abbreviations", {

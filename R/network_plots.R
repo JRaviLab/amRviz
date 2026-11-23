@@ -46,14 +46,6 @@
 #' @param feature_types Feature types to include; NULL keeps all, character(0)
 #'   keeps none. In dyad view, selects only the extra feature nodes;
 #'   drug-dyad associations and support counts are unchanged.
-#' @return A list of `nodes` (`id`, unique across node types (a drug's starts
-#'   with its unit, "drug" or "drug_class"), `label`, `group`:
-#'   "drug", a feature type, or "dyad", `key`: the ID shown on hover, and `info`:
-#'   the hover text as HTML) and `links` (`from` and
-#'   `to` node ids, `importance`, and `sign`: "POS", "NEG" or NA for a link
-#'   that has none), or NULL when there is nothing to draw.
-#' @keywords internal
-#' @noRd
 networkTables <- function(top_data, bug, top_n = 10, include_dyads = FALSE,
                           view = c("feature", "dyad"), show_features = FALSE,
                           rescoring = NULL, thresholds = rescoringDefaults(),

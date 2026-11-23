@@ -169,6 +169,8 @@ networkUI <- function(id) {
               min = 0, max = 1, value = rescoringAll()$quantile, step = 0.01
             ),
             shiny::tags$span(
+              "Rank score is a feature's importance rank within a model, from",
+              "0 (least) to 1 (most), as the median across seeds.",
               "0.75 keeps the top quarter by rank score.",
               style = "font-size: 11px; color: #666;"
             ),
