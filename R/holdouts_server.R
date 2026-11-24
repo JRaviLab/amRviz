@@ -9,6 +9,9 @@
 #' @noRd
 crossModelComparisonServer <- function(id, core) {
   shiny::moduleServer(id, function(input, output, session) {
+    # Full names for drug, class and country codes, read once per data load.
+    names <- shiny::reactive(holdoutNames(core$queryData()))
+
     # Species choices come from the loaded ML results.
     shiny::observe({
       choices <- core$available_species()
@@ -22,15 +25,16 @@ crossModelComparisonServer <- function(id, core) {
     shiny::observeEvent(
       input$bug_cross_model_comparison_id,
       {
-        drugs_vec <- getHoldoutsDrugChoices(
+        menu <- holdoutDrugMenu(
           perf_data = core$queryData(),
-          bug = input$bug_cross_model_comparison_id
+          bug = input$bug_cross_model_comparison_id,
+          names = names()
         )
         shiny::updateSelectInput(
           session,
           inputId = "drug_cross_model_comparison_id",
-          choices = drugs_vec,
-          selected = if (length(drugs_vec)) drugs_vec[1] else NULL
+          choices = menu,
+          selected = if (length(menu)) unlist(menu)[[1]] else NULL
         )
       },
       ignoreInit = FALSE
@@ -41,7 +45,8 @@ crossModelComparisonServer <- function(id, core) {
       makeCrossModelRidgePlot(
         core$queryData(),
         input$bug_cross_model_comparison_id,
-        "country"
+        "country",
+        names = names()
       )
     })
 
@@ -50,7 +55,8 @@ crossModelComparisonServer <- function(id, core) {
       makeCrossModelRidgePlot(
         core$queryData(),
         input$bug_cross_model_comparison_id,
-        "time"
+        "time",
+        names = names()
       )
     })
 
@@ -63,7 +69,8 @@ crossModelComparisonServer <- function(id, core) {
         core$queryData(),
         input$bug_cross_model_comparison_id,
         input$drug_cross_model_comparison_id,
-        "country"
+        "country",
+        names = names()
       )
     })
 
@@ -76,7 +83,8 @@ crossModelComparisonServer <- function(id, core) {
         core$queryData(),
         input$bug_cross_model_comparison_id,
         input$drug_cross_model_comparison_id,
-        "time"
+        "time",
+        names = names()
       )
     })
 
@@ -86,37 +94,34 @@ crossModelComparisonServer <- function(id, core) {
         input$drug_cross_model_comparison_id,
         input$cross_model_comparison
       )
-      makeCrossModelFeatureImportancePlot(
+      p <- makeCrossModelFeatureImportancePlot(
         core$topFeatures(),
         input$bug_cross_model_comparison_id,
         input$drug_cross_model_comparison_id,
         input$cross_model_comparison,
-        input$cross_model_top_n_features
+        input$cross_model_top_n_features,
+        names = names()
       )
+      # The drug menu also lists drugs with only cross-tested models, which the
+      # performance grid shows but which have no top features; say so rather
+      # than drawing an empty plot.
+      p %||% plotly_placeholder(holdoutFeatureEmptyMessage(
+        .holdout_label(input$drug_cross_model_comparison_id, names()$drug),
+        input$cross_model_comparison
+      ))
     })
 
     output$cross_model_feature_importance_table <- DT::renderDataTable({
-      strat <- if (isTRUE(input$cross_model_comparison == "country")) {
-        "country"
-      } else {
-        "year"
-      }
-      tf <- core$topFeatures()
-      if (!nrow(tf)) {
+      rows <- holdoutFeatureRows(
+        core$topFeatures(),
+        input$bug_cross_model_comparison_id,
+        input$drug_cross_model_comparison_id,
+        input$cross_model_comparison
+      )
+      if (!nrow(rows)) {
         return(NULL)
       }
-      tf <- tf |>
-        dplyr::filter(
-          normalize_species(.data$species) %in%
-            normalize_species(input$bug_cross_model_comparison_id)
-        ) |>
-        dplyr::filter(.data$drug_or_class %in% input$drug_cross_model_comparison_id) |>
-        dplyr::filter(.data$strat_label == strat) |>
-        dplyr::filter(!.data$cross_test %in% TRUE)
-      if (!nrow(tf)) {
-        return(NULL)
-      }
-      makeFeatureImportTable(tf)
+      makeFeatureImportTable(rows)
     })
 
     invisible(NULL)
