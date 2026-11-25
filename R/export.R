@@ -287,7 +287,8 @@
                              top_n_features = 10, network_top_n = 5,
                              network_view = "feature", network_show_features = FALSE,
                              rescoring = NULL, network_thresholds = list(),
-                             network_feature_types = NULL, network_weighted_edges = TRUE) {
+                             network_feature_types = NULL, network_weighted_edges = TRUE,
+                             network_top_dyads = 10) {
   specs <- list()
   add <- function(group, name, build,
                   width = NULL, height = NULL, trim = FALSE) {
@@ -455,7 +456,8 @@
           include_dyads = FALSE, view = network_view,
           show_features = network_show_features, rescoring = rescoring,
           thresholds = utils::modifyList(rescoringAll(), network_thresholds),
-          feature_types = network_feature_types, weighted_edges = network_weighted_edges
+          feature_types = network_feature_types, weighted_edges = network_weighted_edges,
+          top_dyads = network_top_dyads
         ) |> .fit_network_to_content()
       }, width = 1600, height = 1600, trim = TRUE)
     })
@@ -579,6 +581,8 @@
 #'   associations and support counts unchanged.
 #' @param network_weighted_edges Vary network edge thickness by score.
 #'   FALSE uses a uniform width without changing the scores or colors.
+#' @param network_top_dyads Maximum rescored dyads per drug or class in dyad
+#'   view, ranked by score, then contribution. NULL keeps all dyads.
 exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     formats = c("png", "pdf"),
                                     results_root = NULL,
@@ -596,8 +600,15 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
                                     network_rescored = FALSE,
                                     network_thresholds = list(),
                                     network_feature_types = NULL,
-                                    network_weighted_edges = TRUE) {
+                                    network_weighted_edges = TRUE,
+                                    network_top_dyads = 10) {
   network_view <- match.arg(network_view)
+  if (!is.null(network_top_dyads) && (length(network_top_dyads) != 1L ||
+      !is.numeric(network_top_dyads) || is.na(network_top_dyads) ||
+      !is.finite(network_top_dyads) || network_top_dyads < 1 ||
+      network_top_dyads != floor(network_top_dyads))) {
+    stop("`network_top_dyads` must be a positive whole number or NULL.", call. = FALSE)
+  }
   for (nm in c("network_show_features", "network_rescored", "network_weighted_edges")) {
     value <- get(nm)
     if (!is.logical(value) || length(value) != 1 || is.na(value)) {
@@ -724,7 +735,8 @@ exportAMRVisualizations <- function(output_dir = "amRviz_exports",
     top_n_features = top_n_features, network_top_n = network_top_n,
     network_view = network_view, network_show_features = network_show_features,
     rescoring = rescoring, network_thresholds = network_thresholds,
-    network_feature_types = network_feature_types, network_weighted_edges = network_weighted_edges
+    network_feature_types = network_feature_types, network_weighted_edges = network_weighted_edges,
+    network_top_dyads = network_top_dyads
   )
 
   if (!dir.exists(output_dir)) {

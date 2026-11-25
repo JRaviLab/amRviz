@@ -319,6 +319,115 @@ test_that("makeDrugFeatureNetwork draws the rescoring when given it", {
   expect_null(makeDrugFeatureNetwork(NULL, "Sfl", 2, TRUE, rescoring = resc))
 })
 
+test_that("dyad limits rank unique dyads separately for each drug", {
+  resc <- load_rescoring_features()
+  build <- function(n, expand = FALSE, types = NULL) {
+    networkTables(NULL, "Hin", top_n = 10, rescoring = resc,
+      thresholds = rescoringAll(), view = "dyad", top_dyads = n,
+      show_features = expand, feature_types = types)
+  }
+  all <- build(NULL)
+  limited <- build(1)
+  expect_equal(sum(all$links$from == "drug:AMP"), 2)
+  expect_equal(sum(limited$links$from == "drug:AMP"), 1)
+  expect_equal(sum(limited$links$from == "drug_class:TET"), 1)
+  expect_match(limited$links$to[limited$links$from == "drug:AMP"], "peg.1", fixed = TRUE)
+  # Hiding all optional features leaves the limited backbone and support intact.
+  hidden <- build(1, TRUE, character())
+  expect_equal(hidden$links, limited$links)
+  expect_equal(hidden$nodes$info, limited$nodes$info)
+  # Feature view is unaffected by the dyad-view limit.
+  feature <- function(n) networkTables(NULL, "Hin", top_n = 10, rescoring = resc,
+    thresholds = rescoringAll(), include_dyads = TRUE, top_dyads = n)
+  expect_equal(feature(1), feature(NULL))
+  # Batch exports use the same selection as the shared network API.
+  specs <- .exportPlanSpecs(tibble::tibble(), tibble::tibble(),
+    list(code = "Hin", label = "Hin"), character(), NULL, NULL,
+    rescoring = resc, network_view = "dyad", network_top_dyads = 1)
+  spec <- Filter(function(x) x$name == "drug_feature_network", specs)[[1]]
+  exported <- spec$build()
+  expect_equal(sum(exported$x$nodes$group == "dyad"), sum(limited$nodes$group == "dyad"))
+  for (invalid in list(0, -1, 1.5, NA_real_, Inf, "1", c(1, 2))) {
+    expect_error(build(invalid), "positive whole number or NULL")
+  }
+})
+
+test_that("the Network tab explains an empty rescored feature selection", {
+  resc <- load_rescoring_features()
+  core <- list(available_species = function() "Hin",
+    topFeatures = function() tibble::tibble(), rescoring = function() resc)
+  shiny::testServer(networkServer, args = list(core = core), {
+    session$setInputs(network_bug_id = "Hin", network_top_n = 2,
+      network_rescored = "yes", network_view = "features",
+      network_feature_types = "DefenseCas", network_resc_delta = 0,
+      network_resc_quantile = 0, network_resc_dyad = 0)
+    expect_error(output$drug_feature_network, "No features match the selected types and filters.", fixed = TRUE)
+    session$setInputs(network_view = "dyads", network_resc_delta = 1.2)
+    expect_error(output$drug_feature_network, "No dyads match the current filters.", fixed = TRUE)
+  })
+})
+
+test_that("the Network dyad slider maps the visible score range to a real cutoff", {
+  resc <- load_rescoring_features()
+  core <- list(available_species = function() "Hin",
+    topFeatures = function() tibble::tibble(), rescoring = function() resc)
+  shiny::testServer(networkServer, args = list(core = core), {
+    session$setInputs(network_bug_id = "Hin", network_top_n = 10,
+      network_top_dyads = 10, network_rescored = "yes", network_view = "dyads",
+      network_feature_types = c("args", "domains", "genes"),
+      network_resc_delta = 0, network_resc_quantile = 0, network_resc_dyad = 0)
+    count <- function() sum(jsonlite::fromJSON(output$drug_feature_network)$x$nodes$group == "dyad")
+    expect_equal(dyad_range(), c(0.8, 0.99))
+    expect_equal(dyad_cutoff(), 0.8)
+    expect_equal(count(), 3)
+    session$setInputs(network_resc_dyad = 0.7)
+    expect_equal(dyad_cutoff(), 0.933)
+    expect_match(output$network_dyad_cutoff, "93.300%", fixed = TRUE)
+    expect_equal(count(), 2)
+    session$setInputs(network_resc_dyad = 1)
+    expect_equal(dyad_cutoff(), 0.99)
+    expect_equal(count(), 1)
+    # The available range includes the per-drug limit, not hidden dyads.
+    session$setInputs(network_resc_dyad = 0, network_top_dyads = 1)
+    expect_equal(dyad_range(), c(0.95, 0.99))
+    expect_equal(dyad_cutoff(), 0.95)
+  })
+  resc$dyads$dyad_median_rank_score <- 0.95
+  shiny::testServer(networkServer, args = list(core = core), {
+    session$setInputs(network_bug_id = "Hin", network_top_n = 10,
+      network_rescored = "yes", network_view = "dyads", network_resc_dyad = 1)
+    expect_equal(dyad_range(), c(0.95, 0.95))
+    expect_equal(dyad_cutoff(), 0.95)
+  })
+})
+
+test_that("editing the dyad limit preserves the last valid graph", {
+  resc <- load_rescoring_features()
+  core <- list(available_species = function() "Hin",
+    topFeatures = function() tibble::tibble(), rescoring = function() resc)
+  shiny::testServer(networkServer, args = list(core = core), {
+    session$setInputs(network_bug_id = "Hin", network_top_n = 10,
+      network_top_dyads = 1, network_rescored = "yes", network_view = "dyads",
+      network_feature_types = c("args", "domains", "genes"),
+      network_resc_delta = 0, network_resc_quantile = 0, network_resc_dyad = 0)
+    count <- function() sum(jsonlite::fromJSON(output$drug_feature_network)$x$nodes$group == "dyad")
+    expect_equal(count(), 2)
+    cutoff <- output$network_dyad_cutoff
+    for (invalid in list(NA_real_, NULL, numeric(), 0, -1, 1.5, Inf)) {
+      session$setInputs(network_top_dyads = invalid)
+      expect_equal(top_dyads(), 1)
+      expect_equal(count(), 2)
+      expect_equal(output$network_dyad_cutoff, cutoff)
+    }
+    session$setInputs(network_top_dyads = 2)
+    expect_equal(top_dyads(), 2)
+    expect_equal(count(), 3)
+    expect_equal(dyad_range(), c(0.8, 0.99))
+    session$setInputs(network_top_dyads = NA_real_, network_reset = 1)
+    expect_equal(top_dyads(), 10)
+  })
+})
+
 test_that("the Network tab draws rescored features only when asked and available", {
   made <- make_rescored_run(withr::local_tempdir())
   resc <- loadRescoring(made$root, made$run, verbose = FALSE)
@@ -330,7 +439,8 @@ test_that("the Network tab draws rescored features only when asked and available
   shiny::testServer(networkServer, args = list(core = core), {
     session$setInputs(
       network_bug_id = "Hin", network_top_n = 2, network_include_dyads = FALSE,
-      network_rescored = "no"
+      network_rescored = "no",
+      network_feature_types = c("args", "cogs", "domains", "genes", "proteins")
     )
     expect_false(use_rescoring())
     session$setInputs(

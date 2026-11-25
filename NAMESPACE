@@ -3,81 +3,105 @@
 export(exportAMRVisualizations)
 export(launchAMRDashboard)
 importFrom(DT,datatable)
-importFrom(arrow,read_parquet)
-importFrom(arrow,write_parquet)
-importFrom(dplyr,all_of)
-importFrom(dplyr,arrange)
-importFrom(dplyr,bind_rows)
-importFrom(dplyr,c_across)
-importFrom(dplyr,case_when)
-importFrom(dplyr,collect)
-importFrom(dplyr,count)
-importFrom(dplyr,desc)
-importFrom(dplyr,distinct)
-importFrom(dplyr,filter)
-importFrom(dplyr,group_by)
-importFrom(dplyr,join_by)
-importFrom(dplyr,left_join)
-importFrom(dplyr,mutate)
-importFrom(dplyr,n)
-importFrom(dplyr,pull)
-importFrom(dplyr,rowwise)
-importFrom(dplyr,select)
-importFrom(dplyr,slice_head)
-importFrom(dplyr,slice_max)
-importFrom(dplyr,summarise)
-importFrom(dplyr,summarize)
-importFrom(dplyr,ungroup)
-importFrom(dplyr,where)
-importFrom(ggplot2,aes)
-importFrom(ggplot2,coord_cartesian)
-importFrom(ggplot2,element_text)
-importFrom(ggplot2,geom_boxplot)
-importFrom(ggplot2,geom_col)
-importFrom(ggplot2,geom_line)
-importFrom(ggplot2,geom_point)
-importFrom(ggplot2,ggplot)
-importFrom(ggplot2,ggtitle)
-importFrom(ggplot2,labs)
-importFrom(ggplot2,position_jitterdodge)
-importFrom(ggplot2,scale_color_manual)
-importFrom(ggplot2,scale_fill_manual)
-importFrom(ggplot2,theme)
-importFrom(ggplot2,theme_bw)
-importFrom(ggplot2,theme_minimal)
+importFrom(arrow,
+  read_parquet,
+  write_parquet
+)
+importFrom(dplyr,
+  all_of,
+  arrange,
+  bind_rows,
+  c_across,
+  case_when,
+  collect,
+  count,
+  desc,
+  distinct,
+  filter,
+  group_by,
+  join_by,
+  left_join,
+  mutate,
+  n,
+  pull,
+  rowwise,
+  select,
+  slice_head,
+  slice_max,
+  summarise,
+  summarize,
+  ungroup,
+  where
+)
+importFrom(ggplot2,
+  aes,
+  coord_cartesian,
+  element_text,
+  geom_boxplot,
+  geom_col,
+  geom_line,
+  geom_point,
+  ggplot,
+  ggtitle,
+  labs,
+  position_jitterdodge,
+  scale_color_manual,
+  scale_fill_manual,
+  theme,
+  theme_bw,
+  theme_minimal
+)
 importFrom(glue,glue)
 importFrom(here,here)
-importFrom(plotly,colorbar)
-importFrom(plotly,layout)
-importFrom(plotly,plot_ly)
-importFrom(plotly,plotlyOutput)
-importFrom(plotly,renderPlotly)
+importFrom(plotly,
+  colorbar,
+  layout,
+  plot_ly,
+  plotlyOutput,
+  renderPlotly
+)
 importFrom(purrr,map_dfr)
-importFrom(readr,read_csv)
-importFrom(readr,read_tsv)
-importFrom(rlang,.data)
-importFrom(rlang,sym)
-importFrom(shinydashboard,box)
-importFrom(shinydashboard,tabBox)
+importFrom(readr,
+  read_csv,
+  read_tsv
+)
+importFrom(rlang,
+  .data,
+  sym
+)
+importFrom(shinydashboard,
+  box,
+  tabBox
+)
 importFrom(shinyjs,useShinyjs)
-importFrom(stats,median)
-importFrom(stats,setNames)
-importFrom(stringr,str_detect)
-importFrom(stringr,str_extract)
-importFrom(stringr,str_extract_all)
-importFrom(stringr,str_flatten)
-importFrom(stringr,str_glue)
-importFrom(stringr,str_match)
-importFrom(stringr,str_remove)
-importFrom(stringr,str_replace_all)
-importFrom(stringr,str_split_i)
-importFrom(stringr,str_to_lower)
-importFrom(stringr,str_to_sentence)
-importFrom(stringr,str_trunc)
-importFrom(tibble,column_to_rownames)
-importFrom(tibble,tibble)
-importFrom(tidyr,pivot_wider)
-importFrom(tidyr,separate)
-importFrom(utils,head)
-importFrom(utils,packageVersion)
-importFrom(utils,write.csv)
+importFrom(stats,
+  median,
+  setNames
+)
+importFrom(stringr,
+  str_detect,
+  str_extract,
+  str_extract_all,
+  str_flatten,
+  str_glue,
+  str_match,
+  str_remove,
+  str_replace_all,
+  str_split_i,
+  str_to_lower,
+  str_to_sentence,
+  str_trunc
+)
+importFrom(tibble,
+  column_to_rownames,
+  tibble
+)
+importFrom(tidyr,
+  pivot_wider,
+  separate
+)
+importFrom(utils,
+  head,
+  packageVersion,
+  write.csv
+)

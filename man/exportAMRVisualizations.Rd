@@ -20,9 +20,10 @@ exportAMRVisualizations(
   network_view = c("feature", "dyad"),
   network_show_features = FALSE,
   network_rescored = FALSE,
-  network_thresholds = list(delta_mcc = 0.75, quantile = 0.75, dyad_rank_score = 0.8),
+  network_thresholds = list(),
   network_feature_types = NULL,
-  network_weighted_edges = TRUE
+  network_weighted_edges = TRUE,
+  network_top_dyads = 10
 )
 }
 \arguments{
@@ -74,6 +75,9 @@ associations and support counts unchanged.}
 
 \item{network_weighted_edges}{Vary network edge thickness by score.
 FALSE uses a uniform width without changing the scores or colors.}
+
+\item{network_top_dyads}{Maximum rescored dyads per drug or class in dyad
+view, ranked by score, then contribution. NULL keeps all dyads.}
 }
 \value{
 Invisibly, a data frame with one row per figure: \code{group}, \code{name},

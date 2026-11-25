@@ -116,7 +116,8 @@ test_that("networkServer renders the drug-feature network", {
     networkServer,
     args = list(core = demo_core()),
     {
-      session$setInputs(network_bug_id = "Sso", network_top_n = 5)
+      session$setInputs(network_bug_id = "Sso", network_top_n = 5,
+        network_feature_types = names(SCALE_COLORS))
       expect_true(nzchar(output$drug_feature_network))
     }
   )
