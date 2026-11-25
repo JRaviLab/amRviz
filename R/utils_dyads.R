@@ -10,7 +10,8 @@
 .DYAD_PROTEIN_FILES <- c(
   domains = "protein_Pfam.parquet",
   cogs = "protein_COG.parquet",
-  args = "protein_AMRFinder.parquet"
+  args = "protein_AMRFinder.parquet",
+  DefenseCas = "protein_DefenseCas.parquet"
 )
 
 .dyad_cache <- new.env(parent = emptyenv())

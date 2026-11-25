@@ -16,7 +16,14 @@ exportAMRVisualizations(
   height = 800,
   scale = 2,
   delay = 1.5,
-  verbose = TRUE
+  verbose = TRUE,
+  network_view = c("feature", "dyad"),
+  network_show_features = FALSE,
+  network_rescored = FALSE,
+  network_thresholds = list(),
+  network_feature_types = NULL,
+  network_weighted_edges = TRUE,
+  network_top_dyads = 10
 )
 }
 \arguments{
@@ -38,7 +45,8 @@ export, by label ("Shigella flexneri"), output folder name
 ("Shigella_flexneri") or species code ("Sfl").}
 
 \item{top_n_features, network_top_n}{Feature counts for the
-feature-importance panels and the drug-feature network.}
+feature-importance panels and the drug-feature network (per feature type,
+per drug, in the network).}
 
 \item{width, height}{Viewport size in pixels.}
 
@@ -47,6 +55,29 @@ feature-importance panels and the drug-feature network.}
 \item{delay}{Seconds to wait for each widget's JavaScript to settle.}
 
 \item{verbose}{Per-figure progress messages.}
+
+\item{network_view}{Network view: \code{"feature"} (default) or \code{"dyad"}.}
+
+\item{network_show_features}{Also show contributing features in dyad view.}
+
+\item{network_rescored}{Use saved rescoring for network figures. Requires
+selected runs to actually have rescoring; FALSE uses raw feature importance.}
+
+\item{network_thresholds}{Named list of rescoring filter overrides, such as
+\code{list(delta_mcc = 0.75, quantile = 0.75, dyad_rank_score = 0.8)}.
+Unspecified thresholds use the Network tab's initial values.}
+
+\item{network_feature_types}{Feature types to include in the network;
+NULL includes all. Uses internal names such as \code{"args"}, \code{"cogs"},
+\code{"domains"}, \code{"genes"}, \code{"proteins"}, and \code{"struct"}.
+In dyad view this controls extra feature nodes only, leaving drug-dyad
+associations and support counts unchanged.}
+
+\item{network_weighted_edges}{Vary network edge thickness by score.
+FALSE uses a uniform width without changing the scores or colors.}
+
+\item{network_top_dyads}{Maximum rescored dyads per drug or class in dyad
+view, ranked by score, then contribution. NULL keeps all dyads.}
 }
 \value{
 Invisibly, a data frame with one row per figure: \code{group}, \code{name},

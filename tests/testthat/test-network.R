@@ -254,9 +254,10 @@ test_that("the network legend names drugs, AMRFinder and COGs", {
   expect_false(any(c("drug", "cogs", "args") %in% net$x$nodes$group))
   domain <- as.character(net$x$options$colourScale)
   expect_match(domain, '"drugs/drug classes"', fixed = TRUE)
-  expect_match(domain, '"AMRFinder"', fixed = TRUE)
+  expect_no_match(domain, '"AMRFinder"', fixed = TRUE)
   expect_match(domain, '"COGs"', fixed = TRUE)
   expect_match(domain, '"dyad"', fixed = TRUE)
+  expect_no_match(domain, '"Defense/Cas"', fixed = TRUE)
   # The shape hook keys on the same names.
   expect_match(net$jsHooks$render[[1]]$code, "'drugs/drug classes': d3.symbolDiamond", fixed = TRUE)
   expect_equal(.network_group_label(c("drug", "args", "cogs", "genes")), c("drugs/drug classes", "AMRFinder", "COGs", "genes"))
@@ -350,4 +351,14 @@ test_that("network visualisations carry the shared font + node-shape hook", {
   # Shapes are mirrored in both the nodes and the legend.
   expect_match(net$jsHooks$render[[1]]$code, "node-shape")
   expect_match(net$jsHooks$render[[1]]$code, "legend-shape")
+})
+
+test_that("the Network tab explains feature types absent from raw results", {
+  core <- list(available_species = function() "Sso",
+    topFeatures = network_rows, rescoring = function() NULL)
+  shiny::testServer(networkServer, args = list(core = core), {
+    session$setInputs(network_bug_id = "Sso", network_top_n = 2,
+      network_rescored = "no", network_feature_types = "DefenseCas")
+    expect_error(output$drug_feature_network, "No features match the selected types and filters.", fixed = TRUE)
+  })
 })
