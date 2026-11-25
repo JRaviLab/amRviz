@@ -428,6 +428,33 @@ test_that("editing the dyad limit preserves the last valid graph", {
   })
 })
 
+test_that("Network feature-type availability follows the selected models and species", {
+  resc <- load_rescoring_features()
+  raw <- shiny::reactiveVal(tibble::tibble(
+    species = c("Hin", "Hin", "Hin", "Sfl"),
+    feature_type = c("domains", "genes", "proteins", "DefenseCas"),
+    strat_label = c(NA, "country", NA, NA),
+    cross_test = c(FALSE, FALSE, TRUE, FALSE)
+  ))
+  core <- list(available_species = function() c("Hin", "Sfl"),
+    topFeatures = raw, rescoring = function() resc)
+  shiny::testServer(networkServer, args = list(core = core), {
+    session$setInputs(network_bug_id = "Hin", network_rescored = "no")
+    expect_setequal(available_feature_types(), "domains")
+    # Current graph filters do not turn supported types into unsupported ones.
+    session$setInputs(network_rescored = "yes", network_resc_delta = 1.2,
+      network_feature_types = character())
+    expect_setequal(available_feature_types(), c("args", "domains", "genes"))
+    session$setInputs(network_bug_id = "Sfl")
+    expect_setequal(available_feature_types(), "DefenseCas")
+    session$setInputs(network_bug_id = "Hin", network_rescored = "no")
+    raw(dplyr::bind_rows(shiny::isolate(raw()), tibble::tibble(
+      species = "Hin", feature_type = "cogs", strat_label = NA_character_, cross_test = FALSE)))
+    session$flushReact()
+    expect_setequal(available_feature_types(), c("domains", "cogs"))
+  })
+})
+
 test_that("the Network tab draws rescored features only when asked and available", {
   made <- make_rescored_run(withr::local_tempdir())
   resc <- loadRescoring(made$root, made$run, verbose = FALSE)

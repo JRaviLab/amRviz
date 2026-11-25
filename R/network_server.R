@@ -30,6 +30,17 @@ networkServer <- function(id, core, results_root = NULL) {
     dyad_view <- shiny::reactive({
       use_rescoring() && identical(input$network_view, "dyads")
     })
+    available_feature_types <- shiny::reactive({
+      rescored <- use_rescoring()
+      rows <- if (rescored) core$rescoring()$features else core$topFeatures()
+      if (is.null(rows) || !nrow(rows)) return(character())
+      rows <- rows[normalize_species(rows$species) %in% normalize_species(input$network_bug_id), ]
+      if (!rescored) {
+        rows <- rows[is.na(rows$strat_label) | !nzchar(rows$strat_label), ]
+        rows <- rows[!rows$cross_test %in% TRUE, ]
+      }
+      unique(rows$feature_type)
+    })
     # A numeric field can be empty while someone replaces its value.
     # Keep the last valid limit until a positive whole number is entered.
     top_dyads <- shiny::reactiveVal(10)
@@ -91,7 +102,21 @@ networkServer <- function(id, core, results_root = NULL) {
       features_visible <- !dyad_view() || isTRUE(input$network_dyad_features)
       shinyjs::toggleState("network_include_dyads", condition = !dyad_view())
       shinyjs::toggleClass("network_include_dyads_hint", "text-muted", condition = dyad_view())
-      shinyjs::toggleState("network_feature_types", condition = features_visible)
+      # Apply both restrictions together so changing views cannot re-enable
+      # types without model-derived features. Preserve their selections.
+      shinyjs::runjs(sprintf("{
+        var group = document.getElementById(%s);
+        if (group) group.querySelectorAll('input[type=checkbox]').forEach(function(input) {
+          var supported = %s.indexOf(input.value) !== -1;
+          input.disabled = !%s || !supported;
+          var label = input.closest('label');
+          label.classList.toggle('text-muted', input.disabled);
+          label.title = !supported ? 'No model support for this feature type in the selected runs/species.' :
+            (input.disabled ? 'Enable Show connected features to select feature types.' : '');
+        });
+      }", jsonlite::toJSON(session$ns("network_feature_types"), auto_unbox = TRUE),
+        jsonlite::toJSON(as.character(available_feature_types()), auto_unbox = FALSE),
+        jsonlite::toJSON(features_visible, auto_unbox = TRUE)))
       shinyjs::toggleClass("network_feature_types_panel", "text-muted", condition = !features_visible)
       for (id in c("network_view", "network_resc_quantile", "network_resc_both")) {
         shinyjs::toggleState(id, condition = rescored)

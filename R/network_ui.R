@@ -81,7 +81,7 @@ networkUI <- function(id) {
             id = ns("network_feature_types_panel"),
             title = "In dyad view, enable 'Show connected features' to change feature types.",
             class = "network-feature-toggle",
-            shiny::tags$summary(help("Toggle feature types", "Select feature nodes. In dyad view, enable Show connected features first. Choices do not filter the drug\u2013dyad links.")),
+            shiny::tags$summary(help("Toggle feature types", "Select feature nodes. In dyad view, enable Show connected features first. Choices do not filter the drug\u2013dyad links. Types without model support are grayed out.")),
             shiny::checkboxGroupInput(
               ns("network_feature_types"), label = NULL,
               choices = c("AMRFinder" = "args", "COGs" = "cogs", "Pfam" = "domains",
